@@ -1,16 +1,33 @@
 // Интерфейсы для блоков конструктора калькулятора
 
-export type BlockType =
   | 'input'
   | 'formula'
   | 'text'
   | 'constant'
   | 'table_lookup'
+  | 'data_table'
+  | 'chart'
   | 'condition'
   | 'group'
   | 'output'
   | 'image'
   | 'button';
+// CHART: блок для визуализации графиков
+export interface ChartBlock extends BaseBlock {
+  type: 'chart';
+  chartType: 'line' | 'bar' | 'pie' | 'area' | string; // тип графика
+  dataSource: string; // id блока-источника (например, data_table)
+  xKey: string; // имя столбца для оси X
+  yKey: string; // имя столбца для оси Y
+  options?: Record<string, any>; // дополнительные параметры для библиотеки графиков
+}
+// DATA_TABLE: таблица данных с именем, доступом к ячейкам по ключу/индексу
+export interface DataTableBlock extends BaseBlock {
+  type: 'data_table';
+  name: string; // уникальное имя таблицы в рамках калькулятора
+  columns: string[]; // имена столбцов
+  rows: Array<Record<string, number | string>>; // массив строк (ключ — имя столбца)
+}
 
 
 export interface BaseBlock {
@@ -85,12 +102,13 @@ export interface ButtonBlock extends BaseBlock {
   label: string;
 }
 
-export type Block =
   | InputBlock
   | FormulaBlock
   | TextBlock
   | ConstantBlock
   | TableLookupBlock
+  | DataTableBlock
+  | ChartBlock
   | ConditionBlock
   | GroupBlock
   | OutputBlock
