@@ -22,25 +22,19 @@ const testBlocks: Block[] = [
 // Просто скопируйте шаблон и вставьте его в окно AI.
 
 const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
-  const [blocks] = useState<Block[]>(testBlocks);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Инициализация тестовых блоков в Zustand store (один раз)
+  const setBlocks = require('@/lib/store').useCalcStore((s: any) => s.setBlocks);
+  const blocks = require('@/lib/store').useCalcStore((s: any) => s.blocks);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  React.useEffect(() => { setBlocks(testBlocks); }, []);
   const values = recalculateValues(blocks, {});
 
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
       {/* Левая панель (BlueprintPanel) */}
       <div style={{ flex: '0 0 40%', borderRight: '1px solid #eee', padding: 0, overflowY: 'auto' }}>
-        <BlueprintPanel />
-        <div style={{ marginTop: 24, padding: 16, background: '#222', color: '#fff' }}>
-          <b>Тестовые блоки:</b>
-          <ul>
-            {blocks.map((b) => (
-              <li key={b.id} style={{ cursor: 'pointer', fontWeight: selectedId === b.id ? 'bold' : undefined }} onClick={() => setSelectedId(b.id)}>
-                {b.label || b.id} <span style={{ color: '#aaa' }}>({b.type})</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <BlueprintPanel selectedId={selectedId} onSelect={setSelectedId} />
       </div>
       {/* Правая панель (ReportPanel) */}
       <div style={{ flex: isAdmin ? '0 0 50%' : '0 0 60%', borderRight: isAdmin ? '1px solid #eee' : undefined, padding: 0, overflowY: 'auto' }}>
@@ -52,7 +46,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       </div>
       {/* PropertyEditor (свойства выбранного блока) */}
       <div style={{ flex: '0 0 20%', minWidth: 220, background: '#fafbfc', padding: 0, borderLeft: '1px solid #eee', overflowY: 'auto' }}>
-        <PropertyEditor />
+        <PropertyEditor selectedId={selectedId} />
         <div style={{ marginTop: 24, padding: 16 }}>
           <b>Выбранный блок:</b>
           <pre>{JSON.stringify(blocks.find(b => b.id === selectedId) || null, null, 2)}</pre>

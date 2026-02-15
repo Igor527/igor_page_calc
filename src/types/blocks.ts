@@ -1,5 +1,6 @@
 // Интерфейсы для блоков конструктора калькулятора
 
+export type BlockType =
   | 'input'
   | 'formula'
   | 'text'
@@ -7,11 +8,32 @@
   | 'table_lookup'
   | 'data_table'
   | 'chart'
+  | 'select_from_table'
+  | 'select_from_object'
   | 'condition'
   | 'group'
   | 'output'
   | 'image'
   | 'button';
+// SELECT_FROM_TABLE: выбор значения из столбца таблицы с поддержкой диапазона, фильтра и комбинированных опций
+export interface SelectFromTableBlock extends BaseBlock {
+  type: 'select_from_table';
+  label: string;
+  dataSource: string; // id блока-таблицы
+  column: string; // имя столбца (основной)
+  defaultValue?: string | number;
+  range?: { min?: number; max?: number }; // диапазон значений (опционально)
+  filter?: Record<string, string | number>; // фильтр по другим столбцам (например, { Тип: "жилой" })
+  multipleColumns?: string[]; // если нужно формировать опции из нескольких столбцов
+}
+
+// SELECT_FROM_OBJECT: выбор значения из объекта (например, из constant)
+export interface SelectFromObjectBlock extends BaseBlock {
+  type: 'select_from_object';
+  label: string;
+  objectSource: string; // id блока-источника
+  defaultValue?: string | number;
+}
 // CHART: блок для визуализации графиков
 export interface ChartBlock extends BaseBlock {
   type: 'chart';
@@ -102,6 +124,7 @@ export interface ButtonBlock extends BaseBlock {
   label: string;
 }
 
+export type Block =
   | InputBlock
   | FormulaBlock
   | TextBlock
@@ -109,6 +132,8 @@ export interface ButtonBlock extends BaseBlock {
   | TableLookupBlock
   | DataTableBlock
   | ChartBlock
+  | SelectFromTableBlock
+  | SelectFromObjectBlock
   | ConditionBlock
   | GroupBlock
   | OutputBlock
