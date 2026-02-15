@@ -9,44 +9,59 @@
 <body>
   <div id="header-container"></div>
 
-  <main class="container" style="max-width: 750px; padding-top: 5rem; padding-bottom: 5rem;">
-    <article>
-      <header style="text-align: center;">
-        <hgroup>
-          <h1>Igor.Page Engine</h1>
-          <p>Универсальный визуальный конструктор инженерных расчётов.</p>
-          <p>Проект в разработке. Все расчёты и отчёты — для ознакомления.</p>
-        </hgroup>
-      </header>
-      <div style="display: grid; gap: 1rem; margin-top: 2rem;">
-        <a href="/admin/editor" role="button" class="contrast outline" style="width: 100%; padding: 1rem; text-align: center; text-decoration: none;">
-          Открыть редактор калькуляторов
-        </a>
-        <a href="/calc/demo" role="button" class="contrast outline" style="width: 100%; padding: 1rem; text-align: center; text-decoration: none;">
-          Пример калькулятора (демо)
-        </a>
-      </div>
-    </article>
-  </main>
+  <div id="root"></div>
 
   <div id="footer-container"></div>
 
   <script>
-    document.getElementById('header-container').innerHTML = `
-      <header style="position: fixed; top: 0; left: 0; width: 100%; background: var(--pico-background-color); border-bottom: 1px solid var(--pico-border-color); z-index: 1000;">
-        <div id="header-inner" style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; padding: 0.75rem 1rem;">
-          <button id="themeBtn" class="outline secondary" onclick="toggleTheme()" style="padding: 0.45rem 0.9rem; font-size: 0.95rem;">DARK</button>
-        </div>
-      </header>
-    `;
-    document.getElementById('footer-container').innerHTML = `
-      <footer style="position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pico-background-color); border-top: 1px solid var(--pico-border-color); z-index: 1000;">
-        <div id="footer-inner" style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: center; gap: 1rem; padding: 0.75rem 1rem;">
-          <a href="https://t.me/IGOR_CHEVELA" class="secondary" target="_blank">Telegram</a>
-          <a href="https://github.com/igorchevela/igor-page-engine" class="secondary" target="_blank">GitHub</a>
-        </div>
-      </footer>
-    `;
+    // Безопасное создание header без innerHTML
+    (function() {
+      const headerContainer = document.getElementById('header-container');
+      if (headerContainer) {
+        const header = document.createElement('header');
+        header.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; background: var(--pico-background-color); border-bottom: 1px solid var(--pico-border-color); z-index: 1000;';
+        const headerInner = document.createElement('div');
+        headerInner.id = 'header-inner';
+        headerInner.style.cssText = 'max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; padding: 0.75rem 1rem;';
+        const themeBtn = document.createElement('button');
+        themeBtn.id = 'themeBtn';
+        themeBtn.className = 'outline secondary';
+        themeBtn.style.cssText = 'padding: 0.45rem 0.9rem; font-size: 0.95rem;';
+        themeBtn.textContent = 'DARK';
+        themeBtn.addEventListener('click', toggleTheme);
+        headerInner.appendChild(themeBtn);
+        header.appendChild(headerInner);
+        headerContainer.appendChild(header);
+      }
+      
+      const footerContainer = document.getElementById('footer-container');
+      if (footerContainer) {
+        const footer = document.createElement('footer');
+        footer.style.cssText = 'position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pico-background-color); border-top: 1px solid var(--pico-border-color); z-index: 1000;';
+        const footerInner = document.createElement('div');
+        footerInner.id = 'footer-inner';
+        footerInner.style.cssText = 'max-width: 1200px; margin: 0 auto; display: flex; justify-content: center; gap: 1rem; padding: 0.75rem 1rem;';
+        
+        const telegramLink = document.createElement('a');
+        telegramLink.href = 'https://t.me/IGOR_CHEVELA';
+        telegramLink.className = 'secondary';
+        telegramLink.target = '_blank';
+        telegramLink.rel = 'noopener noreferrer';
+        telegramLink.textContent = 'Telegram';
+        footerInner.appendChild(telegramLink);
+        
+        const githubLink = document.createElement('a');
+        githubLink.href = 'https://github.com/igorchevela/igor-page-engine';
+        githubLink.className = 'secondary';
+        githubLink.target = '_blank';
+        githubLink.rel = 'noopener noreferrer';
+        githubLink.textContent = 'GitHub';
+        footerInner.appendChild(githubLink);
+        
+        footer.appendChild(footerInner);
+        footerContainer.appendChild(footer);
+      }
+    })();
     window.toggleTheme = function() {
       let mode = parseInt(localStorage.getItem('themeMode'));
       if (isNaN(mode)) mode = 1;

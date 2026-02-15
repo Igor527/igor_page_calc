@@ -1,11 +1,30 @@
 import { useCalcStore } from '@/lib/store';
+import { isValidFormula } from '@/lib/security';
+import DependencyGraph from './DependencyGraph';
 import type { Block } from '@/types/blocks';
+import React, { useState, useRef, useEffect } from 'react';
+
+// Закрытие автодополнения при клике вне
+const useClickOutside = (ref: React.RefObject<HTMLElement>, handler: () => void) => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        handler();
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [ref, handler]);
+};
 
 interface PropertyEditorProps {
   selectedId: string | null;
+  onSelect?: (id: string) => void;
 }
 
-const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId }) => {
+const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect }) => {
   const blocks = useCalcStore((s) => s.blocks);
   const setBlocks = useCalcStore((s) => s.setBlocks);
   const block = blocks.find((b) => b.id === selectedId) || null;
@@ -17,10 +36,54 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId }) => {
     setBlocks(updated);
   }
 
+  // Автодополнение для формул
+  const getAvailableBlocks = () => {
+    return blocks
+      .filter(b => b.id !== selectedId && (b.type === 'input' || b.type === 'constant' || b.type === 'formula' || b.type === 'data_table'))
+      .map(b => ({ id: b.id, label: b.label || b.id, type: b.type }));
+  };
+
+  const handleFormulaKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '{' || e.key === '[') {
+      setShowAutocomplete(true);
+      if (formulaInputRef.current) {
+        const rect = formulaInputRef.current.getBoundingClientRect();
+        setAutocompletePosition({ top: rect.bottom + 4, left: rect.left });
+      }
+    }
+  };
+
   return (
     <aside style={{ padding: 16, borderLeft: '1px solid #eee', minWidth: 220 }}>
       <h3 style={{ fontSize: '1.1rem', marginBottom: 10 }}>Свойства блока</h3>
       {!block && <div style={{ color: '#888' }}>Блок не выбран</div>}
+      {block && (
+        <button
+          type="button"
+          onClick={() => setShowDependencies(!showDependencies)}
+          style={{
+            marginBottom: 12,
+            padding: '4px 8px',
+            fontSize: 12,
+            background: showDependencies ? '#0a6' : '#f0f0f0',
+            color: showDependencies ? '#fff' : '#222',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer',
+          }}
+        >
+          {showDependencies ? '▼' : '▶'} Зависимости
+        </button>
+      )}
+      {block && showDependencies && (
+        <div style={{ marginBottom: 16, borderTop: '1px solid #eee', paddingTop: 12 }}>
+          <DependencyGraph
+            blocks={blocks}
+            selectedId={selectedId}
+            onSelect={onSelect || (() => {})}
+          />
+        </div>
+      )}
       {block && (
         <form style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label>
@@ -243,9 +306,96 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId }) => {
           {/* Для formula */}
           {block.type === 'formula' && (
             <>
-              <label>
+              <label style={{ position: 'relative' }}>
                 <span style={{ fontSize: 13, color: '#888' }}>Формула (math.js)</span>
-                <input value={block.formula} onChange={e => handleChange('formula', e.target.value)} />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    ref={formulaInputRef}
+                    value={block.formula} 
+                    onChange={e => {
+                      const newFormula = e.target.value;
+                      handleChange('formula', newFormula);
+                      
+                      // Валидация формулы в реальном времени
+                      if (newFormula.trim()) {
+                        const validation = isValidFormula(newFormula);
+                        if (!validation.valid) {
+                          console.warn(`⚠️ Формула "${block.id}": ${validation.error}`);
+                        }
+                      }
+                      
+                      // Скрываем автодополнение при изменении
+                      if (showAutocomplete) {
+                        setShowAutocomplete(false);
+                      }
+                    }}
+                    onKeyDown={handleFormulaKeyDown}
+                    onFocus={() => {
+                      // Показываем подсказку
+                    }}
+                    placeholder="Нажмите { для списка блоков"
+                    style={{
+                      borderColor: block.formula && !isValidFormula(block.formula).valid ? '#ffc107' : undefined,
+                      width: '100%',
+                    }}
+                  />
+                  {showAutocomplete && (
+                    <div
+                      ref={autocompleteRef}
+                      style={{
+                        position: 'fixed',
+                        top: autocompletePosition.top,
+                        left: autocompletePosition.left,
+                        background: '#fff',
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                        zIndex: 1000,
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                        minWidth: 200,
+                      }}
+                    >
+                      <div style={{ padding: '4px 8px', fontSize: 11, color: '#666', borderBottom: '1px solid #eee' }}>
+                        Доступные блоки (нажмите для вставки):
+                      </div>
+                      {getAvailableBlocks().map(b => (
+                        <div
+                          key={b.id}
+                          onClick={() => {
+                            if (formulaInputRef.current) {
+                              const currentValue = block.formula || '';
+                              const newValue = currentValue + b.id;
+                              handleChange('formula', newValue);
+                              setShowAutocomplete(false);
+                              formulaInputRef.current.focus();
+                            }
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            borderBottom: '1px solid #f0f0f0',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#f0f0f0';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#fff';
+                          }}
+                        >
+                          <span style={{ fontWeight: 500 }}>{b.label}</span>
+                          <span style={{ color: '#999', marginLeft: 8, fontSize: 11 }}>({b.id})</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {block.formula && !isValidFormula(block.formula).valid && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#856404', background: '#fff3cd', padding: '4px 8px', borderRadius: 4 }}>
+                    ⚠️ {isValidFormula(block.formula).error}
+                  </div>
+                )}
               </label>
               <label>
                 <span style={{ fontSize: 13, color: '#888' }}>Зависимости (id через запятую)</span>
@@ -283,12 +433,39 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId }) => {
                 <input value={Array.isArray(block.columns) ? block.columns.join(',') : ''} onChange={e => handleChange('columns', e.target.value.split(',').map(s => s.trim()))} />
               </label>
               <label>
-                <span style={{ fontSize: 13, color: '#888' }}>Строки (JSON)</span>
-                <textarea value={JSON.stringify(block.rows, null, 2)} onChange={e => {
-                  try {
-                    handleChange('rows', JSON.parse(e.target.value));
-                  } catch {}
-                }} />
+                <span style={{ fontSize: 13, color: '#888' }}>
+                  Строки (JSON)
+                  {Array.isArray(block.rows) && block.rows.length > 0 && (
+                    <span style={{ marginLeft: 8, color: block.rows.length > 500 ? '#c00' : '#666' }}>
+                      ({block.rows.length} строк{block.rows.length > 500 ? ' — превышен лимит!' : ''})
+                    </span>
+                  )}
+                </span>
+                {Array.isArray(block.rows) && block.rows.length > 500 && (
+                  <div style={{ marginBottom: 4, padding: '6px 8px', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 4, fontSize: 12, color: '#856404' }}>
+                    ⚠️ Таблица содержит {block.rows.length} строк. Максимально допустимо 500 строк.
+                    <br />
+                    Для работы с большими таблицами обратитесь к разработчику.
+                  </div>
+                )}
+                <textarea 
+                  value={JSON.stringify(block.rows, null, 2)} 
+                  onChange={e => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      // Автоматическое ограничение при вводе
+                      if (Array.isArray(parsed) && parsed.length > 500) {
+                        alert(`Таблица ограничена 500 строками. Текущее количество: ${parsed.length}. Будут сохранены только первые 500 строк.`);
+                        handleChange('rows', parsed.slice(0, 500));
+                      } else {
+                        handleChange('rows', parsed);
+                      }
+                    } catch {}
+                  }}
+                  style={{
+                    borderColor: Array.isArray(block.rows) && block.rows.length > 500 ? '#ffc107' : undefined
+                  }}
+                />
               </label>
             </>
           )}

@@ -1,15 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+// path и __dirname не нужны для alias в Vite
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@lib': path.resolve(__dirname, './src/lib'),
-      '@types': path.resolve(__dirname, './src/types'),
+      '@': '/src',
+      '@components': '/src/components',
+      '@lib': '/src/lib',
+      '@types': '/src/types',
     },
   },
   server: {
@@ -20,4 +20,6 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
+  // Для SPA роутинга - все запросы должны возвращать index.html
+  // Это настраивается на уровне сервера (Cloudflare Pages, Vercel и т.д.)
 });

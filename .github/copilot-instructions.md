@@ -198,7 +198,94 @@ npm install --save-dev @vitejs/plugin-react
 ❌ **Bypassing engine for calculations** → All math through `recalculateValues()`  
 ❌ **Missing formula dependencies** → FormulaBlock won't recompute if deps incomplete  
 ❌ **Forgetting block.type checks** → Different blocks need different property editors  
-❌ **Hardcoding UI strings** → Use block labels, data from schema  
+❌ **Hardcoding UI strings** → Use block labels, data from schema
+
+---
+
+## 🔒 SECURITY REQUIREMENTS (CRITICAL)
+
+### XSS Protection
+- **NEVER use `innerHTML` or `dangerouslySetInnerHTML` without sanitization**
+- Always escape user data before rendering
+- Use functions from `src/lib/security.ts`: `escapeHtml()`, `sanitizeHtml()`, `sanitizeText()`
+- When creating DOM elements, use `createElement` and `textContent`, not `innerHTML`
+
+### URL Validation
+- **ALL URLs must be validated before use**
+- Use `isValidUrl()` and `sanitizeUrl()` from `src/lib/security.ts`
+- Allow only safe protocols: `http:`, `https:`, `data:` (images only)
+- **BLOCK:** `javascript:`, `vbscript:`, `data:text/html` and other dangerous protocols
+
+### Protection Against Hidden Database/API Calls
+- **CRITICAL:** When processing text data (read/write, JSON parsing, formula processing), **NEVER execute hidden calls to databases or external APIs**
+- All data operations must be explicit and transparent
+- Do not use `eval()`, `Function()`, `import()`, `require()` in user data
+- All formulas must be validated via `isValidFormula()` before execution
+
+**Forbidden patterns:**
+```typescript
+// ❌ WRONG - hidden DB call in text processing
+function processText(text: string) {
+  const result = db.query(text); // NEVER do this!
+  return result;
+}
+
+// ❌ WRONG - eval in user data
+const result = eval(userInput); // DANGEROUS!
+
+// ✅ CORRECT - explicit validation and safe execution
+const validation = isValidFormula(userInput);
+if (!validation.valid) throw new Error(validation.error);
+const result = evaluate(formula, safeScope); // math.js with safe scope
+```
+
+### Input Validation
+- **ALL user data must be validated before use**
+- Use `validateBlocks()` for block schemas
+- Use `validateImportedBlocks()` for imported JSON
+- Check types, required fields, dependencies
+
+### Formula Security
+- All formulas are checked for dangerous patterns:
+  - `eval()`, `import()`, `require()`, `Function()`
+  - Access to `constructor`, `__proto__`, `prototype`
+- Use only `math.js` `evaluate()` with safe scope
+- Never pass user data directly to `evaluate()` without validation
+
+### Save/Load Protection
+- All data is validated before saving to localStorage
+- All data is validated when loading from localStorage
+- On validation error — do not load data, show error
+
+### Security Utilities Available
+
+**src/lib/security.ts:**
+- `sanitizeHtml()` — HTML sanitization
+- `escapeHtml()` — HTML escaping
+- `sanitizeText()` — safe text with line breaks
+- `isValidUrl()` — URL validation
+- `sanitizeUrl()` — URL sanitization
+- `isValidFormula()` — formula validation
+- `containsDangerousCode()` — dangerous code detection
+- `isValidBlockId()` — block ID validation
+
+**src/lib/validation.ts:**
+- `validateBlocks()` — full block validation
+- `validateImportedBlocks()` — import validation
+- Dependency checking
+- Circular dependency detection
+
+### Security Checklist
+- [ ] All user data is validated
+- [ ] All URLs are checked for safety
+- [ ] All HTML content is sanitized
+- [ ] All formulas are validated before execution
+- [ ] No hidden DB/API calls in text operations
+- [ ] No use of `eval()`, `innerHTML` without sanitization
+- [ ] All JSON imports are validated
+- [ ] Validation errors are logged
+
+**See `SECURITY.md` and `COPILOT_RULES.md` for detailed security guidelines.**  
 
 ---
 

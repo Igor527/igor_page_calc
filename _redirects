@@ -1,0 +1,4 @@
+# Cloudflare Pages redirects для SPA роутинга
+# Все запросы перенаправляются на index.html для поддержки клиентского роутинга
+
+/*    /index.html   200

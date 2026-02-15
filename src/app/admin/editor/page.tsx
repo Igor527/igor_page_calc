@@ -5,8 +5,9 @@
 import BlueprintPanel from '@/components/editor/BlueprintPanel';
 import ReportPanel from '@/components/editor/ReportPanel';
 import PropertyEditor from '@/components/editor/PropertyEditor';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { recalculateValues } from '@/lib/engine';
+import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 
 // Тестовые блоки для проверки UI и движка
@@ -22,20 +23,52 @@ const testBlocks: Block[] = [
 // Просто скопируйте шаблон и вставьте его в окно AI.
 
 const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
+  const blocks = useCalcStore((s) => s.blocks);
+  const setBlocks = useCalcStore((s) => s.setBlocks);
+  const values = useCalcStore((s) => s.values);
+  const setValues = useCalcStore((s) => s.setValues);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Инициализация тестовых блоков в Zustand store (один раз)
-  const setBlocks = require('@/lib/store').useCalcStore((s: any) => s.setBlocks);
-  const blocks = require('@/lib/store').useCalcStore((s: any) => s.blocks);
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  React.useEffect(() => { setBlocks(testBlocks); }, []);
-  const values = recalculateValues(blocks, {});
+  useEffect(() => {
+    if (blocks.length === 0) {
+      setBlocks(testBlocks);
+      // Инициализируем значения при первой загрузке
+      const initialValues = recalculateValues(testBlocks, {});
+      setValues(initialValues);
+    }
+  }, []);
+
+  // Автоматический пересчёт при изменении blocks (но не values, чтобы избежать циклов)
+  useEffect(() => {
+    if (blocks.length > 0) {
+      const calculated = recalculateValues(blocks, values);
+      // Обновляем только если есть изменения
+      const hasChanges = Object.keys(calculated).some(
+        key => calculated[key] !== values[key]
+      );
+      if (hasChanges) {
+        setValues(calculated);
+      }
+    }
+  }, [blocks]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      {/* Левая панель (BlueprintPanel) */}
-      <div style={{ flex: '0 0 40%', borderRight: '1px solid #eee', padding: 0, overflowY: 'auto' }}>
-        <BlueprintPanel selectedId={selectedId} onSelect={setSelectedId} />
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', flexDirection: 'column' }}>
+      {/* Верхняя панель навигации */}
+      <div style={{ padding: '8px 16px', background: '#f9f9f9', borderBottom: '1px solid #eee', display: 'flex', gap: 8, alignItems: 'center' }}>
+        <a href="/" style={{ padding: '4px 12px', background: '#222', color: '#fff', textDecoration: 'none', borderRadius: 4, fontSize: 13 }}>
+          Редактор
+        </a>
+        <a href="/admin/review" style={{ padding: '4px 12px', background: '#880', color: '#fff', textDecoration: 'none', borderRadius: 4, fontSize: 13 }}>
+          Ревью
+        </a>
       </div>
+      <div style={{ display: 'flex', flex: 1, width: '100vw' }}>
+        {/* Левая панель (BlueprintPanel) */}
+        <div style={{ flex: '0 0 40%', borderRight: '1px solid #eee', padding: 0, overflowY: 'auto' }}>
+          <BlueprintPanel selectedId={selectedId} onSelect={setSelectedId} />
+        </div>
       {/* Правая панель (ReportPanel) */}
       <div style={{ flex: isAdmin ? '0 0 50%' : '0 0 60%', borderRight: isAdmin ? '1px solid #eee' : undefined, padding: 0, overflowY: 'auto' }}>
         <ReportPanel />
@@ -46,7 +79,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       </div>
       {/* PropertyEditor (свойства выбранного блока) */}
       <div style={{ flex: '0 0 20%', minWidth: 220, background: '#fafbfc', padding: 0, borderLeft: '1px solid #eee', overflowY: 'auto' }}>
-        <PropertyEditor selectedId={selectedId} />
+        <PropertyEditor selectedId={selectedId} onSelect={setSelectedId} />
         <div style={{ marginTop: 24, padding: 16 }}>
           <b>Выбранный блок:</b>
           <pre>{JSON.stringify(blocks.find(b => b.id === selectedId) || null, null, 2)}</pre>
@@ -79,6 +112,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           }}>Вставить в редактор</button>
         </div>
       )}
+      </div>
     </div>
   );
 };

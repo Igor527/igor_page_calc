@@ -1,16 +1,21 @@
-import React, { useState, useMemo, useCallback } from 'react';
+// Публичный вид калькулятора (без редактора)
+
+import React, { useEffect, useState } from 'react';
 import { useCalcStore } from '@/lib/store';
 import { recalculateValues } from '@/lib/engine';
+import ChartRenderer from '@/components/editor/ChartRenderer';
 import { sanitizeText, sanitizeUrl } from '@/lib/security';
-import { isErrorValue } from '@/lib/errors';
-import { debounce } from '@/lib/performance';
-import ChartRenderer from './ChartRenderer';
-import ErrorDisplay from '../ui/ErrorDisplay';
 import type { Block, GroupBlock, InputBlock, SelectFromTableBlock, DataTableBlock, ImageBlock, ChartBlock } from '@/types/blocks';
 
+interface PublicCalculatorProps {
+  calculatorId?: string;
+  blocks?: Block[];
+}
+
+// Функция рендеринга блока (аналогична ReportPanel, но без редактирования)
 function renderBlock(
-  block: Block, 
-  values: Record<string, any>, 
+  block: Block,
+  values: Record<string, any>,
   allBlocks: Block[],
   onValueChange: (id: string, value: number | string) => void
 ): React.ReactNode {
@@ -30,24 +35,15 @@ function renderBlock(
       </div>
     );
   }
+
   if (block.type === 'output') {
-    const outputValue = values[block.id];
-    const hasError = isErrorValue(outputValue);
-    
     return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <div style={{ fontWeight: 500 }}>
-          {block.label || 'Результат'}:{' '}
-          {hasError ? (
-            <span style={{ color: '#856404' }}>Ошибка</span>
-          ) : (
-            <span style={{ color: '#0a6' }}>{outputValue ?? '—'}</span>
-          )}
-        </div>
-        {hasError && <ErrorDisplay value={outputValue} blockId={block.id} blockLabel={block.label} />}
+      <div key={block.id} style={{ margin: '8px 0', fontWeight: 500 }}>
+        {block.label || 'Результат'}: <span style={{ color: '#0a6' }}>{values[block.id]}</span>
       </div>
     );
   }
+
   if (block.type === 'chart') {
     const chartBlock = block as ChartBlock;
     const dataSourceBlock = allBlocks.find(
@@ -60,8 +56,8 @@ function renderBlock(
       </div>
     );
   }
+
   if (block.type === 'text') {
-    // Безопасный рендеринг текста с санитизацией
     const sanitizedContent = sanitizeText(block.content || '');
     const Tag = block.style === 'h1' ? 'h1' : 'div';
     return (
@@ -72,8 +68,7 @@ function renderBlock(
       />
     );
   }
-  
-  // Для image блока - валидация URL
+
   if (block.type === 'image') {
     const imageBlock = block as ImageBlock;
     const safeUrl = sanitizeUrl(imageBlock.url || '');
@@ -97,7 +92,7 @@ function renderBlock(
       </div>
     );
   }
-  // Для input - редактируемое поле
+
   if (block.type === 'input') {
     const inputBlock = block as InputBlock;
     return (
@@ -136,7 +131,6 @@ function renderBlock(
     );
   }
 
-  // Для select_from_table
   if (block.type === 'select_from_table') {
     const selBlock = block as SelectFromTableBlock;
     const tableBlock = allBlocks.find(b => b.id === selBlock.dataSource && b.type === 'data_table') as DataTableBlock | undefined;
@@ -145,14 +139,12 @@ function renderBlock(
     if (tableBlock && tableBlock.rows) {
       let filteredRows = tableBlock.rows;
       
-      // Применяем фильтр
       if (selBlock.filter) {
         filteredRows = filteredRows.filter((row: any) => {
           return Object.entries(selBlock.filter!).every(([col, val]) => row[col] === val);
         });
       }
       
-      // Применяем диапазон
       if (selBlock.range) {
         filteredRows = filteredRows.filter((row: any) => {
           const val = row[selBlock.column];
@@ -164,7 +156,6 @@ function renderBlock(
         });
       }
       
-      // Формируем опции
       options = filteredRows.map((row: any) => {
         if (selBlock.multipleColumns && selBlock.multipleColumns.length > 0) {
           return selBlock.multipleColumns.map(col => row[col]).join(' ');
@@ -192,27 +183,15 @@ function renderBlock(
     );
   }
 
-  // Для formula - результат вычисления
   if (block.type === 'formula') {
-    const formulaValue = values[block.id];
-    const hasError = isErrorValue(formulaValue);
-    
     return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <div style={{ padding: '8px', background: hasError ? '#fff3cd' : '#f0f8ff', borderRadius: 4 }}>
-          <strong>{block.label || block.id}:</strong>{' '}
-          {hasError ? (
-            <span style={{ color: '#856404', fontWeight: 600 }}>Ошибка вычисления</span>
-          ) : (
-            <span style={{ color: '#0a6', fontWeight: 600 }}>{formulaValue ?? '—'}</span>
-          )}
-        </div>
-        {hasError && <ErrorDisplay value={formulaValue} blockId={block.id} blockLabel={block.label} />}
+      <div key={block.id} style={{ margin: '8px 0', padding: '8px', background: '#f0f8ff', borderRadius: 4 }}>
+        <strong>{block.label || block.id}:</strong>{' '}
+        <span style={{ color: '#0a6', fontWeight: 600 }}>{values[block.id] ?? '—'}</span>
       </div>
     );
   }
 
-  // Для constant, table_lookup, select_from_object и других
   return (
     <div key={block.id} style={{ margin: '8px 0' }}>
       {block.label || block.id}: <span style={{ color: '#222' }}>{values[block.id] ?? '—'}</span>
@@ -220,58 +199,68 @@ function renderBlock(
   );
 }
 
-const ReportPanel: React.FC = () => {
+const PublicCalculator: React.FC<PublicCalculatorProps> = ({ calculatorId, blocks: initialBlocks }) => {
   const blocks = useCalcStore((s) => s.blocks);
   const values = useCalcStore((s) => s.values);
-  const updateValue = useCalcStore((s) => s.updateValue);
+  const setBlocks = useCalcStore((s) => s.setBlocks);
   const setValues = useCalcStore((s) => s.setValues);
+  const updateValue = useCalcStore((s) => s.updateValue);
 
-  // Мемоизированный пересчёт значений
-  const calculatedValues = useMemo(() => {
-    if (blocks.length === 0) return values;
-    return recalculateValues(blocks, values);
-  }, [blocks, values]);
-
-  // Debounced обработчик пересчёта
-  const debouncedRecalculateRef = React.useRef<ReturnType<typeof debounce> | null>(null);
-  
-  React.useEffect(() => {
-    debouncedRecalculateRef.current = debounce((currentValues: Record<string, number | string>) => {
-      const calculated = recalculateValues(blocks, currentValues);
-      setValues(calculated);
-    }, 300);
-  }, [blocks, setValues]);
-
-  const handleValueChange = useCallback((id: string, value: number | string) => {
-    // Немедленное обновление для отзывчивости UI
-    updateValue(id, value);
-    // Отложенный пересчёт для производительности
-    const newValues = { ...values, [id]: value };
-    if (debouncedRecalculateRef.current) {
-      debouncedRecalculateRef.current(newValues);
+  // Загрузка схемы калькулятора
+  useEffect(() => {
+    if (initialBlocks) {
+      setBlocks(initialBlocks);
+      const initialValues = recalculateValues(initialBlocks, {});
+      setValues(initialValues);
+    } else if (calculatorId) {
+      // Загрузка из localStorage по ID
+      try {
+        const saved = localStorage.getItem(`calc-${calculatorId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.blocks) {
+            setBlocks(parsed.blocks);
+            const initialValues = recalculateValues(parsed.blocks, parsed.values || {});
+            setValues(initialValues);
+          }
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки калькулятора:', e);
+      }
     }
-  }, [updateValue, values]);
+  }, [calculatorId, initialBlocks, setBlocks, setValues]);
 
-  // Мемоизированная фильтрация верхнеуровневых блоков
-  const topBlocks = useMemo(() => {
-    const groupChildIds = new Set(
-      blocks.filter((b: Block) => b.type === 'group').flatMap((g: any) => 
-        Array.isArray(g.children) ? g.children.map((c: any) => typeof c === 'string' ? c : c.id) : []
-      )
+  // Обработчик изменения значения с автоматическим пересчётом
+  const handleValueChange = (id: string, value: number | string) => {
+    updateValue(id, value);
+    const newValues = { ...values, [id]: value };
+    const calculated = recalculateValues(blocks, newValues);
+    setValues(calculated);
+  };
+
+  // Визуализируем только верхнеуровневые блоки
+  const groupChildIds = new Set(
+    blocks.filter((b: Block) => b.type === 'group').flatMap((g: any) => 
+      Array.isArray(g.children) ? g.children.map((c: any) => typeof c === 'string' ? c : c.id) : []
+    )
+  );
+  const topBlocks = blocks.filter((b: Block) => !groupChildIds.has(b.id));
+
+  if (blocks.length === 0) {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+        <h2>Калькулятор не найден</h2>
+        <p style={{ color: '#888' }}>Калькулятор с ID "{calculatorId}" не найден или не загружен.</p>
+      </div>
     );
-    return blocks.filter((b: Block) => !groupChildIds.has(b.id));
-  }, [blocks]);
-
-  // Используем рассчитанные значения
-  const displayValues = calculatedValues;
+  }
 
   return (
-    <section style={{ padding: 16 }}>
-      <h2 style={{ fontSize: '1.2rem', marginBottom: 12 }}>Отчёт</h2>
-      {topBlocks.length === 0 && <div style={{ color: '#888' }}>Нет блоков для отображения</div>}
-      {topBlocks.map(b => renderBlock(b, displayValues, blocks, handleValueChange))}
-    </section>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '20px' }}>
+      <h1 style={{ marginBottom: 24, fontSize: 24, fontWeight: 600 }}>Калькулятор</h1>
+      {topBlocks.map(b => renderBlock(b, values, blocks, handleValueChange))}
+    </div>
   );
 };
 
-export default ReportPanel;
+export default PublicCalculator;
