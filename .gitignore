@@ -1,0 +1,19 @@
+# Node.js
+node_modules/
+.next/
+.vercel/
+.env
+.env.*
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+*.tmp
+*.swp
+.idea/
+.vscode/
+coverage/
+dist/
+build/

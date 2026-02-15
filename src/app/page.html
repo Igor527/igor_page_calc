@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Igor.Page Engine</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+</head>
+<body>
+  <div id="header-container"></div>
+
+  <main class="container" style="max-width: 750px; padding-top: 5rem; padding-bottom: 5rem;">
+    <article>
+      <header style="text-align: center;">
+        <hgroup>
+          <h1>Igor.Page Engine</h1>
+          <p>Универсальный визуальный конструктор инженерных расчётов.</p>
+          <p>Проект в разработке. Все расчёты и отчёты — для ознакомления.</p>
+        </hgroup>
+      </header>
+      <div style="display: grid; gap: 1rem; margin-top: 2rem;">
+        <a href="/admin/editor" role="button" class="contrast outline" style="width: 100%; padding: 1rem; text-align: center; text-decoration: none;">
+          Открыть редактор калькуляторов
+        </a>
+        <a href="/calc/demo" role="button" class="contrast outline" style="width: 100%; padding: 1rem; text-align: center; text-decoration: none;">
+          Пример калькулятора (демо)
+        </a>
+      </div>
+    </article>
+  </main>
+
+  <div id="footer-container"></div>
+
+  <script>
+    document.getElementById('header-container').innerHTML = `
+      <header style="position: fixed; top: 0; left: 0; width: 100%; background: var(--pico-background-color); border-bottom: 1px solid var(--pico-border-color); z-index: 1000;">
+        <div id="header-inner" style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 0.75rem; justify-content: flex-end; padding: 0.75rem 1rem;">
+          <button id="themeBtn" class="outline secondary" onclick="toggleTheme()" style="padding: 0.45rem 0.9rem; font-size: 0.95rem;">DARK</button>
+        </div>
+      </header>
+    `;
+    document.getElementById('footer-container').innerHTML = `
+      <footer style="position: fixed; bottom: 0; left: 0; width: 100%; background: var(--pico-background-color); border-top: 1px solid var(--pico-border-color); z-index: 1000;">
+        <div id="footer-inner" style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: center; gap: 1rem; padding: 0.75rem 1rem;">
+          <a href="https://t.me/IGOR_CHEVELA" class="secondary" target="_blank">Telegram</a>
+          <a href="https://github.com/igorchevela/igor-page-engine" class="secondary" target="_blank">GitHub</a>
+        </div>
+      </footer>
+    `;
+    window.toggleTheme = function() {
+      let mode = parseInt(localStorage.getItem('themeMode'));
+      if (isNaN(mode)) mode = 1;
+      mode = (mode + 1) % 2;
+      localStorage.setItem('themeMode', mode);
+      const modes = ["light", "dark"];
+      const theme = modes[mode];
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.classList.remove('light-theme', 'dark-theme');
+      document.body.classList.add(theme + '-theme');
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.innerText = theme.toUpperCase();
+    };
+    // Инициализация темы при загрузке
+    (function() {
+      let mode = parseInt(localStorage.getItem('themeMode'));
+      if (isNaN(mode)) mode = 1;
+      const modes = ["light", "dark"];
+      const theme = modes[mode];
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.classList.remove('light-theme', 'dark-theme');
+      document.body.classList.add(theme + '-theme');
+      const btn = document.getElementById('themeBtn');
+      if (btn) btn.innerText = theme.toUpperCase();
+    })();
+  </script>
+</body>
+</html>
