@@ -60,6 +60,186 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId }) => {
             </>
           )}
 
+          {/* Для select_from_table */}
+          {block.type === 'select_from_table' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Источник (таблица)</span>
+                <select value={block.dataSource} onChange={e => handleChange('dataSource', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.filter(b => b.type === 'data_table').map(tbl => (
+                    <option key={tbl.id} value={tbl.id}>{tbl.label || tbl.id}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Столбец</span>
+                <select value={block.column} onChange={e => handleChange('column', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.find(b => b.id === block.dataSource && b.type === 'data_table')?.columns?.map((col: string) => (
+                    <option key={col} value={col}>{col}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Значение по умолчанию</span>
+                <input value={block.defaultValue ?? ''} onChange={e => handleChange('defaultValue', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Диапазон (min/max)</span>
+                <input type="number" placeholder="min" value={block.range?.min ?? ''} onChange={e => handleChange('range', { ...block.range, min: e.target.value ? Number(e.target.value) : undefined })} style={{ width: 60, marginRight: 8 }} />
+                <input type="number" placeholder="max" value={block.range?.max ?? ''} onChange={e => handleChange('range', { ...block.range, max: e.target.value ? Number(e.target.value) : undefined })} style={{ width: 60 }} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Фильтр (столбец:значение, через запятую)</span>
+                <input value={block.filter ? Object.entries(block.filter).map(([k, v]) => `${k}:${v}`).join(',') : ''} onChange={e => {
+                  const obj: Record<string, string|number> = {};
+                  e.target.value.split(',').forEach(pair => {
+                    const [k, v] = pair.split(':');
+                    if (k && v !== undefined) obj[k.trim()] = isNaN(Number(v)) ? v.trim() : Number(v);
+                  });
+                  handleChange('filter', obj);
+                }} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Опции из нескольких столбцов (через запятую)</span>
+                <input value={Array.isArray(block.multipleColumns) ? block.multipleColumns.join(',') : ''} onChange={e => handleChange('multipleColumns', e.target.value.split(',').map(s => s.trim()))} />
+              </label>
+            </>
+          )}
+
+          {/* Для select_from_object */}
+          {block.type === 'select_from_object' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Источник (object)</span>
+                <select value={block.objectSource} onChange={e => handleChange('objectSource', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.filter(b => b.type === 'constant' || b.type === 'data_table').map(obj => (
+                    <option key={obj.id} value={obj.id}>{obj.label || obj.id}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Значение по умолчанию</span>
+                <input value={block.defaultValue ?? ''} onChange={e => handleChange('defaultValue', e.target.value)} />
+              </label>
+            </>
+          )}
+
+          {/* Для constant */}
+          {block.type === 'constant' && (
+            <label>
+              <span style={{ fontSize: 13, color: '#888' }}>Значение</span>
+              <input value={block.value} onChange={e => handleChange('value', e.target.value)} />
+            </label>
+          )}
+
+          {/* Для table_lookup */}
+          {block.type === 'table_lookup' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Ключевой столбец</span>
+                <input value={block.key_col} onChange={e => handleChange('key_col', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Целевой столбец</span>
+                <input value={block.target_col} onChange={e => handleChange('target_col', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Выбранный ключ</span>
+                <input value={block.selected_key} onChange={e => handleChange('selected_key', e.target.value)} />
+              </label>
+            </>
+          )}
+
+          {/* Для condition */}
+          {block.type === 'condition' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Условие (if)</span>
+                <input value={block.if_exp} onChange={e => handleChange('if_exp', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>then_id</span>
+                <select value={block.then_id} onChange={e => handleChange('then_id', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.map(b => <option key={b.id} value={b.id}>{b.label || b.id}</option>)}
+                </select>
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>else_id</span>
+                <select value={block.else_id} onChange={e => handleChange('else_id', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.map(b => <option key={b.id} value={b.id}>{b.label || b.id}</option>)}
+                </select>
+              </label>
+            </>
+          )}
+
+          {/* Для group */}
+          {block.type === 'group' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Заголовок группы</span>
+                <input value={block.title} onChange={e => handleChange('title', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Дочерние блоки (id через запятую)</span>
+                <input value={Array.isArray(block.children) ? block.children.map((b: any) => b.id || b).join(',') : ''} onChange={e => {
+                  const ids = e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean);
+                  const children = ids.map(id => blocks.find(b => b.id === id)).filter(Boolean);
+                  handleChange('children', children);
+                }} />
+              </label>
+            </>
+          )}
+
+          {/* Для output */}
+          {block.type === 'output' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Источник (id)</span>
+                <select value={block.sourceId} onChange={e => handleChange('sourceId', e.target.value)}>
+                  <option value="">—</option>
+                  {blocks.map(b => <option key={b.id} value={b.id}>{b.label || b.id}</option>)}
+                </select>
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Формат</span>
+                <input value={block.format || ''} onChange={e => handleChange('format', e.target.value)} />
+              </label>
+            </>
+          )}
+
+          {/* Для image */}
+          {block.type === 'image' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>URL</span>
+                <input value={block.url} onChange={e => handleChange('url', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Alt</span>
+                <input value={block.alt || ''} onChange={e => handleChange('alt', e.target.value)} />
+              </label>
+            </>
+          )}
+
+          {/* Для button */}
+          {block.type === 'button' && (
+            <>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Действие</span>
+                <input value={block.action} onChange={e => handleChange('action', e.target.value)} />
+              </label>
+              <label>
+                <span style={{ fontSize: 13, color: '#888' }}>Текст кнопки</span>
+                <input value={block.label} onChange={e => handleChange('label', e.target.value)} />
+              </label>
+            </>
+          )}
+
           {/* Для formula */}
           {block.type === 'formula' && (
             <>

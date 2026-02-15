@@ -54,9 +54,29 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       </div>
       {/* AI-панель (только для админа) */}
       {isAdmin && (
-        <div style={{ flex: '0 0 10%', minWidth: 220, background: '#fafbfc', padding: 16 }}>
+        <div style={{ flex: '0 0 10%', minWidth: 220, background: '#fafbfc', padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8 }}>AI-панель (Mistral)</div>
-          <div>Только для администратора</div>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 8 }}>Вставьте инструкцию для AI и получите JSON блоков</div>
+          <textarea id="ai-instructions" rows={8} style={{ width: '100%', fontFamily: 'monospace', fontSize: 13, marginBottom: 6 }} placeholder="Инструкция для AI..." />
+          <button type="button" style={{ background: '#0a6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', marginBottom: 6 }} onClick={() => {
+            // Здесь должен быть вызов AI, но пока просто пример
+            const example = '[{"id":"a","type":"input","label":"A","inputType":"number"},{"id":"b","type":"input","label":"B","inputType":"number"},{"id":"sum","type":"formula","label":"A+B","formula":"a+b","dependencies":["a","b"]}]';
+            const out = document.getElementById('ai-json-out');
+            if (out) out.textContent = example;
+          }}>Сгенерировать JSON (пример)</button>
+          <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>Результат:</div>
+          <pre id="ai-json-out" style={{ background: '#f6f6f6', minHeight: 60, maxHeight: 120, overflow: 'auto', fontSize: 12, padding: 6 }}></pre>
+          <button type="button" style={{ background: '#222', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', marginTop: 4 }} onClick={() => {
+            const out = document.getElementById('ai-json-out');
+            if (!out) return;
+            try {
+              const blocks = JSON.parse(out.textContent || '');
+              setBlocks(blocks);
+              alert('Блоки успешно вставлены!');
+            } catch {
+              alert('Ошибка JSON');
+            }
+          }}>Вставить в редактор</button>
         </div>
       )}
     </div>
