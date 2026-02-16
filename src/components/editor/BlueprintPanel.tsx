@@ -57,6 +57,7 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
   const [calcTitle, setCalcTitle] = useState<string>('Мой калькулятор');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<BlockType>>(new Set(['input', 'formula']));
 
   // Группировка по типу
   const grouped = useMemo<Record<BlockType, Block[]>>(() => {
@@ -83,6 +84,51 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
     if (!window.confirm('Удалить блок?')) return;
     setBlocks(blocks.filter((b: Block) => b.id !== id));
     if (selectedId === id) onSelect(null);
+  }
+
+  // Drag-and-drop functions
+  function handleDragStart(e: React.DragEvent, id: string) {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+      e.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  function handleDragLeave() {
+    setDragOverId(null);
+  }
+
+  function handleDrop(e: React.DragEvent, targetId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedId || draggedId === targetId) {
+      setDragOverId(null);
+      return;
+    }
+
+    const draggedIndex = blocks.findIndex((b: Block) => b.id === draggedId);
+    const targetIndex = blocks.findIndex((b: Block) => b.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newBlocks = [...blocks];
+    const [draggedBlock] = newBlocks.splice(draggedIndex, 1);
+    newBlocks.splice(targetIndex, 0, draggedBlock);
+
+    setBlocks(newBlocks);
+    setDragOverId(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
   }
 
   // Вставка JSON-блоков через textarea
@@ -145,27 +191,36 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
     setConflicts([]);
   }
 
+  const toggleGroup = (type: BlockType) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  };
+
   return (
-    <section style={{ padding: 16 }}>
-      <h2 style={{ fontSize: '1.2rem', marginBottom: 12 }}>Блоки калькулятора</h2>
+    <section style={{ padding: 12 }}>
+      <h2 style={{ fontSize: '1.1rem', marginBottom: 10 }}>Блоки</h2>
       <ValidationErrors blocks={blocks} />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
         <input
           type="text"
           placeholder="Поиск..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, padding: 4, borderRadius: 4, border: '1px solid #ccc' }}
+          style={{ flex: 1, minWidth: 100, padding: '4px 8px', fontSize: 12, borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)' }}
         />
-        <select value={addType} onChange={e => setAddType(e.target.value as BlockType)} style={{ padding: 4, borderRadius: 4 }}>
+        <select value={addType} onChange={e => setAddType(e.target.value as BlockType)} style={{ padding: '4px 8px', fontSize: 12, borderRadius: 4 }}>
           {Object.entries(blockTypeLabels).map(([type, label]) => (
             <option key={type} value={type}>{label}</option>
           ))}
         </select>
-        <button type="button" onClick={handleAdd} style={{ padding: '4px 10px', borderRadius: 4, background: '#222', color: '#fff', border: 'none' }}>+</button>
-        <button type="button" onClick={() => setShowPaste(v => !v)} style={{ padding: '4px 10px', borderRadius: 4, background: '#0a6', color: '#fff', border: 'none' }}>Вставить JSON</button>
-        <label style={{ padding: '4px 10px', borderRadius: 4, background: '#06a', color: '#fff', border: 'none', cursor: 'pointer', display: 'inline-block' }}>
-          Импорт
+        <button type="button" onClick={handleAdd} style={{ padding: '4px 10px', fontSize: 12, borderRadius: 4, background: '#0a6', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#0c8')} onMouseLeave={(e) => (e.currentTarget.style.background = '#0a6')} title="Добавить выбранный тип блока">+</button>
+        <button type="button" onClick={() => setShowPaste(v => !v)} style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: '#06a', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#08c')} onMouseLeave={(e) => (e.currentTarget.style.background = '#06a')}>JSON</button>
+        <label style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: '#06a', color: '#fff', border: 'none', cursor: 'pointer', display: 'inline-block', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#08c')} onMouseLeave={(e) => (e.currentTarget.style.background = '#06a')} title="Загрузить JSON">
+          📁
           <input
             type="file"
             accept=".json"
@@ -196,24 +251,24 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
           a.download = 'calculator-schema.json';
           a.click();
           URL.revokeObjectURL(url);
-        }} style={{ padding: '4px 10px', borderRadius: 4, background: '#06a', color: '#fff', border: 'none' }}>Экспорт</button>
-        <button type="button" onClick={() => setShowSaveDialog(true)} style={{ padding: '4px 10px', borderRadius: 4, background: '#0a6', color: '#fff', border: 'none' }}>Сохранить</button>
+        }} style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: '#06a', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#08c')} onMouseLeave={(e) => (e.currentTarget.style.background = '#06a')} title="Скачать JSON">💾</button>
+        <button type="button" onClick={() => setShowSaveDialog(true)} style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: '#0a6', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#0c8')} onMouseLeave={(e) => (e.currentTarget.style.background = '#0a6')} title="Сохранить калькулятор">Сохр.</button>
         {savedCalcId && (
           <button type="button" onClick={() => {
             const url = getPublicUrl(savedCalcId);
             window.open(url, '_blank');
-          }} style={{ padding: '4px 10px', borderRadius: 4, background: '#880', color: '#fff', border: 'none' }}>Просмотр</button>
+          }} style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, background: '#880', color: '#fff', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#aa0')} onMouseLeave={(e) => (e.currentTarget.style.background = '#880')} title="Открыть публичную ссылку">👁</button>
         )}
       </div>
       {showSaveDialog && (
-        <div style={{ marginBottom: 12, background: '#f6f6f6', padding: 10, borderRadius: 6 }}>
+        <div style={{ marginBottom: 12, background: 'var(--pico-code-background-color)', padding: 10, borderRadius: 6 }}>
           <div style={{ marginBottom: 8 }}>
             <label style={{ display: 'block', marginBottom: 4, fontSize: 13, fontWeight: 500 }}>Название калькулятора:</label>
             <input
               type="text"
               value={calcTitle}
               onChange={(e) => setCalcTitle(e.target.value)}
-              style={{ width: '100%', padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc' }}
+              style={{ width: '100%', padding: '4px 8px', fontSize: 12, borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)' }}
               placeholder="Название калькулятора"
             />
           </div>
@@ -267,13 +322,13 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
         </div>
       )}
       {showPaste && (
-        <div style={{ marginBottom: 12, background: '#f6f6f6', padding: 10, borderRadius: 6 }}>
+        <div style={{ marginBottom: 12, background: 'var(--pico-code-background-color)', padding: 10, borderRadius: 6 }}>
           <textarea
             value={jsonInput}
             onChange={e => setJsonInput(e.target.value)}
             placeholder="Вставьте JSON блоков..."
             rows={5}
-            style={{ width: '100%', fontFamily: 'monospace', fontSize: 13, marginBottom: 6 }}
+            style={{ width: '100%', fontFamily: 'monospace', fontSize: 12, marginBottom: 6, background: 'var(--pico-background-color)', color: 'var(--pico-color)', border: '1px solid var(--pico-border-color)' }}
           />
           {conflicts.length > 0 && conflictMode === 'ask' && (
             <div style={{ color: '#c00', marginBottom: 6 }}>
@@ -288,47 +343,78 @@ const BlueprintPanel: React.FC<BlueprintPanelProps> = ({ selectedId, onSelect })
           )}
         </div>
       )}
-      <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+      <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
         {Object.entries(grouped).map(([type, arr]) => arr.length > 0 && (
-          <div key={type} style={{ marginBottom: 10 }}>
-            <div style={{ fontWeight: 600, color: '#888', fontSize: 13, margin: '8px 0 4px' }}>{blockTypeLabels[type as BlockType]}</div>
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {arr.map(b => (
-                <li
-                  key={b.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, b.id)}
-                  onDragOver={(e) => handleDragOver(e, b.id)}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, b.id)}
-                  onDragEnd={handleDragEnd}
-                  style={{
-                    cursor: 'move',
-                    fontWeight: selectedId === b.id ? 'bold' : undefined,
-                    background: selectedId === b.id ? '#222' : dragOverId === b.id ? '#e3f2fd' : draggedId === b.id ? '#f0f0f0' : undefined,
-                    color: selectedId === b.id ? '#fff' : undefined,
-                    borderRadius: 6,
-                    padding: '4px 8px',
-                    marginBottom: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    opacity: draggedId === b.id ? 0.5 : 1,
-                    border: dragOverId === b.id ? '2px dashed #2196f3' : '2px solid transparent',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={() => onSelect(b.id)}
-                >
-                  <span>{b.label || b.id} <span style={{ color: '#aaa' }}>({b.type})</span></span>
-                  <button
-                    type="button"
-                    onClick={e => { e.stopPropagation(); handleRemove(b.id); }}
-                    style={{ marginLeft: 8, background: 'none', border: 'none', color: '#f44', fontWeight: 700, cursor: 'pointer', fontSize: 16 }}
-                    title="Удалить"
-                  >×</button>
-                </li>
-              ))}
-            </ul>
+          <div key={type} style={{ marginBottom: 4, borderBottom: '1px solid var(--pico-border-color)' }}>
+            <div 
+              onClick={() => toggleGroup(type as BlockType)}
+              style={{ 
+                fontWeight: 600, 
+                fontSize: 12, 
+                padding: '6px 8px',
+                cursor: 'pointer',
+                background: 'var(--pico-code-background-color)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderRadius: 4,
+                marginBottom: 2
+              }}
+            >
+              <span>{blockTypeLabels[type as BlockType]} ({arr.length})</span>
+              <span style={{ fontSize: 10 }}>{expandedGroups.has(type as BlockType) ? '▼' : '▶'}</span>
+            </div>
+            {expandedGroups.has(type as BlockType) && (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {arr.map(b => (
+                  <li
+                    key={b.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, b.id)}
+                    onDragOver={(e) => handleDragOver(e, b.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, b.id)}
+                    onDragEnd={handleDragEnd}
+                    title={(() => {
+                      const parts = [`ID: ${b.id}`, `Тип: ${blockTypeLabels[b.type as BlockType]}`];
+                      if (b.type === 'formula' && 'formula' in b) parts.push(`Формула: ${b.formula}`);
+                      if (b.type === 'formula' && 'dependencies' in b && Array.isArray(b.dependencies)) parts.push(`Зависимости: ${b.dependencies.join(', ')}`);
+                      if (b.type === 'input' && 'defaultValue' in b) parts.push(`По умолчанию: ${b.defaultValue}`);
+                      if (b.type === 'constant' && 'value' in b) parts.push(`Значение: ${b.value}`);
+                      if (b.type === 'text' && 'content' in b) parts.push(`Текст: ${(b.content as string).slice(0, 50)}...`);
+                      if (values[b.id] !== undefined) parts.push(`Результат: ${values[b.id]}`);
+                      return parts.join('\n');
+                    })()}
+                    style={{
+                      cursor: 'move',
+                      fontSize: 12,
+                      background: selectedId === b.id ? '#0a6' : dragOverId === b.id ? 'var(--pico-code-background-color)' : 'transparent',
+                      color: selectedId === b.id ? '#fff' : 'var(--pico-color)',
+                      borderRadius: 3,
+                      padding: '3px 8px',
+                      marginBottom: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      opacity: draggedId === b.id ? 0.5 : 1,
+                      border: dragOverId === b.id ? '1px dashed #0a6' : '1px solid transparent',
+                      transition: 'all 0.15s',
+                    }}
+                    onClick={() => onSelect(b.id)}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.label || b.id}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); handleRemove(b.id); }}
+                      style={{ marginLeft: 4, background: 'none', border: 'none', color: '#f44', cursor: 'pointer', fontSize: 14, padding: 0, minWidth: 16 }}
+                      title="Удалить"
+                    >×</button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         ))}
       </div>

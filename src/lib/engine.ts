@@ -9,11 +9,38 @@ import type {
   FormulaBlock,
   ConstantBlock,
   TableLookupBlock,
+  TableRangeBlock,
   ConditionBlock,
   DataTableBlock,
   SelectFromTableBlock,
   SelectFromObjectBlock
 } from '../types/blocks';
+
+// Округление вверх/вниз в стиле Excel
+function roundUp(value: number, digits = 0): number {
+  const factor = Math.pow(10, digits);
+  if (value >= 0) return Math.ceil(value * factor) / factor;
+  return Math.floor(value * factor) / factor;
+}
+
+function roundDown(value: number, digits = 0): number {
+  const factor = Math.pow(10, digits);
+  if (value >= 0) return Math.floor(value * factor) / factor;
+  return Math.ceil(value * factor) / factor;
+}
+
+function buildFormulaScope(values: Record<string, number | string>) {
+  const scope: Record<string, any> = { ...values };
+  // Удаляем ошибки из scope
+  Object.keys(scope).forEach(key => {
+    if (typeof scope[key] === 'string' && (scope[key].startsWith('Ошибка') || scope[key].startsWith('ERROR:'))) {
+      delete scope[key];
+    }
+  });
+  scope.roundup = roundUp;
+  scope.rounddown = roundDown;
+  return scope;
+}
 
 export function recalculateValues(
   blocks: Block[],
@@ -69,6 +96,16 @@ export function recalculateValues(
             return Object.entries(sel.filter!).every(([col, val]) => row[col] === val);
           });
         }
+
+        // Применяем диапазон строк (1-based)
+        if (sel.rowRange && (sel.rowRange.start !== undefined || sel.rowRange.end !== undefined)) {
+          const start = sel.rowRange.start ?? 1;
+          const end = sel.rowRange.end ?? filteredRows.length;
+          filteredRows = filteredRows.filter((_, idx: number) => {
+            const rowIndex = idx + 1;
+            return rowIndex >= start && rowIndex <= end;
+          });
+        }
         
         // Применяем диапазон если есть
         if (sel.range) {
@@ -81,18 +118,29 @@ export function recalculateValues(
             return true;
           });
         }
+
+        // Сортировка
+        if (sel.sortBy) {
+          const dir = sel.sortDirection === 'desc' ? -1 : 1;
+          filteredRows = [...filteredRows].sort((a: any, b: any) => {
+            const av = a[sel.sortBy!];
+            const bv = b[sel.sortBy!];
+            if (av === bv) return 0;
+            if (av === undefined) return 1;
+            if (bv === undefined) return -1;
+            return (av > bv ? 1 : -1) * dir;
+          });
+        }
         
-        // Формируем опции из столбцов
-        const options = filteredRows.map((row: any) => {
-          if (sel.multipleColumns && sel.multipleColumns.length > 0) {
-            return sel.multipleColumns.map(col => row[col]).join(' ');
+        const rawOptions = filteredRows.map((row: any) => row[sel.column]);
+        
+        // Если значение не установлено, используем defaultValue или первое доступное
+        if (values[block.id] === undefined) {
+          if (sel.defaultValue !== undefined) {
+            values[block.id] = sel.defaultValue as any;
+          } else if (rawOptions.length > 0) {
+            values[block.id] = rawOptions[0] as any;
           }
-          return String(row[sel.column] || '');
-        });
-        
-        // Если значение не установлено, используем первое доступное
-        if (values[block.id] === undefined && options.length > 0) {
-          values[block.id] = options[0];
         }
       }
     }
@@ -127,12 +175,53 @@ export function recalculateValues(
   for (const block of blocks) {
     if (block.type === 'table_lookup') {
       const tbl = block as TableLookupBlock;
-      const key = tbl.selected_key;
+      let key = tbl.selected_key;
+      if (typeof key === 'string' && values[key] !== undefined) {
+        key = values[key] as any;
+      }
+      let targetCol = tbl.target_col;
+      if (typeof targetCol === 'string' && values[targetCol] !== undefined) {
+        const value = values[targetCol];
+        if (typeof value === 'string' && value.trim()) {
+          targetCol = value;
+        }
+      }
+      let data: any[] = Array.isArray(tbl.data) ? tbl.data : [];
+      if (data.length === 0 && tbl.dataSource && tables[tbl.dataSource]) {
+        data = tables[tbl.dataSource].rows as any[];
+      }
       // data: массив объектов
-      const found = Array.isArray(tbl.data)
-        ? tbl.data.find((row: any) => row[tbl.key_col] === key)
+      const found = Array.isArray(data)
+        ? data.find((row: any) => row[tbl.key_col] === key)
         : undefined;
-      values[block.id] = found ? found[tbl.target_col] : '';
+      values[block.id] = found ? found[targetCol] : '';
+    }
+  }
+
+  // 5.5 TABLE_RANGE
+  for (const block of blocks) {
+    if (block.type === 'table_range') {
+      const tbl = block as TableRangeBlock;
+      const table = tables[tbl.dataSource];
+      const inputValue = values[tbl.inputId];
+      if (!table || inputValue === undefined) {
+        values[block.id] = tbl.fallbackValue ?? '';
+        continue;
+      }
+      const rows = table.rows as Array<Record<string, any>>;
+      const needle = Number(inputValue);
+      if (!Number.isFinite(needle)) {
+        values[block.id] = tbl.fallbackValue ?? '';
+        continue;
+      }
+      const found = rows.find((row) => {
+        const minVal = tbl.minColumn ? Number(row[tbl.minColumn]) : Number.NEGATIVE_INFINITY;
+        const maxVal = Number(row[tbl.maxColumn]);
+        if (!Number.isFinite(maxVal)) return false;
+        if (!Number.isFinite(minVal)) return false;
+        return needle >= minVal && needle <= maxVal;
+      });
+      values[block.id] = found ? found[tbl.valueColumn] : (tbl.fallbackValue ?? '');
     }
   }
   
@@ -158,7 +247,7 @@ export function recalculateValues(
             delete scope[key];
           }
         });
-        result = Boolean(evaluate(cond.if_exp, scope));
+        result = Boolean(evaluate(cond.if_exp, buildFormulaScope(values)));
       } catch (e) {
         values[block.id] = `ERROR: Ошибка в условии: ${getFormulaErrorMessage(e, block.id, cond.if_exp)}`;
         continue;
@@ -204,15 +293,7 @@ export function recalculateValues(
       
       if (block.dependencies.every(dep => values[dep] !== undefined)) {
         try {
-          const scope = { ...values };
-          // Фильтруем ошибки из scope
-          Object.keys(scope).forEach(key => {
-            if (typeof scope[key] === 'string' && (scope[key].startsWith('Ошибка') || scope[key].startsWith('ERROR:'))) {
-              delete scope[key];
-            }
-          });
-          
-          const result = evaluate(block.formula, scope);
+          const result = evaluate(block.formula, buildFormulaScope(values));
           
           // Проверяем, что результат валидный
           if (result === null || result === undefined || (typeof result === 'number' && !isFinite(result))) {

@@ -1,275 +1,563 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { useCalcStore } from '@/lib/store';
-import { recalculateValues } from '@/lib/engine';
-import { sanitizeText, sanitizeUrl } from '@/lib/security';
+import { sanitizeHtml, escapeHtml } from '@/lib/security';
 import { isErrorValue } from '@/lib/errors';
-import { debounce } from '@/lib/performance';
-import ChartRenderer from './ChartRenderer';
-import ErrorDisplay from '../ui/ErrorDisplay';
-import type { Block, GroupBlock, InputBlock, SelectFromTableBlock, DataTableBlock, ImageBlock, ChartBlock } from '@/types/blocks';
+import { recalculateValues } from '@/lib/engine';
+import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
+import type { Block } from '@/types/blocks';
+import parkingDemo from '@/data/parking_demo.json';
+import parkingDemoBundle from '@/data/parking_demo_bundle.json';
 
-function renderBlock(
-  block: Block, 
-  values: Record<string, any>, 
-  allBlocks: Block[],
-  onValueChange: (id: string, value: number | string) => void
-): React.ReactNode {
-  if (block.type === 'group') {
-    const group = block as GroupBlock;
-    return (
-      <div key={group.id} style={{ border: '1px solid #eee', borderRadius: 8, margin: '12px 0', padding: 10, background: '#f9f9fa' }}>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>{group.title || group.label || 'Группа'}</div>
-        <div style={{ marginLeft: 12 }}>
-          {Array.isArray(group.children) && group.children.length > 0
-            ? group.children.map(child => {
-                const childBlock = typeof child === 'string' ? allBlocks.find(b => b.id === child) : child;
-                return childBlock ? renderBlock(childBlock, values, allBlocks, onValueChange) : null;
-              })
-            : <span style={{ color: '#aaa' }}>Нет блоков</span>}
-        </div>
-      </div>
-    );
-  }
-  if (block.type === 'output') {
-    const outputValue = values[block.id];
-    const hasError = isErrorValue(outputValue);
-    
-    return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <div style={{ fontWeight: 500 }}>
-          {block.label || 'Результат'}:{' '}
-          {hasError ? (
-            <span style={{ color: '#856404' }}>Ошибка</span>
-          ) : (
-            <span style={{ color: '#0a6' }}>{outputValue ?? '—'}</span>
-          )}
-        </div>
-        {hasError && <ErrorDisplay value={outputValue} blockId={block.id} blockLabel={block.label} />}
-      </div>
-    );
-  }
-  if (block.type === 'chart') {
-    const chartBlock = block as ChartBlock;
-    const dataSourceBlock = allBlocks.find(
-      b => b.id === chartBlock.dataSource && b.type === 'data_table'
-    ) as DataTableBlock | undefined;
-    
-    return (
-      <div key={block.id} style={{ margin: '12px 0' }}>
-        <ChartRenderer block={chartBlock} dataSource={dataSourceBlock || null} />
-      </div>
-    );
-  }
-  if (block.type === 'text') {
-    // Безопасный рендеринг текста с санитизацией
-    const sanitizedContent = sanitizeText(block.content || '');
-    const Tag = block.style === 'h1' ? 'h1' : 'div';
-    return (
-      <Tag 
-        key={block.id} 
-        style={{ margin: '8px 0', fontWeight: block.style === 'h1' ? 700 : 400, fontSize: block.style === 'h1' ? 20 : 15 }}
-        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-      />
-    );
-  }
-  
-  // Для image блока - валидация URL
-  if (block.type === 'image') {
-    const imageBlock = block as ImageBlock;
-    const safeUrl = sanitizeUrl(imageBlock.url || '');
-    if (!safeUrl) {
-      return (
-        <div key={block.id} style={{ margin: '8px 0', color: '#c00' }}>
-          [Ошибка: небезопасный URL изображения]
-        </div>
-      );
+function formatValue(value: unknown): string {
+  if (value === undefined || value === null) return '—';
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '[Объект]';
     }
-    return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <img 
-          src={safeUrl} 
-          alt={imageBlock.alt || block.label || 'Изображение'} 
-          style={{ maxWidth: '100%', height: 'auto' }}
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
-        />
-      </div>
-    );
   }
-  // Для input - редактируемое поле
-  if (block.type === 'input') {
-    const inputBlock = block as InputBlock;
-    return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-          {block.label || block.id}:
-          {inputBlock.unit && <span style={{ color: '#888', marginLeft: 4 }}>({inputBlock.unit})</span>}
-        </label>
-        {inputBlock.inputType === 'select' && inputBlock.options ? (
-          <select
-            value={String(values[block.id] || '')}
-            onChange={(e) => onValueChange(block.id, e.target.value)}
-            style={{ width: '100%', padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc' }}
-          >
-            {inputBlock.options.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type={inputBlock.inputType || 'text'}
-            value={String(values[block.id] || '')}
-            onChange={(e) => {
-              const val = inputBlock.inputType === 'number' 
-                ? (e.target.value === '' ? '' : parseFloat(e.target.value) || 0)
-                : e.target.value;
-              onValueChange(block.id, val);
-            }}
-            min={inputBlock.min}
-            max={inputBlock.max}
-            step={inputBlock.step}
-            style={{ width: '100%', padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc' }}
-          />
-        )}
-      </div>
-    );
-  }
-
-  // Для select_from_table
-  if (block.type === 'select_from_table') {
-    const selBlock = block as SelectFromTableBlock;
-    const tableBlock = allBlocks.find(b => b.id === selBlock.dataSource && b.type === 'data_table') as DataTableBlock | undefined;
-    let options: string[] = [];
-    
-    if (tableBlock && tableBlock.rows) {
-      let filteredRows = tableBlock.rows;
-      
-      // Применяем фильтр
-      if (selBlock.filter) {
-        filteredRows = filteredRows.filter((row: any) => {
-          return Object.entries(selBlock.filter!).every(([col, val]) => row[col] === val);
-        });
-      }
-      
-      // Применяем диапазон
-      if (selBlock.range) {
-        filteredRows = filteredRows.filter((row: any) => {
-          const val = row[selBlock.column];
-          const num = typeof val === 'number' ? val : parseFloat(String(val));
-          if (isNaN(num)) return true;
-          if (selBlock.range!.min !== undefined && num < selBlock.range!.min) return false;
-          if (selBlock.range!.max !== undefined && num > selBlock.range!.max) return false;
-          return true;
-        });
-      }
-      
-      // Формируем опции
-      options = filteredRows.map((row: any) => {
-        if (selBlock.multipleColumns && selBlock.multipleColumns.length > 0) {
-          return selBlock.multipleColumns.map(col => row[col]).join(' ');
-        }
-        return String(row[selBlock.column] || '');
-      });
-    }
-    
-    return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
-          {block.label || block.id}:
-        </label>
-        <select
-          value={String(values[block.id] || '')}
-          onChange={(e) => onValueChange(block.id, e.target.value)}
-          style={{ width: '100%', padding: '4px 8px', borderRadius: 4, border: '1px solid #ccc' }}
-        >
-          {options.length === 0 && <option value="">Нет опций</option>}
-          {options.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-    );
-  }
-
-  // Для formula - результат вычисления
-  if (block.type === 'formula') {
-    const formulaValue = values[block.id];
-    const hasError = isErrorValue(formulaValue);
-    
-    return (
-      <div key={block.id} style={{ margin: '8px 0' }}>
-        <div style={{ padding: '8px', background: hasError ? '#fff3cd' : '#f0f8ff', borderRadius: 4 }}>
-          <strong>{block.label || block.id}:</strong>{' '}
-          {hasError ? (
-            <span style={{ color: '#856404', fontWeight: 600 }}>Ошибка вычисления</span>
-          ) : (
-            <span style={{ color: '#0a6', fontWeight: 600 }}>{formulaValue ?? '—'}</span>
-          )}
-        </div>
-        {hasError && <ErrorDisplay value={formulaValue} blockId={block.id} blockLabel={block.label} />}
-      </div>
-    );
-  }
-
-  // Для constant, table_lookup, select_from_object и других
-  return (
-    <div key={block.id} style={{ margin: '8px 0' }}>
-      {block.label || block.id}: <span style={{ color: '#222' }}>{values[block.id] ?? '—'}</span>
-    </div>
-  );
+  return String(value);
 }
 
-const ReportPanel: React.FC = () => {
+function replaceTokensInHtml(
+  html: string,
+  values: Record<string, unknown>,
+  blocks: Block[],
+  selectedId?: string | null,
+  displayMode: 'values' | 'tokens' = 'values',
+  getTokenHint?: (id: string) => string
+): string {
+  const parts = html.split(/(<[^>]+>)/g);
+  const allowedIds = new Set(blocks.map((b) => b.id));
+
+  let insideTokenSpan = false;
+  return parts
+    .map((part) => {
+      if (part.startsWith('<')) {
+        if (/^<span\b[^>]*data-token=/i.test(part)) insideTokenSpan = true;
+        if (/^<\/span>/i.test(part)) insideTokenSpan = false;
+        return part;
+      }
+      if (insideTokenSpan) return part;
+      return part.replace(/@([A-Za-z0-9_-]+)/g, (match, id) => {
+        if (!allowedIds.has(id)) return match;
+        const value = values[id];
+        const display = displayMode === 'tokens' ? `@${id}` : formatValue(value);
+        const title = getTokenHint ? getTokenHint(id) : '';
+        const safeTitle = title ? ` title="${escapeHtml(title)}"` : '';
+        if (isErrorValue(value) && displayMode === 'values') {
+          const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
+          return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(`Ошибка: ${display}`)}</span>`;
+        }
+        const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
+        return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(display)}</span>`;
+      });
+    })
+    .join('');
+}
+
+function applyTableSizing(html: string): string {
+  return html.replace(/<table([^>]*)>/gi, (match, attrs) => {
+    const widthMatch = attrs.match(/data-width\s*=\s*"([^"]+)"/i);
+    if (!widthMatch) return '<table>';
+    const raw = widthMatch[1].trim();
+    if (!/^\d{1,3}$/.test(raw)) return '<table>';
+    const numeric = Math.min(100, Math.max(10, Number(raw)));
+    return `<table style="width:${numeric}%">`;
+  });
+}
+
+function getTokenFromSelection(): string | null {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return null;
+  const range = selection.getRangeAt(0);
+  const node = range.startContainer;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  const text = node.textContent || '';
+  if (!text) return null;
+  const offset = range.startOffset;
+  const safeOffset = Math.min(Math.max(offset, 0), text.length);
+
+  let left = safeOffset;
+  while (left > 0 && /[A-Za-z0-9_-]/.test(text[left - 1])) {
+    left -= 1;
+  }
+  if (left === 0 || text[left - 1] !== '@') return null;
+  let right = safeOffset;
+  while (right < text.length && /[A-Za-z0-9_-]/.test(text[right])) {
+    right += 1;
+  }
+  const token = text.slice(left, right).trim();
+  return token || null;
+}
+
+interface ReportPanelProps {
+  onSelect?: (id: string) => void;
+  selectedId?: string | null;
+}
+
+const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
   const blocks = useCalcStore((s) => s.blocks);
   const values = useCalcStore((s) => s.values);
-  const updateValue = useCalcStore((s) => s.updateValue);
+  const setBlocks = useCalcStore((s) => s.setBlocks);
   const setValues = useCalcStore((s) => s.setValues);
+  const [editorHtml, setEditorHtml] = useState<string>('');
+  const editorRef = useRef<HTMLDivElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const storageKey = 'igor-page-calc-report-html';
+  const demoTemplate = parkingDemoBundle.reportHtml || '';
+  const [tableRows, setTableRows] = useState<number>(3);
+  const [tableCols, setTableCols] = useState<number>(3);
+  const [tableWidth, setTableWidth] = useState<number>(100);
+  const [viewMode, setViewMode] = useState<'formulas' | 'values'>('formulas');
+  const [reportScale, setReportScale] = useState<number>(1);
+  const fontSizeKey = 'igor-page-calc-report-font-size';
+  const [fontSize, setFontSize] = useState<number>(14);
+  const tokenStyles = `.report-token{cursor:pointer;font-weight:600;color:var(--pico-color);} .report-token-active{background:#ffe08a;color:#222;padding:0 2px;border-radius:3px;}`;
+  const numberInputStyle = { width: 120, marginBottom: 0, paddingRight: 24 };
 
-  // Мемоизированный пересчёт значений
-  const calculatedValues = useMemo(() => {
-    if (blocks.length === 0) return values;
-    return recalculateValues(blocks, values);
-  }, [blocks, values]);
-
-  // Debounced обработчик пересчёта
-  const debouncedRecalculateRef = React.useRef<ReturnType<typeof debounce> | null>(null);
-  
-  React.useEffect(() => {
-    debouncedRecalculateRef.current = debounce((currentValues: Record<string, number | string>) => {
-      const calculated = recalculateValues(blocks, currentValues);
-      setValues(calculated);
-    }, 300);
-  }, [blocks, setValues]);
-
-  const handleValueChange = useCallback((id: string, value: number | string) => {
-    // Немедленное обновление для отзывчивости UI
-    updateValue(id, value);
-    // Отложенный пересчёт для производительности
-    const newValues = { ...values, [id]: value };
-    if (debouncedRecalculateRef.current) {
-      debouncedRecalculateRef.current(newValues);
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved && saved.trim()) {
+      setEditorHtml(saved);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = saved;
+      }
+      return;
     }
-  }, [updateValue, values]);
 
-  // Мемоизированная фильтрация верхнеуровневых блоков
-  const topBlocks = useMemo(() => {
-    const groupChildIds = new Set(
-      blocks.filter((b: Block) => b.type === 'group').flatMap((g: any) => 
-        Array.isArray(g.children) ? g.children.map((c: any) => typeof c === 'string' ? c : c.id) : []
-      )
-    );
-    return blocks.filter((b: Block) => !groupChildIds.has(b.id));
+    if (demoTemplate) {
+      setEditorHtml(demoTemplate);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = demoTemplate;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(fontSizeKey);
+    if (!stored) return;
+    const parsed = Number(stored);
+    if (Number.isFinite(parsed)) {
+      setFontSize(Math.min(28, Math.max(10, parsed)));
+    }
+  }, []);
+
+  const loadDemo = () => {
+    const demoBlocks = parkingDemo as Block[];
+    setBlocks(demoBlocks);
+    const nextValues = recalculateValues(demoBlocks, {});
+    setValues(nextValues);
+
+    if (demoTemplate) {
+      setEditorHtml(demoTemplate);
+      if (editorRef.current) {
+        editorRef.current.innerHTML = demoTemplate;
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!editorHtml) return;
+    localStorage.setItem(storageKey, editorHtml);
+  }, [editorHtml]);
+
+  useEffect(() => {
+    localStorage.setItem(fontSizeKey, String(fontSize));
+  }, [fontSize]);
+
+  const availableTokens = useMemo(() => {
+    return blocks
+      .filter((b) => b.type !== 'group')
+      .map((b) => ({ id: b.id, label: b.label || b.id, type: b.type }));
   }, [blocks]);
 
-  // Используем рассчитанные значения
-  const displayValues = calculatedValues;
+  const blockMap = useMemo(() => {
+    return new Map(blocks.map((block) => [block.id, block]));
+  }, [blocks]);
+
+  const getTokenHint = useCallback((id: string) => {
+    const block = blockMap.get(id);
+    if (!block) return '';
+    if (viewMode === 'formulas' && block.type === 'formula' && 'formula' in block) {
+      return String(block.formula || '');
+    }
+    return formatValue(values[id]);
+  }, [blockMap, viewMode, values]);
+
+  const previewHtml = useMemo(() => {
+    const safeHtml = sanitizeHtml(editorHtml || '');
+    const sizedHtml = applyTableSizing(safeHtml);
+    return replaceTokensInHtml(sizedHtml, values, blocks, selectedId, 'values', getTokenHint);
+  }, [editorHtml, values, blocks, selectedId, getTokenHint]);
+
+  const decoratedEditorHtml = useMemo(() => {
+    const safeHtml = sanitizeHtml(editorHtml || '');
+    return replaceTokensInHtml(safeHtml, values, blocks, selectedId, 'tokens', getTokenHint);
+  }, [editorHtml, values, blocks, selectedId, getTokenHint]);
+
+  useEffect(() => {
+    if (viewMode !== 'formulas') return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (document.activeElement === editor) return;
+    if (editor.innerHTML !== decoratedEditorHtml) {
+      editor.innerHTML = decoratedEditorHtml;
+    }
+  }, [viewMode, decoratedEditorHtml]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const container = viewMode === 'formulas' ? editorContainerRef.current : previewContainerRef.current;
+    if (!container) return;
+    const target = container.querySelector(`[data-token="${selectedId}"]`) as HTMLElement | null;
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [selectedId, viewMode, editorHtml, previewHtml]);
+
+  const applyFormat = (command: string) => {
+    document.execCommand(command, false);
+    if (editorRef.current) {
+      setEditorHtml(editorRef.current.innerHTML);
+    }
+  };
+
+  const insertToken = (id: string) => {
+    if (viewMode === 'formulas') {
+      const hint = getTokenHint(id);
+      const safeTitle = hint ? ` title="${escapeHtml(hint)}"` : '';
+      document.execCommand(
+        'insertHTML',
+        false,
+        `<span data-token="${id}" class="report-token"${safeTitle}>@${id}</span>`
+      );
+    } else {
+      document.execCommand('insertText', false, `@${id}`);
+    }
+    if (editorRef.current) {
+      setEditorHtml(editorRef.current.innerHTML);
+      editorRef.current.focus();
+    }
+  };
+
+  const insertTable = () => {
+    const rows = Math.min(20, Math.max(1, tableRows));
+    const cols = Math.min(12, Math.max(1, tableCols));
+    const width = Math.min(100, Math.max(10, tableWidth));
+    const cells = Array.from({ length: cols }, () => '<td>&nbsp;</td>').join('');
+    const rowsHtml = Array.from({ length: rows }, () => `<tr>${cells}</tr>`).join('');
+    const tableHtml = `<table data-width="${width}"><tbody>${rowsHtml}</tbody></table>`;
+    document.execCommand('insertHTML', false, tableHtml);
+    if (editorRef.current) {
+      setEditorHtml(editorRef.current.innerHTML);
+      editorRef.current.focus();
+    }
+  };
+
+  const exportJson = () => {
+    const payload = {
+      blocks,
+      reportHtml: editorHtml,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'calculator-export.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportDemoJson = () => {
+    const payload = {
+      blocks: parkingDemo as Block[],
+      reportHtml: demoTemplate,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'parking-demo.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const importJson = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = String(reader.result || '');
+        const parsed = JSON.parse(raw);
+        let nextBlocks: Block[] = [];
+        let nextReportHtml = '';
+
+        if (Array.isArray(parsed)) {
+          const validation = validateImportedBlocks(raw);
+          if (!validation.valid || !validation.blocks) {
+            alert(validation.error || 'Некорректный JSON');
+            return;
+          }
+          nextBlocks = validation.blocks;
+        } else if (parsed && typeof parsed === 'object') {
+          if (Array.isArray(parsed.blocks)) {
+            const validation = validateBlocks(parsed.blocks as Block[]);
+            if (!validation.valid) {
+              alert('Ошибки валидации блоков');
+              return;
+            }
+            nextBlocks = parsed.blocks as Block[];
+          } else {
+            alert('JSON должен содержать массив blocks');
+            return;
+          }
+
+          if (typeof parsed.reportHtml === 'string') {
+            nextReportHtml = parsed.reportHtml;
+          }
+        } else {
+          alert('Некорректный JSON');
+          return;
+        }
+
+        setBlocks(nextBlocks);
+        const nextValues = recalculateValues(nextBlocks, {});
+        setValues(nextValues);
+
+        if (nextReportHtml) {
+          setEditorHtml(nextReportHtml);
+          if (editorRef.current) {
+            editorRef.current.innerHTML = nextReportHtml;
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка импорта JSON:', error);
+        alert('Не удалось импортировать JSON');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <section style={{ padding: 16 }}>
-      <h2 style={{ fontSize: '1.2rem', marginBottom: 12 }}>Отчёт</h2>
-      {topBlocks.length === 0 && <div style={{ color: '#888' }}>Нет блоков для отображения</div>}
-      {topBlocks.map(b => renderBlock(b, displayValues, blocks, handleValueChange))}
+      <style>{tokenStyles}</style>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Редактор отчета</h2>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
+          <button
+            type="button"
+            onClick={() => setViewMode(viewMode === 'formulas' ? 'values' : 'formulas')}
+            style={{ fontSize: 12 }}
+          >
+            {viewMode === 'formulas' ? 'Показать значения' : 'Показать формулы'}
+          </button>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            Размер шрифта
+            <input
+              type="number"
+              min={10}
+              max={28}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+              style={numberInputStyle}
+            />
+            <input
+              type="range"
+              min={10}
+              max={28}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+              style={{ width: 140 }}
+            />
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            Масштаб
+            <input
+              type="range"
+              min={80}
+              max={140}
+              value={Math.round(reportScale * 100)}
+              onChange={(e) => setReportScale(Number(e.target.value) / 100)}
+              style={{ width: 160 }}
+            />
+          </label>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            Строки
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={tableRows}
+              onChange={(e) => setTableRows(Number(e.target.value) || 1)}
+              style={numberInputStyle}
+            />
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            Столбцы
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={tableCols}
+              onChange={(e) => setTableCols(Number(e.target.value) || 1)}
+              style={numberInputStyle}
+            />
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            Ширина %
+            <input
+              type="number"
+              min={10}
+              max={100}
+              value={tableWidth}
+              onChange={(e) => setTableWidth(Number(e.target.value) || 100)}
+              style={numberInputStyle}
+            />
+          </label>
+          <button type="button" onClick={insertTable} style={{ fontSize: 12 }}>
+            Вставить таблицу
+          </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+        <button type="button" onClick={() => applyFormat('bold')} style={{ fontSize: 12 }}>
+          Жирный
+        </button>
+        <button type="button" onClick={() => applyFormat('italic')} style={{ fontSize: 12 }}>
+          Курсив
+        </button>
+        <button type="button" onClick={() => applyFormat('underline')} style={{ fontSize: 12 }}>
+          Подчеркнутый
+        </button>
+        <button type="button" onClick={() => applyFormat('removeFormat')} style={{ fontSize: 12 }}>
+          Очистить формат
+        </button>
+        <button type="button" onClick={exportJson} style={{ fontSize: 12 }}>
+          Экспорт JSON
+        </button>
+        <button type="button" onClick={exportDemoJson} style={{ fontSize: 12 }}>
+          Экспорт демо JSON
+        </button>
+        <button type="button" onClick={importJson} style={{ fontSize: 12 }}>
+          Импорт JSON
+        </button>
+        <button type="button" onClick={loadDemo} style={{ fontSize: 12 }}>
+          Загрузить демо
+        </button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/json"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            handleImportFile(file);
+            e.target.value = '';
+          }
+        }}
+      />
+
+      {viewMode === 'formulas' ? (
+        <div ref={editorContainerRef} style={{ marginBottom: 12 }}>
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
+            onMouseUp={() => {
+              const token = getTokenFromSelection();
+              if (token && onSelect) {
+                onSelect(token);
+              }
+            }}
+            style={{
+              minHeight: 260,
+              padding: 12,
+              fontSize,
+              background: 'var(--pico-code-background-color)',
+              color: 'var(--pico-color)',
+              border: '1px solid var(--pico-border-color)',
+              borderRadius: 8,
+              outline: 'none',
+              transform: `scale(${reportScale})`,
+              transformOrigin: '0 0',
+              width: `${100 / reportScale}%`,
+            }}
+          />
+        </div>
+      ) : (
+        <div ref={previewContainerRef} style={{ marginBottom: 12 }}>
+          <div
+            style={{
+              minHeight: 260,
+              padding: 12,
+              border: '1px solid var(--pico-border-color)',
+              borderRadius: 8,
+              background: 'var(--pico-card-background-color)',
+              color: 'var(--pico-color)',
+              fontSize,
+              transform: `scale(${reportScale})`,
+              transformOrigin: '0 0',
+              width: `${100 / reportScale}%`,
+            }}
+            onClick={(e) => {
+              const target = e.target as HTMLElement | null;
+              const token = target?.dataset?.token;
+              if (token && onSelect) {
+                onSelect(token);
+              }
+            }}
+            dangerouslySetInnerHTML={{ __html: previewHtml }}
+          />
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+          Вставка токенов: используйте @formula1, @inputA или нажмите ниже.
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          {availableTokens.map((token) => (
+            <button
+              key={token.id}
+              type="button"
+              onClick={() => insertToken(token.id)}
+              style={{
+                fontSize: 11,
+                padding: '4px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--pico-border-color)',
+                background: 'var(--pico-card-background-color)',
+                color: 'var(--pico-color)',
+                cursor: 'pointer',
+              }}
+            >
+              {token.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </section>
   );
 };

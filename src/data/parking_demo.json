@@ -1,0 +1,483 @@
+[
+  {
+    "id": "objName",
+    "type": "input",
+    "label": "Наименование объекта",
+    "inputType": "text",
+    "defaultValue": "ЖК Пример"
+  },
+  {
+    "id": "inputMetroDistance",
+    "type": "input",
+    "label": "Метро, м",
+    "inputType": "number",
+    "defaultValue": 800
+  },
+  {
+    "id": "inputAreaFlats",
+    "type": "input",
+    "label": "Площадь квартир, кв.м",
+    "inputType": "number",
+    "defaultValue": 25000
+  },
+  {
+    "id": "inputAreaNNP",
+    "type": "input",
+    "label": "Нежилая наземная площадь, кв.м",
+    "inputType": "number",
+    "defaultValue": 1200
+  },
+  {
+    "id": "inputSchoolCapacity",
+    "type": "input",
+    "label": "Школа, чел.",
+    "inputType": "number",
+    "defaultValue": 600
+  },
+  {
+    "id": "inputKindergartenCapacity",
+    "type": "input",
+    "label": "Детский сад, чел.",
+    "inputType": "number",
+    "defaultValue": 220
+  },
+  {
+    "id": "inputSqmPerPlace",
+    "type": "input",
+    "label": "Кв.м/м.м",
+    "inputType": "number",
+    "defaultValue": 32
+  },
+  {
+    "id": "selectDistrict",
+    "type": "select_from_table",
+    "label": "Район",
+    "dataSource": "districtFactors",
+    "column": "Район",
+    "defaultValue": "Строгино"
+  },
+  {
+    "id": "selectTtk",
+    "type": "select_from_table",
+    "label": "ТТК",
+    "dataSource": "ttkPositionsTable",
+    "column": "value",
+    "defaultValue": "inside"
+  },
+  {
+    "id": "selectRnsYear",
+    "type": "select_from_table",
+    "label": "Год РНС",
+    "dataSource": "evShareTable",
+    "column": "year",
+    "defaultValue": 2025
+  },
+  {
+    "id": "metroRanges",
+    "type": "data_table",
+    "name": "Метро",
+    "columns": ["min", "max", "label", "value"],
+    "rows": [
+      { "min": 0, "max": 1200, "label": "Менее 1200 м (15 мин. пешком)", "value": 0.75 },
+      { "min": 1200, "max": 2200, "label": "1200–2200 м (до 30 мин. пешком)", "value": 0.9 },
+      { "min": 2200, "max": 999999, "label": "Более 2200 м (более 30 мин. пешком)", "value": 1.0 }
+    ]
+  },
+  {
+    "id": "districtFactors",
+    "type": "data_table",
+    "name": "Районы",
+    "columns": ["Район", "inside", "outside"],
+    "rows": [
+      { "Район": "Академический", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Алексеевский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Алтуфьевский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Арбат", "inside": 0.2, "outside": 0.2 },
+      { "Район": "Аэропорт", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Бабушкинский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Басманный", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Беговой", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Бекасово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бескудниковский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бибирево", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бирюлёво Восточное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бирюлёво Западное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Богородское", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Братеево", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бутово Северное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бутово Южное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Бутырский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Вешняки", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Внуково", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Войковский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Вороново", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Восточное Дегунино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Восточное Измайлово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Восточный", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Выхино-Жулебино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Гагаринский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Головинский", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Гольяново", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Даниловский", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Дмитровский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Донской", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Дорогомилово", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Замоскворечье", "inside": 0.2, "outside": 0.2 },
+      { "Район": "Западное Дегунино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Зюзино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Зябликово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Ивановское", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Измайлово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Капотня", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Коммунарка", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Коньково", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Коптево", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Косино-Ухтомский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Котловка", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Краснопахорский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Красносельский", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Крылатское", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Крюково", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Кузьминки", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Кунцево", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Куркино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Левобережный", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Лефортово", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Лианозово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Ломоносовский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Лосиноостровский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Люблино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Марфино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Марьина Роща", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Марьино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Матушкино", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Метрогородок", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Мещанский", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Митино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Можайский", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Молжаниновский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Москворечье-Сабурово", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Нагатино-Садовники", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Нагатинский Затон", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Нагорный", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Некрасовка", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Нижегородский", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Новогиреево", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Новокосино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Ново-Переделкино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Обручевский", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Орехово-Борисово Северное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Орехово-Борисово Южное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Останкинский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Отрадное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Очаково-Матвеевское", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Перово", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Печатники", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Покровское-Стрешнево", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Преображенское", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Пресненский", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Проспект Вернадского", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Раменки", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Ростокино", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Рязанский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Савёлки", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Савёловский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Свиблово", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Северное Измайлово", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Северное Медведково", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Северное Тушино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Северный", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Силино", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Сокол", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Соколиная Гора", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Сокольники", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Солнцево", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Старое Крюково", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Строгино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Таганский", "inside": 0.2, "outside": 0.2 },
+      { "Район": "Тверской", "inside": 0.2, "outside": 0.2 },
+      { "Район": "Текстильщики", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Тёплый Стан", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Тимирязевский", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Троицк", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Тропарёво-Никулино", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Филёвский Парк", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Фили-Давыдково", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Филимонковский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Хамовники", "inside": 0.2, "outside": 0.5 },
+      { "Район": "Ховрино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Хорошёво-Мневники", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Хорошёвский", "inside": 0.5, "outside": 0.5 },
+      { "Район": "Царицыно", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Черемушки", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Чертаново Северное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Чертаново Центральное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Чертаново Южное", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Щербинка", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Щукино", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Южное Медведково", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Южное Тушино", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Южнопортовый", "inside": 0.7, "outside": 0.7 },
+      { "Район": "Якиманка", "inside": 0.2, "outside": 0.2 },
+      { "Район": "Ярославский", "inside": 0.9, "outside": 0.9 },
+      { "Район": "Ясенево", "inside": 0.9, "outside": 0.9 }
+    ]
+  },
+  {
+    "id": "evShareTable",
+    "type": "data_table",
+    "name": "Электромобили",
+    "columns": ["year", "share"],
+    "rows": [
+      { "year": 2025, "share": 0.05 },
+      { "year": 2026, "share": 0.1 },
+      { "year": 2027, "share": 0.15 }
+    ]
+  },
+  {
+    "id": "ttkPositionsTable",
+    "type": "data_table",
+    "name": "ТТК",
+    "columns": ["value", "label"],
+    "rows": [
+      { "value": "inside", "label": "Внутри ТТК" },
+      { "value": "outside", "label": "Снаружи ТТК" }
+    ]
+  },
+  {
+    "id": "moRatesTable",
+    "type": "data_table",
+    "name": "Нормы остановок",
+    "columns": ["type", "s1", "unit", "label"],
+    "rows": [
+      { "type": "living", "s1": 22100, "unit": "кв.м", "label": "Жилое назначение" },
+      { "type": "commercial", "s1": 450, "unit": "кв.м", "label": "Коммерция (1 этаж)" },
+      { "type": "kindergarten", "s1": 30, "unit": "обуч.", "label": "Детские сады" },
+      { "type": "school", "s1": 300, "unit": "обуч.", "label": "Школы" },
+      { "type": "health", "s1": 11250, "unit": "кв.м", "label": "Здравоохранение" },
+      { "type": "social", "s1": 8550, "unit": "кв.м", "label": "Соц. обслуживание" }
+    ]
+  },
+  {
+    "id": "livingNormsTable",
+    "type": "data_table",
+    "name": "Нормы жилья",
+    "columns": ["type", "s1", "label"],
+    "rows": [
+      { "type": "mkd", "s1": 33, "label": "МКД" },
+      { "type": "block", "s1": 50, "label": "Блок" },
+      { "type": "individual", "s1": 50, "label": "ИЖС" }
+    ]
+  },
+  {
+    "id": "livingNormMkd",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "livingNormsTable",
+    "key_col": "type",
+    "target_col": "s1",
+    "selected_key": "mkd"
+  },
+  {
+    "id": "k1Range",
+    "type": "table_range",
+    "dataSource": "metroRanges",
+    "inputId": "inputMetroDistance",
+    "minColumn": "min",
+    "maxColumn": "max",
+    "valueColumn": "value",
+    "fallbackValue": 1.0
+  },
+  {
+    "id": "k2Lookup",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "districtFactors",
+    "key_col": "Район",
+    "target_col": "selectTtk",
+    "selected_key": "selectDistrict"
+  },
+  {
+    "id": "evShareLookup",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "evShareTable",
+    "key_col": "year",
+    "target_col": "share",
+    "selected_key": "selectRnsYear"
+  },
+  {
+    "id": "moRateLiving",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "moRatesTable",
+    "key_col": "type",
+    "target_col": "s1",
+    "selected_key": "living"
+  },
+  {
+    "id": "moRateCommercial",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "moRatesTable",
+    "key_col": "type",
+    "target_col": "s1",
+    "selected_key": "commercial"
+  },
+  {
+    "id": "moRateSchool",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "moRatesTable",
+    "key_col": "type",
+    "target_col": "s1",
+    "selected_key": "school"
+  },
+  {
+    "id": "moRateKindergarten",
+    "type": "table_lookup",
+    "data": [],
+    "dataSource": "moRatesTable",
+    "key_col": "type",
+    "target_col": "s1",
+    "selected_key": "kindergarten"
+  },
+  {
+    "id": "tableViewer1",
+    "type": "table_viewer",
+    "label": "Просмотр таблицы районов",
+    "dataSource": "districtFactors"
+  },
+  {
+    "id": "formulaNp",
+    "type": "formula",
+    "formula": "ceil((inputAreaFlats / livingNormMkd) * 0.257 * k1Range)",
+    "dependencies": ["inputAreaFlats", "livingNormMkd", "k1Range"]
+  },
+  {
+    "id": "formulaNpMinus",
+    "type": "formula",
+    "formula": "ceil(formulaNp * 0.9)",
+    "dependencies": ["formulaNp"]
+  },
+  {
+    "id": "formulaNpPlus",
+    "type": "formula",
+    "formula": "floor(formulaNp * 1.1)",
+    "dependencies": ["formulaNp"]
+  },
+  {
+    "id": "formulaNv",
+    "type": "formula",
+    "formula": "ceil((inputAreaNNP / 90) * k1Range * k2Lookup)",
+    "dependencies": ["inputAreaNNP", "k1Range", "k2Lookup"]
+  },
+  {
+    "id": "formulaNvMinus",
+    "type": "formula",
+    "formula": "ceil(formulaNv * 0.7)",
+    "dependencies": ["formulaNv"]
+  },
+  {
+    "id": "formulaNvPlus",
+    "type": "formula",
+    "formula": "floor(formulaNv * 1.3)",
+    "dependencies": ["formulaNv"]
+  },
+  {
+    "id": "formulaNkResidential",
+    "type": "formula",
+    "formula": "ceil(inputAreaFlats / moRateLiving)",
+    "dependencies": ["inputAreaFlats", "moRateLiving"]
+  },
+  {
+    "id": "formulaNkCommercial",
+    "type": "formula",
+    "formula": "min(4, ceil(inputAreaNNP / moRateCommercial))",
+    "dependencies": ["inputAreaNNP", "moRateCommercial"]
+  },
+  {
+    "id": "formulaNkSchool",
+    "type": "formula",
+    "formula": "ceil(inputSchoolCapacity / moRateSchool)",
+    "dependencies": ["inputSchoolCapacity", "moRateSchool"]
+  },
+  {
+    "id": "formulaNkPreschool",
+    "type": "formula",
+    "formula": "ceil(inputKindergartenCapacity / moRateKindergarten)",
+    "dependencies": ["inputKindergartenCapacity", "moRateKindergarten"]
+  },
+  {
+    "id": "formulaNkTotal",
+    "type": "formula",
+    "formula": "formulaNkResidential + formulaNkCommercial + formulaNkSchool + formulaNkPreschool",
+    "dependencies": ["formulaNkResidential", "formulaNkCommercial", "formulaNkSchool", "formulaNkPreschool"]
+  },
+  {
+    "id": "formulaNg",
+    "type": "formula",
+    "formula": "ceil(formulaNp * 0.1)",
+    "dependencies": ["formulaNp"]
+  },
+  {
+    "id": "formulaNgMinus",
+    "type": "formula",
+    "formula": "ceil(formulaNg * 0.9)",
+    "dependencies": ["formulaNg"]
+  },
+  {
+    "id": "formulaNgPlus",
+    "type": "formula",
+    "formula": "floor(formulaNg * 1.1)",
+    "dependencies": ["formulaNg"]
+  },
+  {
+    "id": "formulaTotal",
+    "type": "formula",
+    "formula": "formulaNp + formulaNg + formulaNv + formulaNkTotal",
+    "dependencies": ["formulaNp", "formulaNg", "formulaNv", "formulaNkTotal"]
+  },
+  {
+    "id": "formulaEvPlaces",
+    "type": "formula",
+    "formula": "ceil(formulaNp * evShareLookup) + ceil(formulaNg * evShareLookup) + ceil(formulaNv * evShareLookup)",
+    "dependencies": ["formulaNp", "formulaNg", "formulaNv", "evShareLookup"]
+  },
+  {
+    "id": "formulaParkingArea",
+    "type": "formula",
+    "formula": "ceil(formulaTotal * inputSqmPerPlace)",
+    "dependencies": ["formulaTotal", "inputSqmPerPlace"]
+  },
+  {
+    "id": "formulaParkingArea2",
+    "type": "formula",
+    "formula": "ceil(formulaParkingArea / 2)",
+    "dependencies": ["formulaParkingArea"]
+  },
+  {
+    "id": "outputTotal",
+    "type": "output",
+    "label": "Итого требуется",
+    "sourceId": "formulaTotal"
+  },
+  {
+    "id": "outputEv",
+    "type": "output",
+    "label": "Электромобили",
+    "sourceId": "formulaEvPlaces"
+  },
+  {
+    "id": "outputParkingArea",
+    "type": "output",
+    "label": "Площадь стоянки",
+    "sourceId": "formulaParkingArea"
+  },
+  {
+    "id": "outputParkingArea2",
+    "type": "output",
+    "label": "Площадь стоянки (2 ур.)",
+    "sourceId": "formulaParkingArea2"
+  }
+]

@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "baseUrl": "./src",
     "paths": {
@@ -12,8 +12,10 @@
       "@types/*": ["types/*"]
     },
     "strict": true,
+    "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

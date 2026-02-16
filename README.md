@@ -18,7 +18,7 @@
 ## Технологии
 - React/Next.js или Vite (SPA)
 - Zustand (состояние)
-- math.js (расчёты)
+- math.js (расчёты, поддержка Excel-стиля: арифметика, округления, min/max/sum/if и др. — <https://mathjs.org/docs/expressions/syntax.html>)
 - Cloudflare Pages (хостинг)
 
 ## Запуск локально

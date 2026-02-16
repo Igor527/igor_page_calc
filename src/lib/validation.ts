@@ -1,6 +1,6 @@
 // Валидация схемы калькулятора: проверка блоков, зависимостей, обязательных полей
 
-import type { Block, InputBlock, FormulaBlock, DataTableBlock, SelectFromTableBlock, ImageBlock } from '../types/blocks';
+import type { Block, InputBlock, FormulaBlock, DataTableBlock, SelectFromTableBlock, ImageBlock, TableRangeBlock, TableLookupBlock } from '../types/blocks';
 import { isValidBlockId, isValidFormula, isValidUrl } from './security';
 
 export interface ValidationError {
@@ -124,11 +124,6 @@ function validateBlockFields(block: Block, allBlockIds: Set<string>): Validation
       break;
     }
     
-    case 'text': {
-      // Текст может быть пустым, но проверяем на опасный контент
-      break;
-    }
-    
     case 'data_table': {
       const table = block as DataTableBlock;
       if (!table.name || table.name.trim() === '') {
@@ -162,6 +157,39 @@ function validateBlockFields(block: Block, allBlockIds: Set<string>): Validation
       }
       break;
     }
+
+    case 'table_range': {
+      const range = block as TableRangeBlock;
+      if (!range.dataSource) {
+        errors.push({
+          blockId: block.id,
+          field: 'dataSource',
+          message: 'Поле dataSource обязательно для table_range блока',
+        });
+      }
+      if (!range.inputId) {
+        errors.push({
+          blockId: block.id,
+          field: 'inputId',
+          message: 'Поле inputId обязательно для table_range блока',
+        });
+      }
+      if (!range.maxColumn) {
+        errors.push({
+          blockId: block.id,
+          field: 'maxColumn',
+          message: 'Поле maxColumn обязательно для table_range блока',
+        });
+      }
+      if (!range.valueColumn) {
+        errors.push({
+          blockId: block.id,
+          field: 'valueColumn',
+          message: 'Поле valueColumn обязательно для table_range блока',
+        });
+      }
+      break;
+    }
     
     case 'select_from_table': {
       const sel = block as SelectFromTableBlock;
@@ -184,6 +212,31 @@ function validateBlockFields(block: Block, allBlockIds: Set<string>): Validation
           field: 'column',
           message: 'Поле column обязательно для select_from_table блока',
         });
+      }
+      if (sel.rowRange) {
+        const start = sel.rowRange.start;
+        const end = sel.rowRange.end;
+        if (start !== undefined && start < 1) {
+          errors.push({
+            blockId: block.id,
+            field: 'rowRange.start',
+            message: 'rowRange.start должен быть >= 1',
+          });
+        }
+        if (end !== undefined && end < 1) {
+          errors.push({
+            blockId: block.id,
+            field: 'rowRange.end',
+            message: 'rowRange.end должен быть >= 1',
+          });
+        }
+        if (start !== undefined && end !== undefined && start > end) {
+          errors.push({
+            blockId: block.id,
+            field: 'rowRange',
+            message: 'rowRange.start не может быть больше rowRange.end',
+          });
+        }
       }
       break;
     }
@@ -311,6 +364,35 @@ function validateDependencies(block: Block, allBlockIds: Set<string>): Validatio
         blockId: block.id,
         field: 'objectSource',
         message: `Источник объекта "${block.objectSource}" не найден`,
+      });
+    }
+  }
+
+  if (block.type === 'table_lookup') {
+    const tbl = block as TableLookupBlock;
+    if (tbl.dataSource && !allBlockIds.has(tbl.dataSource)) {
+      errors.push({
+        blockId: block.id,
+        field: 'dataSource',
+        message: `Источник данных "${tbl.dataSource}" не найден`,
+      });
+    }
+  }
+
+  if (block.type === 'table_range') {
+    const range = block as TableRangeBlock;
+    if (range.dataSource && !allBlockIds.has(range.dataSource)) {
+      errors.push({
+        blockId: block.id,
+        field: 'dataSource',
+        message: `Источник данных "${range.dataSource}" не найден`,
+      });
+    }
+    if (range.inputId && !allBlockIds.has(range.inputId)) {
+      errors.push({
+        blockId: block.id,
+        field: 'inputId',
+        message: `Источник значения "${range.inputId}" не найден`,
       });
     }
   }

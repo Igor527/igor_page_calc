@@ -1,5 +1,6 @@
 import { useCalcStore } from '@/lib/store';
 import { isValidFormula } from '@/lib/security';
+import { extractFormulaDependencies } from '@/lib/formula';
 import DependencyGraph from './DependencyGraph';
 import type { Block } from '@/types/blocks';
 import React, { useState, useRef, useEffect } from 'react';
@@ -29,10 +30,28 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
   const setBlocks = useCalcStore((s) => s.setBlocks);
   const block = blocks.find((b) => b.id === selectedId) || null;
 
+  // State для UI
+  const [showDependencies, setShowDependencies] = useState<boolean>(false);
+  const [showAutocomplete, setShowAutocomplete] = useState<boolean>(false);
+  const [autocompletePosition, setAutocompletePosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const formulaInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  // Закрытие автодополнения при клике вне
+  useClickOutside(autocompleteRef, () => setShowAutocomplete(false));
 
   function handleChange<K extends keyof Block>(key: K, value: any) {
     if (!block) return;
     const updated = blocks.map((b) => b.id === block.id ? { ...b, [key]: value } : b);
+    setBlocks(updated);
+  }
+
+  function handleFormulaChange(value: string) {
+    if (!block || block.type !== 'formula') return;
+    const deps = extractFormulaDependencies(value, blocks, block.id);
+    const updated = blocks.map((b) =>
+      b.id === block.id ? { ...b, formula: value, dependencies: deps } : b
+    );
     setBlocks(updated);
   }
 
@@ -94,10 +113,12 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
             <span style={{ fontSize: 13, color: '#888' }}>Тип</span>
             <input value={block.type} disabled style={{ background: '#eee' }} />
           </label>
-          <label>
-            <span style={{ fontSize: 13, color: '#888' }}>Заголовок (label)</span>
-            <input value={block.label || ''} onChange={e => handleChange('label', e.target.value)} />
-          </label>
+          {block.type !== 'formula' && (
+            <label>
+              <span style={{ fontSize: 13, color: '#888' }}>Заголовок (label)</span>
+              <input value={block.label || ''} onChange={e => handleChange('label', e.target.value)} />
+            </label>
+          )}
 
           {/* Для input */}
           {block.type === 'input' && (
@@ -314,7 +335,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
                     value={block.formula} 
                     onChange={e => {
                       const newFormula = e.target.value;
-                      handleChange('formula', newFormula);
+                      handleFormulaChange(newFormula);
                       
                       // Валидация формулы в реальном времени
                       if (newFormula.trim()) {
@@ -366,7 +387,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
                             if (formulaInputRef.current) {
                               const currentValue = block.formula || '';
                               const newValue = currentValue + b.id;
-                              handleChange('formula', newValue);
+                              handleFormulaChange(newValue);
                               setShowAutocomplete(false);
                               formulaInputRef.current.focus();
                             }
@@ -398,8 +419,8 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
                 )}
               </label>
               <label>
-                <span style={{ fontSize: 13, color: '#888' }}>Зависимости (id через запятую)</span>
-                <input value={Array.isArray(block.dependencies) ? block.dependencies.join(',') : ''} onChange={e => handleChange('dependencies', e.target.value.split(',').map(s => s.trim()))} />
+                <span style={{ fontSize: 13, color: '#888' }}>Зависимости (авто)</span>
+                <input value={Array.isArray(block.dependencies) ? block.dependencies.join(',') : ''} disabled style={{ background: '#eee' }} />
               </label>
             </>
           )}
