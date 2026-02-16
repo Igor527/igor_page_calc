@@ -144,6 +144,10 @@ function tableToText(columns: string[], rows: Array<Record<string, string | numb
 }
 
 const NEW_INPUT_PORT = '__new__';
+const COLUMN_WIDTH = 320;
+const ROW_HEIGHT = 180;
+const START_X = 100;
+const START_Y = 80;
 
 function getFormulaDisplayName(blockId: string): string {
   const normalized = blockId.trim();
@@ -237,6 +241,10 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<NodePosition>({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState<number>(1);
+  const dragStartRef = useRef<{ id: string; pos: NodePosition } | null>(null);
+  const lastValidRef = useRef<NodePosition | null>(null);
+  const [positionHistory, setPositionHistory] = useState<Array<{ id: string; pos: NodePosition }>>([]);
+  const [redoHistory, setRedoHistory] = useState<Array<{ id: string; pos: NodePosition }>>([]);
   
   // Inline редактирование
   const [editingNode, setEditingNode] = useState<string | null>(null);
@@ -254,12 +262,12 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
   const scrollRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const contentBounds = useCallback(() => {
-    const padding = 240;
+    const padding = ROW_HEIGHT;
     const nodeWidth = 280;
     const nodeHeight = 180;
     const xs = Object.values(positions).map((p) => p.x);
     const ys = Object.values(positions).map((p) => p.y);
-    const maxX = xs.length ? Math.max(...xs) + nodeWidth + padding : 1600;
+    const maxX = START_X + (COLUMN_WIDTH * 2) + nodeWidth + padding;
     const maxY = ys.length ? Math.max(...ys) + nodeHeight + padding : 1000;
     const minX = xs.length ? Math.min(...xs) - padding : 0;
     const minY = ys.length ? Math.min(...ys) - padding : 0;
@@ -314,8 +322,8 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
         const col = index % 3;
         const row = Math.floor(index / 3);
         newPositions[block.id] = {
-          x: 100 + col * 320,
-          y: 80 + row * 180,
+          x: START_X + col * COLUMN_WIDTH,
+          y: START_Y + row * ROW_HEIGHT,
         };
         needsUpdate = true;
       }
@@ -367,9 +375,8 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
     const margin = 80;
     const needsMove = left < margin || right > viewWidth - margin || top < margin || bottom > viewHeight - margin;
     if (!needsMove) return;
-    const targetOffsetX = viewWidth / 2 - (nodePos.x + nodeWidth / 2);
     const targetOffsetY = viewHeight / 2 - (nodePos.y + nodeHeight / 2);
-    setCanvasOffset({ x: targetOffsetX, y: targetOffsetY });
+    setCanvasOffset({ x: 0, y: targetOffsetY });
     const scrollLeft = Math.max(0, (nodePos.x + nodeWidth / 2 + canvasOffset.x) * canvasScale - scroller.clientWidth / 2);
     const scrollTop = Math.max(0, (nodePos.y + nodeHeight / 2 + canvasOffset.y) * canvasScale - scroller.clientHeight / 2);
     scroller.scrollTo({ left: scrollLeft, top: scrollTop, behavior: 'smooth' });
@@ -433,6 +440,8 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
     e.stopPropagation();
     const blockPos = positions[blockId] || { x: 0, y: 0 };
     const pointer = getPointerPosition(e);
+    dragStartRef.current = { id: blockId, pos: { ...blockPos } };
+    lastValidRef.current = { ...blockPos };
     setDragState({
       type: 'node',
       nodeId: blockId,
@@ -516,10 +525,36 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
     if (dragState.type === 'node' && dragState.nodeId && dragState.offset) {
       const newX = pointer.x - dragState.offset.x - canvasOffset.x;
       const newY = pointer.y - dragState.offset.y - canvasOffset.y;
-      
+      const minX = START_X;
+      const maxX = START_X + COLUMN_WIDTH * 2;
+      const otherYs = Object.entries(positions)
+        .filter(([id]) => id !== dragState.nodeId)
+        .map(([, pos]) => pos.y);
+      const baseY = otherYs.length
+        ? { min: Math.min(...otherYs), max: Math.max(...otherYs) }
+        : { min: dragStartRef.current?.pos.y ?? START_Y, max: dragStartRef.current?.pos.y ?? START_Y };
+      const minY = baseY.min - ROW_HEIGHT;
+      const maxY = baseY.max + ROW_HEIGHT;
+      const clampedX = Math.min(maxX, Math.max(minX, newX));
+      const clampedY = Math.min(maxY, Math.max(minY, newY));
+      const col = Math.round((clampedX - START_X) / COLUMN_WIDTH);
+      const row = Math.round((clampedY - START_Y) / ROW_HEIGHT);
+      const snappedX = START_X + col * COLUMN_WIDTH;
+      const snappedY = START_Y + row * ROW_HEIGHT;
+      const isOccupied = Object.entries(positions).some(([id, pos]) => {
+        if (id === dragState.nodeId) return false;
+        return pos.x === snappedX && pos.y === snappedY;
+      });
+      const nextPos = isOccupied
+        ? (lastValidRef.current ?? { x: snappedX, y: snappedY })
+        : { x: snappedX, y: snappedY };
+      if (!isOccupied) {
+        lastValidRef.current = nextPos;
+      }
+
       setPositions({
         ...positions,
-        [dragState.nodeId]: { x: newX, y: newY },
+        [dragState.nodeId]: nextPos,
       });
     } else if (dragState.type === 'connection' && tempConnection) {
       setTempConnection({
@@ -532,7 +567,7 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
       const dy = pointer.y - panStart.y;
       
       setCanvasOffset({
-        x: canvasOffset.x + dx,
+        x: 0,
         y: canvasOffset.y + dy,
       });
       
@@ -541,6 +576,15 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
   };
 
   const handleMouseUp = () => {
+    if (dragState.type === 'node' && dragState.nodeId && dragStartRef.current) {
+      const start = dragStartRef.current;
+      const end = positions[dragState.nodeId];
+      if (end && (start.pos.x !== end.x || start.pos.y !== end.y)) {
+        setPositionHistory((prev) => [...prev, { id: start.id, pos: { ...start.pos } }]);
+        setRedoHistory([]);
+      }
+      dragStartRef.current = null;
+    }
     setDragState({ type: null });
     setTempConnection(null);
     setIsPanning(false);
@@ -559,6 +603,47 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
       setEditingNode(null);
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && dragState.type === 'node' && dragStartRef.current) {
+        const start = dragStartRef.current;
+        setPositions((prev) => ({ ...prev, [start.id]: { ...start.pos } }));
+        dragStartRef.current = null;
+        setDragState({ type: null });
+        setTempConnection(null);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        setPositionHistory((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          const currentPos = positions[last.id];
+          if (currentPos) {
+            setRedoHistory((redo) => [...redo, { id: last.id, pos: { ...currentPos } }]);
+            setPositions((current) => ({ ...current, [last.id]: { ...last.pos } }));
+          }
+          return prev.slice(0, -1);
+        });
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        setRedoHistory((prev) => {
+          if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          const currentPos = positions[last.id];
+          if (currentPos) {
+            setPositionHistory((history) => [...history, { id: last.id, pos: { ...currentPos } }]);
+            setPositions((current) => ({ ...current, [last.id]: { ...last.pos } }));
+          }
+          return prev.slice(0, -1);
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dragState.type, positions, selectedId]);
 
   // Удаление ноды
   const handleDeleteNode = (blockId: string) => {
@@ -631,21 +716,22 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
       <div
+        onWheel={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
-          right: 12,
+          left: 12,
           top: 12,
           zIndex: 5,
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
+          gap: 6,
           padding: '6px 8px',
           background: 'var(--pico-card-background-color)',
           border: '1px solid var(--pico-border-color)',
           borderRadius: 8,
         }}
       >
-        <span style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>Масштаб</span>
+        <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>Масштаб</span>
         <input
           type="range"
           min={50}
@@ -662,6 +748,7 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
           position: 'absolute',
           inset: 0,
           overflow: 'auto',
+          overflowX: 'hidden',
           scrollbarGutter: 'stable',
         }}
       >
@@ -835,6 +922,28 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
                     ×
                   </button>
                 </div>
+
+                {block.type === 'formula' && hoveredNodeId === block.id && 'formula' in block && block.formula && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: -8,
+                      left: 8,
+                      transform: 'translateY(-100%)',
+                      background: 'rgba(0,0,0,0.85)',
+                      color: '#fff',
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      maxWidth: 260,
+                      wordBreak: 'break-word',
+                      pointerEvents: 'none',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.35)',
+                    }}
+                  >
+                    {block.formula}
+                  </div>
+                )}
 
                 {/* Порты ввода (слева) */}
                 {ports.inputs.length > 0 && (
@@ -1381,7 +1490,7 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
       )}
 
       {/* Формульная справка */}
-      <div style={{ position: 'absolute', right: 16, bottom: 16, zIndex: 50 }}>
+      <div style={{ position: 'absolute', left: 12, bottom: 52, zIndex: 50 }} onWheel={(e) => e.stopPropagation()}>
         {!showHelp && (
           <button
             type="button"
@@ -1488,6 +1597,7 @@ const DynamoNodeEditor: React.FC<DynamoNodeEditorProps> = ({ selectedId, onSelec
           </div>
         )}
       </div>
+
     </div>
   );
 };

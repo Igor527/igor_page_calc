@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { useCalcStore } from '@/lib/store';
 import { sanitizeHtml, escapeHtml } from '@/lib/security';
 import { isErrorValue } from '@/lib/errors';
@@ -18,15 +18,14 @@ function formatValue(value: unknown): string {
     }
   }
   return String(value);
+
 }
 
 function replaceTokensInHtml(
   html: string,
-  values: Record<string, unknown>,
   blocks: Block[],
-  selectedId?: string | null,
-  displayMode: 'values' | 'tokens' = 'values',
-  getTokenHint?: (id: string) => string
+  selectedId: string | null | undefined,
+  getDisplay: (id: string) => { text: string; isError?: boolean; title?: string }
 ): string {
   const parts = html.split(/(<[^>]+>)/g);
   const allowedIds = new Set(blocks.map((b) => b.id));
@@ -42,16 +41,10 @@ function replaceTokensInHtml(
       if (insideTokenSpan) return part;
       return part.replace(/@([A-Za-z0-9_-]+)/g, (match, id) => {
         if (!allowedIds.has(id)) return match;
-        const value = values[id];
-        const display = displayMode === 'tokens' ? `@${id}` : formatValue(value);
-        const title = getTokenHint ? getTokenHint(id) : '';
-        const safeTitle = title ? ` title="${escapeHtml(title)}"` : '';
-        if (isErrorValue(value) && displayMode === 'values') {
-          const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
-          return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(`Ошибка: ${display}`)}</span>`;
-        }
+        const display = getDisplay(id);
+        const safeTitle = display.title ? ` title="${escapeHtml(display.title)}"` : '';
         const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
-        return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(display)}</span>`;
+        return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(display.text)}</span>`;
       });
     })
     .join('');
@@ -97,7 +90,11 @@ interface ReportPanelProps {
   selectedId?: string | null;
 }
 
-const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
+export interface ReportPanelHandle {
+  insertToken: (id: string) => void;
+}
+
+const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onSelect, selectedId }, ref) => {
   const blocks = useCalcStore((s) => s.blocks);
   const values = useCalcStore((s) => s.values);
   const setBlocks = useCalcStore((s) => s.setBlocks);
@@ -117,7 +114,7 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
   const fontSizeKey = 'igor-page-calc-report-font-size';
   const [fontSize, setFontSize] = useState<number>(14);
   const tokenStyles = `.report-token{cursor:pointer;font-weight:600;color:var(--pico-color);} .report-token-active{background:#ffe08a;color:#222;padding:0 2px;border-radius:3px;}`;
-  const numberInputStyle = { width: 120, marginBottom: 0, paddingRight: 24 };
+  const numberInputStyle = { width: 96, marginBottom: 0, paddingRight: 20, fontSize: 13 };
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -179,25 +176,86 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
     return new Map(blocks.map((block) => [block.id, block]));
   }, [blocks]);
 
+  const escapeRegex = useCallback((value: string) => {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }, []);
+
+  const replaceIdentifiers = useCallback((expression: string, replacements: Record<string, string>) => {
+    let result = expression;
+    const keys = Object.keys(replacements).sort((a, b) => b.length - a.length);
+    keys.forEach((key) => {
+      const value = replacements[key];
+      if (!key) return;
+      const regex = new RegExp(`\\b${escapeRegex(key)}\\b`, 'g');
+      result = result.replace(regex, value);
+    });
+    return result;
+  }, [escapeRegex]);
+
+  const formatFormulaTokens = useCallback((block: Block) => {
+    if (block.type !== 'formula' || !('formula' in block)) return '';
+    const deps = Array.isArray(block.dependencies) ? block.dependencies : [];
+    const map: Record<string, string> = {};
+    deps.forEach((dep) => {
+      map[dep] = `@${dep}`;
+    });
+    const expr = replaceIdentifiers(String(block.formula || ''), map);
+    return expr.trim();
+  }, [replaceIdentifiers]);
+
+  const formatFormulaValues = useCallback((block: Block) => {
+    if (block.type !== 'formula' || !('formula' in block)) return '';
+    const deps = Array.isArray(block.dependencies) ? block.dependencies : [];
+    const map: Record<string, string> = {};
+    deps.forEach((dep) => {
+      map[dep] = formatValue(values[dep]);
+    });
+    const expr = replaceIdentifiers(String(block.formula || ''), map);
+    return expr.trim();
+  }, [replaceIdentifiers, values]);
+
   const getTokenHint = useCallback((id: string) => {
     const block = blockMap.get(id);
     if (!block) return '';
-    if (viewMode === 'formulas' && block.type === 'formula' && 'formula' in block) {
-      return String(block.formula || '');
+    if (block.type === 'formula') {
+      const valuesLine = `@${block.id} = ${formatFormulaValues(block)}`.trim();
+      const tokensLine = `${formatValue(values[block.id])} = ${formatFormulaTokens(block)}`.trim();
+      return `${valuesLine}\n${tokensLine}`.trim();
     }
     return formatValue(values[id]);
-  }, [blockMap, viewMode, values]);
+  }, [blockMap, formatFormulaTokens, formatFormulaValues, values]);
+
+  const getDisplayForMode = useCallback((id: string) => {
+    const block = blockMap.get(id);
+    const value = values[id];
+    const title = getTokenHint(id);
+    if (!block) {
+      return { text: formatValue(value), title };
+    }
+    if (block.type === 'formula') {
+      const valuesLine = `@${block.id} = ${formatFormulaValues(block)}`.trim();
+      const tokensLine = `${formatValue(values[block.id])} = ${formatFormulaTokens(block)}`.trim();
+      if (viewMode === 'values') {
+        return { text: valuesLine, title };
+      }
+      return { text: tokensLine, title };
+    }
+    if (isErrorValue(value)) {
+      return { text: `Ошибка: ${formatValue(value)}`, title };
+    }
+    return { text: formatValue(value), title };
+  }, [blockMap, formatFormulaTokens, formatFormulaValues, getTokenHint, viewMode, values]);
 
   const previewHtml = useMemo(() => {
     const safeHtml = sanitizeHtml(editorHtml || '');
     const sizedHtml = applyTableSizing(safeHtml);
-    return replaceTokensInHtml(sizedHtml, values, blocks, selectedId, 'values', getTokenHint);
-  }, [editorHtml, values, blocks, selectedId, getTokenHint]);
+    return replaceTokensInHtml(sizedHtml, blocks, selectedId, getDisplayForMode);
+  }, [editorHtml, blocks, selectedId, getDisplayForMode]);
 
   const decoratedEditorHtml = useMemo(() => {
     const safeHtml = sanitizeHtml(editorHtml || '');
-    return replaceTokensInHtml(safeHtml, values, blocks, selectedId, 'tokens', getTokenHint);
-  }, [editorHtml, values, blocks, selectedId, getTokenHint]);
+    return replaceTokensInHtml(safeHtml, blocks, selectedId, getDisplayForMode);
+  }, [editorHtml, blocks, selectedId, getDisplayForMode]);
 
   useEffect(() => {
     if (viewMode !== 'formulas') return;
@@ -225,7 +283,7 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
     }
   };
 
-  const insertToken = (id: string) => {
+  const insertToken = useCallback((id: string) => {
     if (viewMode === 'formulas') {
       const hint = getTokenHint(id);
       const safeTitle = hint ? ` title="${escapeHtml(hint)}"` : '';
@@ -241,7 +299,9 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
       setEditorHtml(editorRef.current.innerHTML);
       editorRef.current.focus();
     }
-  };
+  }, [getTokenHint, viewMode]);
+
+  useImperativeHandle(ref, () => ({ insertToken }), [insertToken]);
 
   const insertTable = () => {
     const rows = Math.min(20, Math.max(1, tableRows));
@@ -351,117 +411,134 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
   };
 
   return (
-    <section style={{ padding: 16 }}>
+    <section
+      style={{ padding: 16, height: '100%', display: 'flex', flexDirection: 'column', gap: 8, overflow: 'hidden' }}
+    >
       <style>{tokenStyles}</style>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Редактор отчета</h2>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
-          <button
-            type="button"
-            onClick={() => setViewMode(viewMode === 'formulas' ? 'values' : 'formulas')}
-            style={{ fontSize: 12 }}
-          >
-            {viewMode === 'formulas' ? 'Показать значения' : 'Показать формулы'}
-          </button>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            Размер шрифта
-            <input
-              type="number"
-              min={10}
-              max={28}
-              value={fontSize}
-              onChange={(e) => setFontSize(Number(e.target.value) || 14)}
-              style={numberInputStyle}
-            />
-            <input
-              type="range"
-              min={10}
-              max={28}
-              value={fontSize}
-              onChange={(e) => setFontSize(Number(e.target.value) || 14)}
-              style={{ width: 140 }}
-            />
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            Масштаб
-            <input
-              type="range"
-              min={80}
-              max={140}
-              value={Math.round(reportScale * 100)}
-              onChange={(e) => setReportScale(Number(e.target.value) / 100)}
-              style={{ width: 160 }}
-            />
-          </label>
+      <div
+        onWheel={(e) => e.stopPropagation()}
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
+          background: 'var(--pico-card-background-color)',
+          paddingBottom: 6,
+          borderBottom: '1px solid var(--pico-border-color)',
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Редактор отчета</h2>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, width: '100%' }}>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            Строки
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={tableRows}
-              onChange={(e) => setTableRows(Number(e.target.value) || 1)}
-              style={numberInputStyle}
-            />
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            Столбцы
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={tableCols}
-              onChange={(e) => setTableCols(Number(e.target.value) || 1)}
-              style={numberInputStyle}
-            />
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-            Ширина %
-            <input
-              type="number"
-              min={10}
-              max={100}
-              value={tableWidth}
-              onChange={(e) => setTableWidth(Number(e.target.value) || 100)}
-              style={numberInputStyle}
-            />
-          </label>
-          <button type="button" onClick={insertTable} style={{ fontSize: 12 }}>
-            Вставить таблицу
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === 'formulas' ? 'values' : 'formulas')}
+              style={{ fontSize: 13 }}
+            >
+              {viewMode === 'formulas' ? 'Показать значения' : 'Показать формулы'}
+            </button>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Размер шрифта
+              <input
+                type="number"
+                min={10}
+                max={28}
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+                style={numberInputStyle}
+              />
+              <input
+                type="range"
+                min={10}
+                max={28}
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value) || 14)}
+                style={{ width: 120 }}
+              />
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Масштаб
+              <input
+                type="range"
+                min={80}
+                max={140}
+                value={Math.round(reportScale * 100)}
+                onChange={(e) => setReportScale(Number(e.target.value) / 100)}
+                style={{ width: 140 }}
+              />
+            </label>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Строки
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={tableRows}
+                onChange={(e) => setTableRows(Number(e.target.value) || 1)}
+                style={numberInputStyle}
+              />
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Столбцы
+              <input
+                type="number"
+                min={1}
+                max={12}
+                value={tableCols}
+                onChange={(e) => setTableCols(Number(e.target.value) || 1)}
+                style={numberInputStyle}
+              />
+            </label>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              Ширина %
+              <input
+                type="number"
+                min={10}
+                max={100}
+                value={tableWidth}
+                onChange={(e) => setTableWidth(Number(e.target.value) || 100)}
+                style={numberInputStyle}
+              />
+            </label>
+            <button type="button" onClick={insertTable} style={{ fontSize: 13 }}>
+              Вставить таблицу
+            </button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <button type="button" onClick={() => applyFormat('bold')} style={{ fontSize: 13 }}>
+            Жирный
+          </button>
+          <button type="button" onClick={() => applyFormat('italic')} style={{ fontSize: 13 }}>
+            Курсив
+          </button>
+          <button type="button" onClick={() => applyFormat('underline')} style={{ fontSize: 13 }}>
+            Подчеркнутый
+          </button>
+          <button type="button" onClick={() => applyFormat('removeFormat')} style={{ fontSize: 13 }}>
+            Очистить формат
+          </button>
+          <button type="button" onClick={exportJson} style={{ fontSize: 13 }}>
+            Экспорт JSON
+          </button>
+          <button type="button" onClick={exportDemoJson} style={{ fontSize: 13 }}>
+            Экспорт демо JSON
+          </button>
+          <button type="button" onClick={importJson} style={{ fontSize: 13 }}>
+            Импорт JSON
+          </button>
+          <button type="button" onClick={loadDemo} style={{ fontSize: 13 }}>
+            Загрузить демо
           </button>
         </div>
-      </div>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-        <button type="button" onClick={() => applyFormat('bold')} style={{ fontSize: 12 }}>
-          Жирный
-        </button>
-        <button type="button" onClick={() => applyFormat('italic')} style={{ fontSize: 12 }}>
-          Курсив
-        </button>
-        <button type="button" onClick={() => applyFormat('underline')} style={{ fontSize: 12 }}>
-          Подчеркнутый
-        </button>
-        <button type="button" onClick={() => applyFormat('removeFormat')} style={{ fontSize: 12 }}>
-          Очистить формат
-        </button>
-        <button type="button" onClick={exportJson} style={{ fontSize: 12 }}>
-          Экспорт JSON
-        </button>
-        <button type="button" onClick={exportDemoJson} style={{ fontSize: 12 }}>
-          Экспорт демо JSON
-        </button>
-        <button type="button" onClick={importJson} style={{ fontSize: 12 }}>
-          Импорт JSON
-        </button>
-        <button type="button" onClick={loadDemo} style={{ fontSize: 12 }}>
-          Загрузить демо
-        </button>
       </div>
 
       <input
@@ -478,88 +555,66 @@ const ReportPanel: React.FC<ReportPanelProps> = ({ onSelect, selectedId }) => {
         }}
       />
 
-      {viewMode === 'formulas' ? (
-        <div ref={editorContainerRef} style={{ marginBottom: 12 }}>
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
-            onMouseUp={() => {
-              const token = getTokenFromSelection();
-              if (token && onSelect) {
-                onSelect(token);
-              }
-            }}
-            style={{
-              minHeight: 260,
-              padding: 12,
-              fontSize,
-              background: 'var(--pico-code-background-color)',
-              color: 'var(--pico-color)',
-              border: '1px solid var(--pico-border-color)',
-              borderRadius: 8,
-              outline: 'none',
-              transform: `scale(${reportScale})`,
-              transformOrigin: '0 0',
-              width: `${100 / reportScale}%`,
-            }}
-          />
-        </div>
-      ) : (
-        <div ref={previewContainerRef} style={{ marginBottom: 12 }}>
-          <div
-            style={{
-              minHeight: 260,
-              padding: 12,
-              border: '1px solid var(--pico-border-color)',
-              borderRadius: 8,
-              background: 'var(--pico-card-background-color)',
-              color: 'var(--pico-color)',
-              fontSize,
-              transform: `scale(${reportScale})`,
-              transformOrigin: '0 0',
-              width: `${100 / reportScale}%`,
-            }}
-            onClick={(e) => {
-              const target = e.target as HTMLElement | null;
-              const token = target?.dataset?.token;
-              if (token && onSelect) {
-                onSelect(token);
-              }
-            }}
-            dangerouslySetInnerHTML={{ __html: previewHtml }}
-          />
-        </div>
-      )}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
-          Вставка токенов: используйте @formula1, @inputA или нажмите ниже.
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-          {availableTokens.map((token) => (
-            <button
-              key={token.id}
-              type="button"
-              onClick={() => insertToken(token.id)}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 8 }}>
+        {viewMode === 'formulas' ? (
+          <div ref={editorContainerRef}>
+            <div
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
+              onMouseUp={() => {
+                const token = getTokenFromSelection();
+                if (token && onSelect) {
+                  onSelect(token);
+                }
+              }}
               style={{
-                fontSize: 11,
-                padding: '4px 8px',
-                borderRadius: 6,
+                minHeight: 260,
+                padding: 12,
+                fontSize,
+                background: 'var(--pico-code-background-color)',
+                color: 'var(--pico-color)',
                 border: '1px solid var(--pico-border-color)',
+                borderRadius: 8,
+                outline: 'none',
+                transform: `scale(${reportScale})`,
+                transformOrigin: '0 0',
+                width: `${100 / reportScale}%`,
+              }}
+            />
+          </div>
+        ) : (
+          <div ref={previewContainerRef}>
+            <div
+              style={{
+                minHeight: 260,
+                padding: 12,
+                border: '1px solid var(--pico-border-color)',
+                borderRadius: 8,
                 background: 'var(--pico-card-background-color)',
                 color: 'var(--pico-color)',
-                cursor: 'pointer',
+                fontSize,
+                transform: `scale(${reportScale})`,
+                transformOrigin: '0 0',
+                width: `${100 / reportScale}%`,
               }}
-            >
-              {token.label}
-            </button>
-          ))}
-        </div>
+              onClick={(e) => {
+                const target = e.target as HTMLElement | null;
+                const token = target?.dataset?.token;
+                if (token && onSelect) {
+                  onSelect(token);
+                }
+              }}
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          </div>
+        )}
       </div>
+
+
     </section>
   );
-};
+});
 
 export default ReportPanel;

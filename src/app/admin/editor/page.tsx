@@ -6,8 +6,8 @@
 // Соединение нод - drag & drop между портами
 
 import DynamoNodeEditor from '@/components/editor/DynamoNodeEditor';
-import ReportPanel from '@/components/editor/ReportPanel';
-import React, { useState, useEffect } from 'react';
+import ReportPanel, { type ReportPanelHandle } from '@/components/editor/ReportPanel';
+import React, { useState, useEffect, useRef } from 'react';
 import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
@@ -25,6 +25,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const setBlocks = useCalcStore((s) => s.setBlocks);
   const values = useCalcStore((s) => s.values);
   const setValues = useCalcStore((s) => s.setValues);
+  const reportRef = useRef<ReportPanelHandle>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [splitPercent, setSplitPercent] = useState<number>(50);
   const [isResizing, setIsResizing] = useState<boolean>(false);
@@ -80,8 +81,8 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     <div
       style={{
         display: 'flex',
-        height: 'calc(100vh - 120px)',
-        minHeight: 'calc(100vh - 120px)',
+        height: 'calc(100vh - 200px)',
+        minHeight: 'calc(100vh - 200px)',
         width: '100%',
         flexDirection: 'column'
       }}
@@ -137,9 +138,54 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
             borderRight: '1px solid var(--pico-border-color)',
             position: 'relative',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
-          <DynamoNodeEditor selectedId={selectedId} onSelect={setSelectedId} />
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <DynamoNodeEditor selectedId={selectedId} onSelect={setSelectedId} />
+          </div>
+          <div
+            onWheel={(e) => e.stopPropagation()}
+            style={{
+              borderBottom: '1px solid var(--pico-border-color)',
+              background: 'var(--pico-card-background-color)',
+              padding: 8,
+              flexShrink: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+              Список всех токенов (нажми на токен для вставки в текст)
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {blocks
+                .filter((b) => b.type !== 'group')
+                .map((token) => (
+                  <button
+                    key={token.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(token.id);
+                      reportRef.current?.insertToken(token.id);
+                    }}
+                    style={{
+                      fontSize: 12,
+                      padding: '3px 6px',
+                      borderRadius: 6,
+                      border: '1px solid var(--pico-border-color)',
+                      background: 'var(--pico-card-background-color)',
+                      color: 'var(--pico-color)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {token.label || token.id}
+                  </button>
+                ))}
+            </div>
+          </div>
         </div>
 
         <div
@@ -177,12 +223,11 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           style={{
             flex: `0 0 ${100 - splitPercent}%`,
             minWidth: 360,
-            overflowY: 'auto',
-            overflowX: 'hidden',
+            overflow: 'hidden',
             background: 'var(--pico-card-background-color)',
           }}
         >
-          <ReportPanel onSelect={setSelectedId} selectedId={selectedId} />
+          <ReportPanel ref={reportRef} onSelect={setSelectedId} selectedId={selectedId} />
         </div>
       </div>
     </div>
