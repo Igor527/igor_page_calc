@@ -14,7 +14,9 @@ export type BlockType =
   | 'output'
   | 'image'
   | 'button'
-  | 'table_viewer'; // Новый тип для просмотра и выбора свойств таблицы
+  | 'table_viewer'
+  | 'text' // Текстовый блок для форматированного текста
+  | 'chart'; // Блок для отображения графиков
 // SELECT_FROM_TABLE: выбор значения из столбца таблицы с поддержкой диапазона, фильтра и комбинированных опций
 export interface SelectFromTableBlock extends BaseBlock {
   type: 'select_from_table';
@@ -22,6 +24,8 @@ export interface SelectFromTableBlock extends BaseBlock {
   dataSource: string; // id блока-таблицы
   column: string; // имя столбца (основной)
   defaultValue?: string | number;
+  lockColumn?: boolean;
+  lockValue?: boolean;
   range?: { min?: number; max?: number }; // диапазон значений по колонке (опционально)
   rowRange?: { start?: number; end?: number }; // диапазон строк (1-based)
   sortBy?: string; // сортировка по столбцу
@@ -41,8 +45,8 @@ export interface SelectFromObjectBlock extends BaseBlock {
 export interface DataTableBlock extends BaseBlock {
   type: 'data_table';
   name: string; // уникальное имя таблицы в рамках калькулятора
-  columns: string[]; // имена столбцов
-  rows: Array<Record<string, number | string>>; // массив строк (ключ — имя столбца)
+  columns?: string[]; // имена столбцов (можно опустить при матричном формате)
+  rows: Array<Record<string, number | string> | Array<number | string>>; // строки как объекты или матрица (первая строка — заголовки)
 }
 
 
@@ -50,6 +54,7 @@ export interface BaseBlock {
   id: string;
   type: BlockType;
   label?: string;
+  description?: string;
 }
 
 export interface InputBlock extends BaseBlock {
@@ -74,6 +79,10 @@ export interface TableLookupBlock extends BaseBlock {
   key_col: string;
   target_col: string;
   selected_key: string | number;
+  lockDataSource?: boolean;
+  lockKeyColumn?: boolean;
+  lockTargetColumn?: boolean;
+  lockSelectedKey?: boolean;
 }
 
 export interface TableRangeBlock extends BaseBlock {
@@ -133,6 +142,23 @@ export interface TableViewerBlock extends BaseBlock {
   outputType?: 'column' | 'row' | 'cell'; // что выводить
 }
 
+// TEXT: текстовый блок для форматированного текста
+export interface TextBlock extends BaseBlock {
+  type: 'text';
+  content: string; // HTML-контент (будет санитизирован)
+  style?: 'p' | 'h1' | 'h2' | 'h3'; // стиль текста
+}
+
+// CHART: блок для отображения графиков
+export interface ChartBlock extends BaseBlock {
+  type: 'chart';
+  chartType: 'line' | 'bar' | 'pie' | 'area'; // тип графика
+  dataSource: string; // id блока data_table
+  xKey: string; // ключ для оси X
+  yKey: string; // ключ для оси Y
+  label?: string;
+}
+
 export type Block =
   | InputBlock
   | FormulaBlock
@@ -147,4 +173,6 @@ export type Block =
   | OutputBlock
   | ImageBlock
   | ButtonBlock
-  | TableViewerBlock;
+  | TableViewerBlock
+  | TextBlock
+  | ChartBlock;

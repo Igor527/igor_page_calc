@@ -1,57 +1,50 @@
-// Утилиты безопасности: санитизация HTML, валидация URL, защита от XSS
+import DOMPurify from 'dompurify';
+
+const PURIFY_CFG = {
+  ALLOWED_TAGS: [
+    'b', 'i', 'u', 'strong', 'em', 'br', 'p', 'span', 'a',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'table', 'thead', 'tbody', 'tr', 'th', 'td',
+    'ul', 'ol', 'li',
+    'div', 'blockquote', 'pre', 'code', 'hr', 'img',
+    'figure', 'figcaption', 'sub', 'sup', 'mark',
+    'details', 'summary',
+  ],
+  ALLOWED_ATTR: [
+    'href', 'target', 'rel', 'src', 'alt', 'width', 'height',
+    'class', 'title', 'style',
+    'data-token', 'data-width', 'data-pos-x', 'data-pos-y', 'data-zoom',
+    'colspan', 'rowspan', 'open',
+  ],
+  ALLOW_DATA_ATTR: false,
+  ADD_ATTR: ['data-token', 'data-width', 'data-pos-x', 'data-pos-y', 'data-zoom'],
+};
+
+/** Удаляет теги, оставляет только безопасные (fallback при отсутствии DOMPurify/window). */
+function sanitizeHtmlFallback(html: string): string {
+  if (!html || typeof html !== 'string') return '';
+  return html
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+    .replace(/&/g, '&amp;');
+}
 
 /**
- * Санитизирует HTML-строку, удаляя опасные теги и атрибуты
- * Разрешает только безопасные теги: b, i, u, strong, em, br, p, span
+ * Sanitize HTML using DOMPurify — safe against XSS.
+ * Allows rich formatting tags (headings, lists, tables, images, links).
+ * При отсутствии window (SSR/тесты) — экранирует HTML (fallback).
  */
 export function sanitizeHtml(html: string): string {
   if (!html || typeof html !== 'string') return '';
-  
-  // Удаляем все теги, кроме разрешённых
-  const allowedTags = [
-    'b', 'i', 'u', 'strong', 'em', 'br', 'p', 'span',
-    'h1', 'h2', 'h3', 'h4',
-    'table', 'thead', 'tbody', 'tr', 'th', 'td',
-    'ul', 'ol', 'li',
-    'div'
-  ];
-  const allowedAttrs: Record<string, Array<'data-token' | 'class' | 'data-width' | 'title'>> = {
-    span: ['data-token', 'class', 'title'],
-    table: ['data-width'],
-  };
-  const tagPattern = /<\/?([a-z][a-z0-9]*)\b([^>]*)>/gi;
-  const attrPattern = /([a-zA-Z0-9-:]+)\s*=\s*"([^"]*)"/g;
-
-  return html.replace(tagPattern, (match, tagName, attrs) => {
-    const lowerTag = tagName.toLowerCase();
-    if (!allowedTags.includes(lowerTag)) {
-      return '';
-    }
-    const isClosing = match.startsWith('</');
-    if (isClosing) return `</${lowerTag}>`;
-    if (!allowedAttrs[lowerTag]) return `<${lowerTag}>`;
-
-    const safeAttrs: string[] = [];
-    let attrMatch: RegExpExecArray | null;
-    while ((attrMatch = attrPattern.exec(attrs)) !== null) {
-      const name = attrMatch[1];
-      const value = attrMatch[2];
-      if (!allowedAttrs[lowerTag].includes(name as 'data-token' | 'class' | 'data-width' | 'title')) continue;
-      if (name === 'data-token' && /^[A-Za-z0-9_-]+$/.test(value)) {
-        safeAttrs.push(`${name}="${value}"`);
-      }
-      if (name === 'class' && /^(report-token|report-token-active|report-token report-token-active)$/.test(value)) {
-        safeAttrs.push(`${name}="${value}"`);
-      }
-      if (name === 'data-width' && /^\d{1,3}$/.test(value)) {
-        safeAttrs.push(`${name}="${value}"`);
-      }
-      if (name === 'title' && !/[<>]/.test(value)) {
-        safeAttrs.push(`${name}="${value}"`);
-      }
-    }
-    return safeAttrs.length > 0 ? `<${lowerTag} ${safeAttrs.join(' ')}>` : `<${lowerTag}>`;
-  });
+  if (typeof window === 'undefined') return sanitizeHtmlFallback(html);
+  try {
+    if (typeof DOMPurify.sanitize !== 'function') return sanitizeHtmlFallback(html);
+    return DOMPurify.sanitize(html, PURIFY_CFG);
+  } catch {
+    return sanitizeHtmlFallback(html);
+  }
 }
 
 /**

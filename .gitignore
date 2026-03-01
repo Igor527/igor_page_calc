@@ -4,7 +4,12 @@ node_modules/
 .vercel/
 .env
 .env.*
+!.env.example
 .DS_Store
+
+# Ключи и секреты (папка secrets — заготовки коммитим, реальные ключи не коммитить)
+secrets/*
+!secrets/README.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

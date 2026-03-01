@@ -18,6 +18,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
+import { normalizeTableData } from '@/lib/tableData';
 import type { ChartBlock, DataTableBlock } from '@/types/blocks';
 
 interface ChartRendererProps {
@@ -36,11 +37,20 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ block, dataSource }) => {
     );
   }
 
+  const normalized = normalizeTableData(dataSource);
+  if (normalized.rows.length === 0 || normalized.columns.length === 0) {
+    return (
+      <div style={{ margin: '12px 0', padding: '16px', background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 4 }}>
+        <strong>Ошибка:</strong> Источник данных "{block.dataSource}" не найден или пуст
+      </div>
+    );
+  }
+
   // Преобразуем данные таблицы в формат для графиков
-  const chartData = dataSource.rows.map((row: any) => {
+  const chartData = normalized.rows.map((row: any) => {
     const dataPoint: Record<string, any> = {};
     // Копируем все столбцы из строки
-    dataSource.columns.forEach((col: string) => {
+    normalized.columns.forEach((col: string) => {
       dataPoint[col] = row[col];
     });
     return dataPoint;
@@ -55,7 +65,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ block, dataSource }) => {
     );
   }
 
-  if (!dataSource.columns.includes(block.xKey) || !dataSource.columns.includes(block.yKey)) {
+  if (!normalized.columns.includes(block.xKey) || !normalized.columns.includes(block.yKey)) {
     return (
       <div style={{ margin: '12px 0', padding: '16px', background: '#f8d7da', border: '1px solid #dc3545', borderRadius: 4 }}>
         <strong>Ошибка:</strong> Столбцы "{block.xKey}" или "{block.yKey}" не найдены в таблице

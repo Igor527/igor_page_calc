@@ -2,6 +2,7 @@
 
 import type { Block } from '@/types/blocks';
 import { validateBlocks } from './validation';
+import { toMatrixTableBlock } from './tableData';
 
 export type CalculatorStatus = 'draft' | 'review' | 'published' | 'rejected';
 
@@ -25,8 +26,12 @@ export interface CalculatorHistoryEntry {
 export interface SavedCalculator {
   id: string;
   title: string;
+  /** Адрес для ссылки: латиница, цифры, дефис. Если задан, публичный URL — /calculators/:slug */
+  slug?: string;
   blocks: Block[];
   values?: Record<string, number | string>;
+  /** HTML отчёта из редактора (токены @id подставляются при показе) */
+  reportHtml?: string;
   status: CalculatorStatus;
   comments: CalculatorComment[];
   history: CalculatorHistoryEntry[];
@@ -35,6 +40,11 @@ export interface SavedCalculator {
   createdBy?: string;
   reviewedBy?: string;
   publishedAt?: number;
+}
+
+/** Нормализует slug: только a-z, 0-9, дефис; в нижнем регистре */
+export function normalizeSlug(s: string): string {
+  return s.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || '';
 }
 
 /**
@@ -47,17 +57,22 @@ export function generateCalculatorId(): string {
 /**
  * Сохраняет калькулятор в localStorage
  */
+const REPORT_HTML_STORAGE_KEY = 'igor-page-calc-report-html';
+
 export function saveCalculator(
   id: string,
   title: string,
   blocks: Block[],
   values?: Record<string, number | string>,
   status: CalculatorStatus = 'draft',
-  createdBy?: string
+  createdBy?: string,
+  reportHtml?: string,
+  slug?: string
 ): { success: boolean; error?: string } {
   try {
+    const normalizedBlocks = blocks.map((block) => block.type === 'data_table' ? toMatrixTableBlock(block as any) : block);
     // Валидация перед сохранением
-    const validation = validateBlocks(blocks);
+    const validation = validateBlocks(normalizedBlocks);
     if (!validation.valid) {
       return {
         success: false,
@@ -65,15 +80,33 @@ export function saveCalculator(
       };
     }
 
-    // Загружаем существующий калькулятор, если есть
+    // Загружаем существующий калькулятор, если есть (нужен для existing?.slug и т.д.)
     const existing = loadCalculator(id);
+    let normalizedSlug: string | undefined;
+    if (slug !== undefined && slug !== '') {
+      normalizedSlug = normalizeSlug(slug);
+      if (normalizedSlug.length === 0) {
+        return { success: false, error: 'Адрес должен содержать хотя бы один символ (латиница, цифры, дефис)' };
+      }
+      const listForConflict = getCalculatorList();
+      const conflict = listForConflict.find((c: any) => c.slug === normalizedSlug && c.id !== id);
+      if (conflict) {
+        return { success: false, error: `Адрес «${normalizedSlug}» уже занят другим калькулятором` };
+      }
+    } else {
+      // По умолчанию — сквозная нумерация /1, /2, ...
+      normalizedSlug = existing?.slug ?? String(getNextCalculatorNumber());
+    }
     const now = Date.now();
-    
+    const reportHtmlToSave = reportHtml ?? (typeof localStorage !== 'undefined' ? localStorage.getItem(REPORT_HTML_STORAGE_KEY) : null) ?? existing?.reportHtml ?? '';
+
     const calculator: SavedCalculator = {
       id,
       title,
-      blocks,
+      slug: normalizedSlug ?? existing?.slug,
+      blocks: normalizedBlocks,
       values: values || {},
+      reportHtml: reportHtmlToSave || undefined,
       status: status || existing?.status || 'draft',
       comments: existing?.comments || [],
       history: existing?.history || [],
@@ -104,15 +137,15 @@ export function saveCalculator(
     // Сохраняем в localStorage
     localStorage.setItem(`calc-${id}`, JSON.stringify(calculator));
 
-    // Сохраняем список всех калькуляторов
+    // Сохраняем список всех калькуляторов (без ограничения количества, без мутации — новый массив)
     const list = getCalculatorList();
-    const existingIndex = list.findIndex(c => c.id === id);
-    if (existingIndex >= 0) {
-      list[existingIndex] = { id, title, status: calculator.status, updatedAt: calculator.updatedAt };
-    } else {
-      list.push({ id, title, status: calculator.status, updatedAt: calculator.updatedAt });
-    }
-    localStorage.setItem('calculators-list', JSON.stringify(list));
+    const entry = { id, title, status: calculator.status, updatedAt: calculator.updatedAt, slug: calculator.slug };
+    const existingIndex = list.findIndex((c) => c.id === id);
+    const newList =
+      existingIndex >= 0
+        ? list.map((c, i) => (i === existingIndex ? entry : c))
+        : [...list, entry];
+    localStorage.setItem(CALC_LIST_KEY, JSON.stringify(newList));
 
     return { success: true };
   } catch (e) {
@@ -133,30 +166,134 @@ export function loadCalculator(id: string): SavedCalculator | null {
 
     const calculator = JSON.parse(saved) as SavedCalculator;
     return calculator;
-  } catch (e) {
-    console.error('Ошибка загрузки калькулятора:', e);
+  } catch {
     return null;
   }
 }
 
+const CALC_LIST_KEY = 'calculators-list';
+const CALC_PREFIX = 'calc-';
+
 /**
- * Получает список всех сохранённых калькуляторов
+ * Собирает список калькуляторов по всем ключам calc-* в localStorage (источник истины).
+ * Используется для восстановления списка, если calculators-list усечён или повреждён.
  */
-export function getCalculatorList(): Array<{ id: string; title: string; status: CalculatorStatus; updatedAt: number }> {
+function getCalculatorListFromStorageKeys(): Array<{ id: string; title: string; status: CalculatorStatus; updatedAt: number; slug?: string }> {
+  if (typeof localStorage === 'undefined') return [];
+  const result: Array<{ id: string; title: string; status: CalculatorStatus; updatedAt: number; slug?: string }> = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
+    const id = key.slice(CALC_PREFIX.length);
+    if (!id) continue;
+    const calc = loadCalculator(id);
+    if (calc) {
+      result.push({
+        id: calc.id,
+        title: calc.title,
+        status: calc.status,
+        updatedAt: calc.updatedAt,
+        slug: calc.slug,
+      });
+    }
+  }
+  return result.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
+ * Получает список всех сохранённых калькуляторов (без ограничения количества).
+ * Всегда собирает по ключам calc-* в localStorage — источник истины.
+ * Кеш calculators-list обновляется автоматически.
+ */
+export function getCalculatorList(): Array<{ id: string; title: string; status: CalculatorStatus; updatedAt: number; slug?: string }> {
+  const list = getCalculatorListFromStorageKeys();
   try {
-    const saved = localStorage.getItem('calculators-list');
-    if (!saved) return [];
-    const list = JSON.parse(saved);
-    // Обновляем формат для обратной совместимости
-    return list.map((item: any) => ({
-      id: item.id,
-      title: item.title,
-      status: item.status || 'draft',
-      updatedAt: item.updatedAt,
-    }));
+    localStorage.setItem(CALC_LIST_KEY, JSON.stringify(list));
+  } catch { /* игнорируем ошибку записи кеша */ }
+  return list;
+}
+
+/**
+ * Следующий порядковый номер для slug по умолчанию (/1, /2, …).
+ * По всем сохранённым калькуляторам ищет числовые slug и возвращает max + 1.
+ */
+export function getNextCalculatorNumber(): number {
+  const list = getCalculatorList();
+  let max = 0;
+  for (const item of list) {
+    const slug = item.slug ?? '';
+    if (/^\d+$/.test(slug)) {
+      const n = parseInt(slug, 10);
+      if (n > max) max = n;
+    }
+  }
+  return max + 1;
+}
+
+/**
+ * Загружает калькулятор по адресу (slug). Для ссылки /calculators/:slug.
+ */
+export function getCalculatorBySlug(slug: string): SavedCalculator | null {
+  const list = getCalculatorList();
+  const item = list.find((c) => c.slug === slug);
+  if (!item) return null;
+  return loadCalculator(item.id);
+}
+
+/**
+ * Список опубликованных калькуляторов для страницы /calculators и главной.
+ * Собирается по всем ключам calc-* в localStorage (без ограничения и без опоры на calculators-list).
+ */
+export function getPublishedCalculators(): Array<{ id: string; title: string; slug?: string }> {
+  if (typeof localStorage === 'undefined') return [];
+  const result: Array<{ id: string; title: string; slug?: string; updatedAt: number }> = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
+    const id = key.slice(CALC_PREFIX.length);
+    if (!id) continue;
+    const calc = loadCalculator(id);
+    if (calc?.status === 'published') {
+      result.push({
+        id: calc.id,
+        title: calc.title,
+        slug: calc.slug,
+        updatedAt: calc.updatedAt,
+      });
+    }
+  }
+  result.sort((a, b) => b.updatedAt - a.updatedAt);
+  return result.map(({ id, title, slug }) => ({ id, title, slug }));
+}
+
+/**
+ * Обновляет адрес (slug) калькулятора.
+ */
+export function updateCalculatorSlug(id: string, slug: string | undefined): { success: boolean; error?: string } {
+  try {
+    const calculator = loadCalculator(id);
+    if (!calculator) return { success: false, error: 'Калькулятор не найден' };
+    const normalized = slug !== undefined && slug !== '' ? normalizeSlug(slug) : undefined;
+    if (normalized !== undefined && normalized.length === 0) {
+      return { success: false, error: 'Адрес должен содержать хотя бы один символ (латиница, цифры, дефис)' };
+    }
+    if (normalized !== undefined) {
+      const list = getCalculatorList();
+      const conflict = list.find((c: any) => c.slug === normalized && c.id !== id);
+      if (conflict) return { success: false, error: `Адрес «${normalized}» уже занят` };
+    }
+    calculator.slug = normalized;
+    calculator.updatedAt = Date.now();
+    localStorage.setItem(`calc-${id}`, JSON.stringify(calculator));
+    const list = getCalculatorList();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      const newList = list.map((c, i) => (i === idx ? { ...c, slug: calculator.slug } : c));
+      localStorage.setItem(CALC_LIST_KEY, JSON.stringify(newList));
+    }
+    return { success: true };
   } catch (e) {
-    console.error('Ошибка загрузки списка калькуляторов:', e);
-    return [];
+    return { success: false, error: e instanceof Error ? e.message : 'Ошибка' };
   }
 }
 
@@ -197,6 +334,17 @@ export function updateCalculatorStatus(
     });
 
     localStorage.setItem(`calc-${id}`, JSON.stringify(calculator));
+
+    // Обновляем статус в общем списке (неизменяемо)
+    const list = getCalculatorList();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx >= 0) {
+      const newList = list.map((c, i) =>
+        i === idx ? { ...c, status: newStatus, updatedAt: calculator.updatedAt } : c
+      );
+      localStorage.setItem(CALC_LIST_KEY, JSON.stringify(newList));
+    }
+
     return { success: true };
   } catch (e) {
     return {
@@ -250,21 +398,22 @@ export function addComment(
 }
 
 /**
- * Получает калькуляторы по статусу
+ * Получает калькуляторы по статусу.
+ * Обходит все ключи calc-* в localStorage напрямую — не зависит от calculators-list.
  */
 export function getCalculatorsByStatus(status: CalculatorStatus): SavedCalculator[] {
-  const list = getCalculatorList();
+  if (typeof localStorage === 'undefined') return [];
   const calculators: SavedCalculator[] = [];
-  
-  for (const item of list) {
-    if (item.status === status) {
-      const calc = loadCalculator(item.id);
-      if (calc) {
-        calculators.push(calc);
-      }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
+    const id = key.slice(CALC_PREFIX.length);
+    if (!id) continue;
+    const calc = loadCalculator(id);
+    if (calc && calc.status === status) {
+      calculators.push(calc);
     }
   }
-  
   return calculators.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
@@ -278,18 +427,19 @@ export function deleteCalculator(id: string): boolean {
     // Удаляем из списка
     const list = getCalculatorList();
     const filtered = list.filter(c => c.id !== id);
-    localStorage.setItem('calculators-list', JSON.stringify(filtered));
+    localStorage.setItem(CALC_LIST_KEY, JSON.stringify(filtered));
     
     return true;
-  } catch (e) {
-    console.error('Ошибка удаления калькулятора:', e);
+  } catch {
     return false;
   }
 }
 
 /**
- * Генерирует публичную ссылку на калькулятор
+ * Генерирует публичную ссылку на калькулятор (предпочитает slug, если задан)
  */
 export function getPublicUrl(calculatorId: string, baseUrl: string = window.location.origin): string {
-  return `${baseUrl}/calc/${calculatorId}`;
+  const calc = loadCalculator(calculatorId);
+  const path = calc?.slug ?? calculatorId;
+  return `${baseUrl}/calculators/${path}`;
 }

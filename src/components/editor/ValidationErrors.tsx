@@ -6,9 +6,11 @@ import type { Block } from '@/types/blocks';
 
 interface ValidationErrorsProps {
   blocks: Block[];
+  /** При клике по ошибке — выделить блок в редакторе */
+  onSelectBlock?: (blockId: string) => void;
 }
 
-const ValidationErrors: React.FC<ValidationErrorsProps> = ({ blocks }) => {
+const ValidationErrors: React.FC<ValidationErrorsProps> = ({ blocks, onSelectBlock }) => {
   if (blocks.length === 0) return null;
   
   const validation = validateBlocks(blocks);
@@ -19,28 +21,51 @@ const ValidationErrors: React.FC<ValidationErrorsProps> = ({ blocks }) => {
     <div style={{ 
       margin: '12px 0', 
       padding: '12px', 
-      background: '#ffe6e6', 
-      border: '1px solid #ff9999', 
+      background: 'var(--color-error-bg)', 
+      border: '1px solid var(--color-error-border)', 
       borderRadius: 6,
-      fontSize: 13
+      fontSize: 13,
+      color: 'var(--pico-color)',
     }}>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: '#c00' }}>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: 'var(--color-danger)' }}>
         Ошибки валидации ({validation.errors.length}):
       </div>
-      <ul style={{ margin: 0, paddingLeft: 20, color: '#800' }}>
+      <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--color-danger)' }}>
         {validation.errors.map((error, idx) => (
           <li key={idx} style={{ marginBottom: 4 }}>
-            <strong>{error.blockId}</strong>
-            {error.field && ` (${error.field})`}: {error.message}
+            {onSelectBlock ? (
+              <button
+                type="button"
+                onClick={() => onSelectBlock(error.blockId)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  color: 'var(--color-danger)',
+                  textAlign: 'left',
+                  font: 'inherit',
+                  textDecoration: 'underline',
+                }}
+              >
+                <strong>{error.blockId}</strong>
+                {error.field && ` (${error.field})`}: {error.message}
+              </button>
+            ) : (
+              <>
+                <strong>{error.blockId}</strong>
+                {error.field && ` (${error.field})`}: {error.message}
+              </>
+            )}
           </li>
         ))}
       </ul>
       {validation.warnings.length > 0 && (
         <>
-          <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: '#880' }}>
+          <div style={{ fontWeight: 600, marginTop: 12, marginBottom: 8, color: 'var(--color-warning-text)' }}>
             Предупреждения ({validation.warnings.length}):
           </div>
-          <ul style={{ margin: 0, paddingLeft: 20, color: '#660' }}>
+          <ul style={{ margin: 0, paddingLeft: 20, color: 'var(--color-warning-text)' }}>
             {validation.warnings.map((warning, idx) => (
               <li key={idx} style={{ marginBottom: 4 }}>
                 <strong>{warning.blockId}</strong>

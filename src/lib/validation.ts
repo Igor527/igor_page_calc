@@ -2,6 +2,7 @@
 
 import type { Block, InputBlock, FormulaBlock, DataTableBlock, SelectFromTableBlock, ImageBlock, TableRangeBlock, TableLookupBlock } from '../types/blocks';
 import { isValidBlockId, isValidFormula, isValidUrl } from './security';
+import { normalizeTableData } from './tableData';
 
 export interface ValidationError {
   blockId: string;
@@ -60,7 +61,7 @@ export function validateBlocks(blocks: Block[]): ValidationResult {
   
   // Проверка 3: Зависимости (проверка существования ссылок)
   for (const block of blocks) {
-    const depErrors = validateDependencies(block, blockIds);
+    const depErrors = validateDependencies(block, blockIds, blocks);
     errors.push(...depErrors);
   }
   
@@ -133,26 +134,53 @@ function validateBlockFields(block: Block, allBlockIds: Set<string>): Validation
           message: 'Поле name обязательно для data_table блока',
         });
       }
-      if (!Array.isArray(table.columns) || table.columns.length === 0) {
-        errors.push({
-          blockId: block.id,
-          field: 'columns',
-          message: 'Поле columns должно быть непустым массивом',
-        });
-      }
       if (!Array.isArray(table.rows)) {
         errors.push({
           blockId: block.id,
           field: 'rows',
           message: 'Поле rows должно быть массивом',
         });
+        break;
       }
-      // Ограничение размера таблицы
-      if (Array.isArray(table.rows) && table.rows.length > 500) {
+
+      const hasColumns = Array.isArray(table.columns) && table.columns.length > 0;
+      const rowsArray = table.rows as Array<any>;
+      const hasMatrixRows = rowsArray.length > 0 && rowsArray.every((row) => Array.isArray(row));
+      const hasObjectRows = rowsArray.length > 0 && rowsArray.every((row) => row && typeof row === 'object' && !Array.isArray(row));
+
+      if (!hasColumns && !hasMatrixRows) {
+        errors.push({
+          blockId: block.id,
+          field: 'columns',
+          message: 'Нужно указать columns или использовать матричный формат rows с первой строкой заголовков',
+        });
+      }
+
+      if (!hasMatrixRows && !hasObjectRows && rowsArray.length > 0) {
         errors.push({
           blockId: block.id,
           field: 'rows',
-          message: `Таблица содержит ${table.rows.length} строк. Максимально допустимо 500 строк. Для больших таблиц обратитесь к разработчику.`,
+          message: 'rows должен быть массивом объектов или матрицей',
+        });
+      }
+
+      if (hasMatrixRows && rowsArray.length > 0) {
+        const header = rowsArray[0];
+        if (!Array.isArray(header) || header.length === 0) {
+          errors.push({
+            blockId: block.id,
+            field: 'rows',
+            message: 'В матрице первая строка должна содержать заголовки столбцов',
+          });
+        }
+      }
+      // Ограничение размера таблицы
+      const rowCount = hasMatrixRows ? Math.max(0, rowsArray.length - 1) : rowsArray.length;
+      if (rowCount > 500) {
+        errors.push({
+          blockId: block.id,
+          field: 'rows',
+          message: `Таблица содержит ${rowCount} строк. Максимально допустимо 500 строк. Для больших таблиц обратитесь к разработчику.`,
         });
       }
       break;
@@ -302,7 +330,7 @@ function validateBlockFields(block: Block, allBlockIds: Set<string>): Validation
 /**
  * Валидирует зависимости блока (ссылки на другие блоки)
  */
-function validateDependencies(block: Block, allBlockIds: Set<string>): ValidationError[] {
+function validateDependencies(block: Block, allBlockIds: Set<string>, blocks: Block[]): ValidationError[] {
   const errors: ValidationError[] = [];
   
   if (block.type === 'formula') {
@@ -376,6 +404,35 @@ function validateDependencies(block: Block, allBlockIds: Set<string>): Validatio
         field: 'dataSource',
         message: `Источник данных "${tbl.dataSource}" не найден`,
       });
+    } else if (tbl.dataSource && allBlockIds.has(tbl.dataSource)) {
+      // Проверяем существование столбцов в выбранной таблице
+      const sourceTable = blocks.find(b => b.id === tbl.dataSource && b.type === 'data_table') as DataTableBlock | undefined;
+      if (sourceTable) {
+        const normalized = normalizeTableData(sourceTable);
+        const columns = normalized.columns;
+        
+        if (tbl.key_col && !columns.includes(tbl.key_col)) {
+          // Проверяем, не является ли key_col ID блока
+          if (!allBlockIds.has(tbl.key_col)) {
+            errors.push({
+              blockId: block.id,
+              field: 'key_col',
+              message: `Столбец "${tbl.key_col}" не найден в таблице "${tbl.dataSource}". Доступные столбцы: ${columns.join(', ')}`,
+            });
+          }
+        }
+        
+        if (tbl.target_col && !columns.includes(tbl.target_col)) {
+          // Проверяем, не является ли target_col ID блока (динамический выбор столбца)
+          if (!allBlockIds.has(tbl.target_col)) {
+            errors.push({
+              blockId: block.id,
+              field: 'target_col',
+              message: `Столбец "${tbl.target_col}" не найден в таблице "${tbl.dataSource}". Доступные столбцы: ${columns.join(', ')}`,
+            });
+          }
+        }
+      }
     }
   }
 

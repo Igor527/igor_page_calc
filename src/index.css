@@ -1,0 +1,719 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --site-header-height: 56px;
+    --site-footer-height: 56px;
+    --content-offset-from-header: 112px;
+    /* Совместимость с компонентами, ранее использовавшими Pico */
+    --pico-color: #1f2937;
+    --pico-muted-color: #6b7280;
+    --pico-background-color: #f9fafb;
+    --pico-card-background-color: #ffffff;
+    --pico-border-color: #e5e7eb;
+    --pico-primary: #2563eb;
+    --pico-primary-inverse: #ffffff;
+    --pico-primary-background: #eff6ff;
+    --pico-primary-color: #2563eb;
+    --pico-primary-border-color: #2563eb;
+    --pico-form-element-background-color: #ffffff;
+    --pico-form-element-border-color: #d1d5db;
+    --pico-code-background-color: #f3f4f6;
+    --pico-muted-border-color: #e5e7eb;
+    --color-accent: #2563eb;
+    --color-accent-hover: #1d4ed8;
+    --color-muted-text: #6b7280;
+    --color-panel: #ffffff;
+    --color-panel-hover: #f3f4f6;
+    --color-danger: #dc2626;
+    --color-danger-bg: #b91c1c;
+    --color-success: #16a34a;
+    --color-success-bg: #15803d;
+    --color-warning: #ca8a04;
+    --color-warning-bg: #a16207;
+    --color-border: #e5e7eb;
+    --color-comment-bg: #f3f4f6;
+    --color-history-bg: #f9fafb;
+    --color-error-bg: #fef2f2;
+    --color-error-border: #fecaca;
+    --color-warning-text: #92400e;
+  }
+  .dark {
+    --pico-color: #f3f4f6;
+    --pico-muted-color: #9ca3af;
+    --pico-background-color: #111827;
+    --pico-card-background-color: #1f2937;
+    --pico-border-color: #374151;
+    --pico-primary: #3b82f6;
+    --pico-primary-inverse: #ffffff;
+    --pico-primary-background: #1e3a8a;
+    --pico-primary-color: #60a5fa;
+    --pico-primary-border-color: #3b82f6;
+    --pico-form-element-background-color: #1f2937;
+    --pico-form-element-border-color: #4b5563;
+    --pico-code-background-color: #374151;
+    --pico-muted-border-color: #4b5563;
+    --color-accent: #3b82f6;
+    --color-accent-hover: #2563eb;
+    --color-muted-text: #9ca3af;
+    --color-panel: #1f2937;
+    --color-panel-hover: #374151;
+    --color-danger: #f87171;
+    --color-danger-bg: #991b1b;
+    --color-success: #22c55e;
+    --color-success-bg: #166534;
+    --color-warning: #eab308;
+    --color-warning-bg: #854d0e;
+    --color-border: #374151;
+    --color-comment-bg: #1f2937;
+    --color-history-bg: #111827;
+    --color-error-bg: #450a0a;
+    --color-error-border: #7f1d1d;
+    --color-warning-text: #fcd34d;
+  }
+  html {
+    scroll-padding-top: var(--content-offset-from-header);
+  }
+  body {
+    @apply m-0 p-0 min-h-screen antialiased;
+    background-color: var(--pico-background-color);
+    color: var(--pico-color);
+  }
+  #root {
+    padding-top: var(--content-offset-from-header);
+    padding-bottom: var(--site-footer-height);
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  /* Выделение текста — контрастное во всех браузерах */
+  ::selection {
+    background-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+  }
+
+  /* Все поля ввода — фон и текст из темы (в тёмной теме не белые) */
+  input,
+  textarea {
+    background-color: var(--pico-form-element-background-color);
+    color: var(--pico-color);
+    border-color: var(--pico-form-element-border-color);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--pico-muted-color);
+  }
+
+  /* Редактируемые области (отчёт и т.п.) */
+  [contenteditable="true"] {
+    background-color: var(--pico-form-element-background-color);
+    color: var(--pico-color);
+  }
+
+  /* Select и option — явные цвета */
+  select,
+  select option {
+    background-color: var(--pico-form-element-background-color);
+    color: var(--pico-color);
+  }
+  select:focus {
+    outline: 2px solid var(--pico-primary);
+    outline-offset: 2px;
+  }
+  option:checked,
+  option:hover {
+    background-color: var(--pico-primary-background);
+    color: var(--pico-primary-color);
+  }
+  .dark option:checked,
+  .dark option:hover {
+    background-color: var(--pico-code-background-color);
+    color: var(--pico-color);
+  }
+
+  /* Все кнопки в стиле кнопки dark/light: нейтральная рамка 1px, без жирного outline */
+  button {
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--pico-border-color);
+    background-color: var(--pico-card-background-color);
+    color: var(--pico-color);
+    cursor: pointer;
+    outline: none; /* убираем жирный обвод от Tailwind .outline и др. */
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  button:hover:not(:disabled) {
+    background-color: var(--pico-background-color);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  /* Вариант «основное действие» — оставляем для явного класса */
+  button.primary,
+  .btn-primary {
+    background-color: var(--pico-primary);
+    color: var(--pico-primary-inverse);
+    border-color: var(--pico-primary);
+  }
+  button.primary:hover:not(:disabled),
+  .btn-primary:hover {
+    filter: brightness(1.05);
+  }
+
+  /* Фокус только при навигации с клавиатуры — тонкая обводка */
+  input:focus,
+  textarea:focus {
+    outline: 2px solid var(--pico-primary);
+    outline-offset: 2px;
+  }
+  button:focus-visible {
+    outline: 1px solid var(--pico-primary);
+    outline-offset: 1px;
+  }
+  button:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Публичный отчёт калькулятора — текст и рамки по теме */
+  .calculator-report {
+    color: var(--pico-color);
+  }
+  .calculator-report table {
+    border-color: var(--pico-border-color);
+  }
+  .calculator-report th,
+  .calculator-report td {
+    border-color: var(--pico-border-color);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-3 py-1.5 rounded text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors;
+  }
+  .btn-secondary {
+    @apply px-3 py-1.5 rounded text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors;
+  }
+  .link-primary {
+    @apply text-blue-600 dark:text-blue-400 hover:underline;
+  }
+}
+
+/* Убираем жирный outline у кнопок с классом outline/secondary (Tailwind даёт 2px) */
+button.outline,
+button.secondary {
+  outline: none !important;
+}
+
+/* Цвета Ганта (для gantt-task-react) */
+:root, .light {
+  --gantt-bar-bg: #94a3b8;
+  --gantt-bar-bg-selected: #64748b;
+  --gantt-bar-progress: #3b82f6;
+  --gantt-bar-progress-selected: #2563eb;
+  --gantt-milestone: #eab308;
+  --gantt-milestone-selected: #ca8a04;
+  --gantt-arrow: #64748b;
+  --gantt-today: rgba(59, 130, 246, 0.15);
+}
+.dark {
+  --gantt-bar-bg: #475569;
+  --gantt-bar-bg-selected: #334155;
+  --gantt-bar-progress: #60a5fa;
+  --gantt-bar-progress-selected: #3b82f6;
+  --gantt-milestone: #facc15;
+  --gantt-milestone-selected: #eab308;
+  --gantt-arrow: #94a3b8;
+  --gantt-today: rgba(96, 165, 250, 0.2);
+}
+
+/* Область Ганта: фон по теме. Классы библиотеки — хеши (_3eULf и т.д.), поэтому перебиваем все div и svg. */
+.planner-gantt-wrap,
+.planner-gantt-wrap div {
+  background-color: var(--pico-background-color) !important;
+  background: var(--pico-background-color) !important;
+  color: var(--pico-color);
+}
+.planner-gantt-wrap svg {
+  background-color: var(--pico-background-color) !important;
+  background: var(--pico-background-color) !important;
+}
+/* Текст в календаре и подписи */
+.planner-gantt-wrap svg text {
+  fill: var(--pico-color) !important;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+.planner-gantt-wrap svg g.calendar text {
+  font-size: 11px !important;
+  fill: var(--pico-color) !important;
+}
+/* Сетка и линии */
+.planner-gantt-wrap [class*="rowLine"],
+.planner-gantt-wrap [class*="tick"],
+.planner-gantt-wrap svg line {
+  stroke: var(--pico-border-color) !important;
+}
+/* Фон строк сетки (rect без fill = чёрные, т.к. CSS библиотеки не подключаем) */
+.planner-gantt-wrap svg g.rows rect {
+  fill: var(--pico-background-color) !important;
+}
+.planner-gantt-wrap .today rect {
+  fill: var(--gantt-today) !important;
+}
+/* Заголовок календаря (полоса с годом и месяцами) — по теме, не чёрный */
+.planner-gantt-wrap svg rect._35nLX,
+.planner-gantt-wrap svg [class*="calendarHeader"] {
+  fill: var(--pico-background-color) !important;
+  stroke: var(--pico-border-color) !important;
+}
+
+/* В календаре Ганта: сначала номера недель (нижняя строка поднимаем вверх), затем месяц */
+.planner-gantt-wrap svg g.calendar ._9w8d5 {
+  transform: translateY(-0.35em);
+}
+.planner-gantt-wrap svg g.calendar ._2q1Kt {
+  transform: translateY(0.35em);
+}
+
+/* Ползунок прокрутки */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-amber-400 rounded hover:bg-amber-500;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #eab308 #e5e7eb;
+}
+.dark * {
+  scrollbar-color: #eab308 #374151;
+}
+
+/* ─── Notes / Blog rendered content ─── */
+.note-content img,
+.blog-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 8px 0;
+}
+.note-content pre,
+.blog-content pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid var(--pico-border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  position: relative;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+.note-content pre code,
+.blog-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.note-content code,
+.blog-content code {
+  font-size: 0.88em;
+  background: var(--pico-code-background-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+.note-content blockquote,
+.blog-content blockquote {
+  border-left: 3px solid var(--pico-primary);
+  padding-left: 12px;
+  margin-left: 0;
+  color: var(--pico-muted-color);
+}
+.note-content table,
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.note-content th,
+.note-content td,
+.blog-content th,
+.blog-content td {
+  border: 1px solid var(--pico-border-color);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+/* ─── TipTap RichTextEditor ─── */
+.tiptap {
+  outline: none;
+}
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--pico-muted-color);
+  pointer-events: none;
+  height: 0;
+}
+.rte-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 6px 0;
+}
+.rte-body blockquote {
+  border-left: 3px solid var(--pico-primary);
+  padding-left: 12px;
+  margin-left: 0;
+  color: var(--pico-muted-color);
+}
+.rte-body pre {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border: 1px solid var(--pico-border-color);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  position: relative;
+  font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 13.5px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+.rte-body pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+}
+.rte-body code {
+  font-size: 0.88em;
+  background: var(--pico-code-background-color);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  color: var(--pico-primary-color);
+}
+.rte-body h2, .rte-body h3 {
+  margin: 12px 0 4px;
+}
+
+/* Details/summary (collapsible/spoiler) */
+.rte-body details,
+.note-content details,
+.blog-content details {
+  border: 1px solid var(--pico-border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+.rte-body summary,
+.note-content summary,
+.blog-content summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  padding: 2px 0;
+}
+.rte-body details[open] > summary,
+.note-content details[open] > summary,
+.blog-content details[open] > summary {
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--pico-border-color);
+  padding-bottom: 6px;
+}
+
+/* Image resize handles in TipTap */
+.rte-body .image-resizer {
+  display: inline-flex;
+  position: relative;
+}
+.rte-body .image-resizer .resize-trigger {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 12px;
+  height: 12px;
+  background: var(--pico-primary);
+  border-radius: 50%;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.rte-body .image-resizer:hover .resize-trigger {
+  opacity: 1;
+}
+
+/* TipTap details (spoiler) in editor: NodeView = div[data-type="details"] > button + div > summary + div[data-type="detailsContent"] */
+.rte-body [data-type="details"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  border: 1px solid var(--pico-border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+.rte-body [data-type="details"] > button {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--pico-muted-color);
+  border-radius: 4px;
+}
+.rte-body [data-type="details"] > button:hover {
+  background: var(--pico-secondary-background);
+  color: var(--pico-color);
+}
+.rte-body [data-type="details"] > button::before {
+  content: '▶ ';
+}
+.rte-body [data-type="details"].is-open > button::before {
+  content: '▼ ';
+}
+.rte-body [data-type="details"] > div:last-child {
+  flex: 1;
+  min-width: 0;
+}
+.rte-body [data-type="details"] summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  padding: 2px 0;
+  list-style: none;
+  display: block;
+}
+.rte-body [data-type="details"] summary::marker,
+.rte-body [data-type="details"] summary::-webkit-details-marker {
+  display: none;
+}
+.rte-body [data-type="details"].is-open > div:last-child > summary {
+  display: block;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--pico-border-color);
+}
+.rte-body [data-type="details"].is-open [data-type="detailsContent"] {
+  padding: 6px 0;
+}
+/* Rendered HTML details (view mode) and TipTap detailsSummary marker fallback */
+.rte-body [data-type="details"].is-open > [data-type="detailsSummary"]::marker {
+  content: '▼ ';
+}
+.rte-body [data-type="details"]:not(.is-open) > [data-type="detailsSummary"]::marker {
+  content: '▶ ';
+}
+.rte-body details summary,
+.note-content details summary,
+.blog-content details summary {
+  list-style: none;
+}
+.rte-body details summary::-webkit-details-marker {
+  display: none;
+}
+.rte-body [data-type="detailsContent"] {
+  padding: 6px 0;
+}
+
+/* ─── Tag chips ─── */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 12px;
+  background: var(--pico-primary-background);
+  color: var(--pico-primary);
+  border: 1px solid var(--pico-primary-border-color);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tag-chip:hover {
+  opacity: 0.8;
+}
+.tag-chip-remove {
+  cursor: pointer;
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 2px;
+}
+.tag-chip-remove:hover {
+  opacity: 1;
+}
+
+/* ─── Code block copy button ─── */
+.code-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 5px;
+  background: rgba(255,255,255,0.08);
+  color: #a6adc8;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 2;
+  font-family: system-ui, -apple-system, sans-serif;
+  user-select: none;
+}
+pre:hover .code-copy-btn,
+.code-copy-btn:focus-visible {
+  opacity: 1;
+}
+.code-copy-btn:hover {
+  background: rgba(255,255,255,0.16);
+  color: #cdd6f4;
+}
+.code-copy-btn.copied {
+  opacity: 1;
+  background: rgba(22,163,74,0.25);
+  color: #4ade80;
+  border-color: rgba(74,222,128,0.3);
+}
+
+/* ─── Blog & Notes: responsive + touch-friendly ─── */
+.blog-page-main,
+.blog-post-main {
+  box-sizing: border-box;
+  padding-left: var(--blog-padding-x, 1rem);
+  padding-right: var(--blog-padding-x, 1rem);
+  padding-top: var(--blog-padding-top, 5rem);
+  padding-bottom: var(--blog-padding-bottom, 5rem);
+}
+.blog-article,
+.blog-card-inner {
+  padding: var(--blog-card-padding, 1.5rem);
+}
+.blog-toolbar-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.blog-touch-btn,
+.notes-touch-btn {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .blog-page-main,
+  .blog-post-main {
+    --blog-padding-x: 0.75rem;
+    --blog-padding-top: 1rem;
+    --blog-padding-bottom: 2rem;
+  }
+  .blog-article,
+  .blog-card-inner {
+    --blog-card-padding: 1rem;
+  }
+  .blog-content,
+  .note-content {
+    font-size: 15px !important;
+    line-height: 1.65 !important;
+    word-break: break-word;
+  }
+}
+
+/* Notes: sidebar + feed on mobile */
+.notes-layout {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
+}
+.notes-sidebar {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--pico-border-color);
+  background: var(--pico-card-background-color);
+  min-height: 0;
+}
+.notes-feed {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+  padding: 1rem;
+  padding-bottom: 3rem;
+}
+.notes-sidebar-width {
+  width: 270px;
+  min-width: 270px;
+}
+@media (max-width: 768px) {
+  .notes-layout {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+  }
+  .notes-sidebar {
+    width: 100%;
+    max-height: 45vh;
+    overflow-y: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--pico-border-color);
+    flex-shrink: 0;
+  }
+  .notes-feed {
+    flex: 1;
+    padding: 0.75rem;
+    padding-bottom: 2rem;
+  }
+  .notes-sidebar-width {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
+/* Poll/Todo blocks: touch-friendly controls */
+.poll-option-label,
+.todo-item-label {
+  min-height: 44px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.poll-option-label input,
+.todo-item-label input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .poll-block,
+  .todo-block {
+    margin: 1rem 0 !important;
+    padding: 1rem !important;
+  }
+}

@@ -1,0 +1,81 @@
+export type SectionType = 'hero' | 'text' | 'link' | 'widget' | 'divider';
+
+export interface PageSection {
+  id: string;
+  type: SectionType;
+  title?: string;
+  subtitle?: string;
+  html?: string;
+  linkLabel?: string;
+  linkUrl?: string;
+  adminOnly?: boolean;
+  widgetType?: string;
+}
+
+const STORAGE_KEY = 'igor-page-layouts';
+
+function loadAll(): Record<string, PageSection[]> {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch { return {}; }
+}
+
+export function loadPageSections(pageId: string): PageSection[] {
+  const all = loadAll();
+  return all[pageId] ?? getDefaults(pageId);
+}
+
+export function savePageSections(pageId: string, sections: PageSection[]): void {
+  const all = loadAll();
+  all[pageId] = sections;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+
+export function resetPageSections(pageId: string): void {
+  const all = loadAll();
+  delete all[pageId];
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+
+export function hasCustomLayout(pageId: string): boolean {
+  return !!loadAll()[pageId];
+}
+
+function sec(id: string, type: SectionType, rest: Partial<PageSection> = {}): PageSection {
+  return { id, type, ...rest };
+}
+
+export function getDefaults(pageId: string): PageSection[] {
+  switch (pageId) {
+    case 'welcome':
+      return [
+        sec('w1', 'hero', {
+          title: 'Добро пожаловать!',
+          subtitle: 'Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе.',
+        }),
+        sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor' }),
+        sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true }),
+        sec('w4', 'link', { linkLabel: 'Панель ревью', linkUrl: '/admin/review' }),
+        sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
+        sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
+        sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
+        sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
+      ];
+    case 'calculators':
+      return [
+        sec('c1', 'hero', {
+          title: 'Опубликованные калькуляторы',
+          subtitle: 'Выберите калькулятор для расчётов.',
+        }),
+        sec('c2', 'widget', { widgetType: 'calculators' }),
+      ];
+    case 'blog':
+      return [
+        sec('b1', 'widget', { widgetType: 'page-content' }),
+      ];
+    default:
+      return [
+        sec('d1', 'widget', { widgetType: 'page-content' }),
+      ];
+  }
+}

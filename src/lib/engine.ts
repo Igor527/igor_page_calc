@@ -3,6 +3,7 @@
 
 import { evaluate } from 'mathjs';
 import { getFormulaErrorMessage } from './errors';
+import { normalizeTableData } from './tableData';
 import type {
   Block,
   InputBlock,
@@ -39,7 +40,27 @@ function buildFormulaScope(values: Record<string, number | string>) {
   });
   scope.roundup = roundUp;
   scope.rounddown = roundDown;
+  scope.round = (x: number) => (typeof x === 'number' && isFinite(x) ? Math.round(x) : x);
+  // МГН увеличенных размеров по №945-ПП (ступенчато от общего числа мест)
+  scope.mgnEnlarged = (totalPlaces: number) => {
+    const n = typeof totalPlaces === 'number' && isFinite(totalPlaces) ? Number(totalPlaces) : 0;
+    if (n <= 100) return Math.ceil(n * 0.05);
+    if (n <= 200) return 5 + Math.ceil((n - 100) * 0.03);
+    if (n <= 500) return 8 + Math.ceil((n - 200) * 0.02);
+    return 14 + Math.ceil((n - 500) * 0.01);
+  };
   return scope;
+}
+
+function normalizeLookupValue(value: any): any {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed !== '' && !Number.isNaN(Number(trimmed))) {
+      return Number(trimmed);
+    }
+    return trimmed;
+  }
+  return value;
 }
 
 export function recalculateValues(
@@ -67,12 +88,18 @@ export function recalculateValues(
   for (const block of blocks) {
     if (block.type === 'data_table') {
       const table = block as DataTableBlock;
+      const normalized = normalizeTableData(table);
+      const normalizedTable: DataTableBlock = {
+        ...table,
+        columns: normalized.columns,
+        rows: normalized.rows,
+      };
       // Ограничиваем таблицу до 500 строк для производительности
-      if (Array.isArray(table.rows) && table.rows.length > 500) {
-        console.warn(`⚠️ Таблица "${table.id}" содержит ${table.rows.length} строк. Используются только первые 500 строк.`);
-        tables[block.id] = { ...table, rows: table.rows.slice(0, 500) } as DataTableBlock;
+      if (Array.isArray(normalizedTable.rows) && normalizedTable.rows.length > 500) {
+        console.warn(`⚠️ Таблица "${table.id}" содержит ${normalizedTable.rows.length} строк. Используются только первые 500 строк.`);
+        tables[block.id] = { ...normalizedTable, rows: normalizedTable.rows.slice(0, 500) } as DataTableBlock;
       } else {
-        tables[block.id] = table;
+        tables[block.id] = normalizedTable;
       }
       // Таблицы доступны в формулах через их id
     }
@@ -83,10 +110,20 @@ export function recalculateValues(
     if (block.type === 'select_from_table') {
       const sel = block as SelectFromTableBlock;
       const table = tables[sel.dataSource];
+      if (!table || !table.rows) {
+        values[block.id] = 'ERROR: Таблица не найдена для выбора';
+        continue;
+      }
+      if (!table.columns || !table.columns.includes(sel.column)) {
+        values[block.id] = `ERROR: Столбец "${sel.column}" не найден в таблице`;
+        continue;
+      }
       if (table && table.rows) {
         // Получаем выбранное значение (из inputs или defaultValue)
-        const selectedValue = values[block.id] !== undefined 
-          ? values[block.id] 
+        const hasErrorValue = typeof values[block.id] === 'string'
+          && (values[block.id] as string).startsWith('ERROR:');
+        const selectedValue = values[block.id] !== undefined && !hasErrorValue
+          ? values[block.id]
           : (sel.defaultValue !== undefined ? sel.defaultValue : '');
         
         // Применяем фильтр если есть
@@ -133,14 +170,24 @@ export function recalculateValues(
         }
         
         const rawOptions = filteredRows.map((row: any) => row[sel.column]);
+        if (rawOptions.length === 0) {
+          values[block.id] = 'ERROR: Нет доступных значений для выбора';
+          continue;
+        }
         
-        // Если значение не установлено, используем defaultValue или первое доступное
-        if (values[block.id] === undefined) {
-          if (sel.defaultValue !== undefined) {
-            values[block.id] = sel.defaultValue as any;
-          } else if (rawOptions.length > 0) {
-            values[block.id] = rawOptions[0] as any;
-          }
+        // Если значение не установлено или недоступно, используем defaultValue или первое доступное
+        const normalizedSelected = selectedValue === '' ? undefined : selectedValue;
+        const normalizedOpt = (v: any) => normalizeLookupValue(v);
+        const hasSelected = normalizedSelected !== undefined && rawOptions.some(
+          (o: any) => normalizedOpt(o) === normalizedOpt(normalizedSelected)
+        );
+        const matchedOption = hasSelected ? rawOptions.find((o: any) => normalizedOpt(o) === normalizedOpt(normalizedSelected)) : undefined;
+        if (hasSelected && matchedOption !== undefined) {
+          values[block.id] = matchedOption;
+        } else if (sel.defaultValue !== undefined) {
+          values[block.id] = sel.defaultValue as any;
+        } else if (rawOptions.length > 0) {
+          values[block.id] = rawOptions[0] as any;
         }
       }
     }
@@ -175,9 +222,18 @@ export function recalculateValues(
   for (const block of blocks) {
     if (block.type === 'table_lookup') {
       const tbl = block as TableLookupBlock;
+      if ((!tbl.dataSource || !tbl.dataSource.trim()) && (!Array.isArray(tbl.data) || tbl.data.length === 0)) {
+        values[block.id] = '';
+        continue;
+      }
       let key = tbl.selected_key;
       if (typeof key === 'string' && values[key] !== undefined) {
-        key = values[key] as any;
+        const resolved = values[key] as any;
+        if (typeof resolved === 'string' && (resolved.startsWith('Ошибка') || resolved.startsWith('ERROR:'))) {
+          values[block.id] = 'ERROR: Ключ содержит ошибку';
+          continue;
+        }
+        key = resolved;
       }
       let targetCol = tbl.target_col;
       if (typeof targetCol === 'string' && values[targetCol] !== undefined) {
@@ -186,14 +242,48 @@ export function recalculateValues(
           targetCol = value;
         }
       }
+      // K2: по образцу столбец по ТТК (inside/outside); если не выбран — по умолчанию outside
+      const isK2Lookup = block.id === 'k2Lookup';
+      if (isK2Lookup && (targetCol === 'selectTtk' || !targetCol)) {
+        targetCol = 'outside';
+      }
       let data: any[] = Array.isArray(tbl.data) ? tbl.data : [];
       if (data.length === 0 && tbl.dataSource && tables[tbl.dataSource]) {
         data = tables[tbl.dataSource].rows as any[];
       }
+      if (!Array.isArray(data) || data.length === 0) {
+        values[block.id] = 'ERROR: Таблица пуста или не найдена';
+        continue;
+      }
+      if (key === undefined || key === null || key === '') {
+        values[block.id] = '';
+        continue;
+      }
+      if (!tbl.key_col || !tbl.target_col) {
+        values[block.id] = 'ERROR: Не заданы ключевой или целевой столбец';
+        continue;
+      }
       // data: массив объектов
+      const normalizedKey = normalizeLookupValue(key);
       const found = Array.isArray(data)
-        ? data.find((row: any) => row[tbl.key_col] === key)
+        ? data.find((row: any) => normalizeLookupValue(row[tbl.key_col]) === normalizedKey)
         : undefined;
+      if (!found) {
+        if (isK2Lookup) {
+          values[block.id] = 0.9;
+        } else {
+          values[block.id] = 'ERROR: Значение по ключу не найдено';
+        }
+        continue;
+      }
+      if (found[targetCol] === undefined) {
+        if (isK2Lookup && (found['outside'] !== undefined || found['inside'] !== undefined)) {
+          targetCol = found['outside'] !== undefined ? 'outside' : 'inside';
+        } else {
+          values[block.id] = 'ERROR: Целевой столбец не найден';
+          continue;
+        }
+      }
       values[block.id] = found ? found[targetCol] : '';
     }
   }
@@ -204,14 +294,22 @@ export function recalculateValues(
       const tbl = block as TableRangeBlock;
       const table = tables[tbl.dataSource];
       const inputValue = values[tbl.inputId];
-      if (!table || inputValue === undefined) {
-        values[block.id] = tbl.fallbackValue ?? '';
+      if (!table) {
+        values[block.id] = 'ERROR: Таблица диапазонов не найдена';
+        continue;
+      }
+      if (inputValue === undefined) {
+        values[block.id] = 'ERROR: Входное значение для диапазона не задано';
         continue;
       }
       const rows = table.rows as Array<Record<string, any>>;
       const needle = Number(inputValue);
       if (!Number.isFinite(needle)) {
-        values[block.id] = tbl.fallbackValue ?? '';
+        values[block.id] = 'ERROR: Входное значение не является числом';
+        continue;
+      }
+      if (!tbl.maxColumn || !tbl.valueColumn) {
+        values[block.id] = 'ERROR: Не заданы колонки диапазона';
         continue;
       }
       const found = rows.find((row) => {
@@ -221,8 +319,23 @@ export function recalculateValues(
         if (!Number.isFinite(minVal)) return false;
         return needle >= minVal && needle <= maxVal;
       });
+      if (!found) {
+        values[block.id] = 'ERROR: Диапазон не найден';
+        continue;
+      }
+      if (found[tbl.valueColumn] === undefined) {
+        values[block.id] = 'ERROR: Колонка результата не найдена';
+        continue;
+      }
       values[block.id] = found ? found[tbl.valueColumn] : (tbl.fallbackValue ?? '');
     }
+  }
+
+  const hasBlockingErrors = Object.values(values).some(
+    (val) => typeof val === 'string' && (val.startsWith('Ошибка') || val.startsWith('ERROR:'))
+  );
+  if (hasBlockingErrors) {
+    return values;
   }
   
   // Также поддерживаем доступ к таблицам через синтаксис tableId[rowIndex][columnName]

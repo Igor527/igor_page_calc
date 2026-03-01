@@ -1,9 +1,11 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { useCalcStore } from '@/lib/store';
 import { sanitizeHtml, escapeHtml } from '@/lib/security';
-import { isErrorValue } from '@/lib/errors';
+import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations } from '@/lib/reportHtml';
+import { isErrorValue, extractErrorMessage } from '@/lib/errors';
 import { recalculateValues } from '@/lib/engine';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
+import { toMatrixTableBlock } from '@/lib/tableData';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
 import parkingDemoBundle from '@/data/parking_demo_bundle.json';
@@ -19,46 +21,6 @@ function formatValue(value: unknown): string {
   }
   return String(value);
 
-}
-
-function replaceTokensInHtml(
-  html: string,
-  blocks: Block[],
-  selectedId: string | null | undefined,
-  getDisplay: (id: string) => { text: string; isError?: boolean; title?: string }
-): string {
-  const parts = html.split(/(<[^>]+>)/g);
-  const allowedIds = new Set(blocks.map((b) => b.id));
-
-  let insideTokenSpan = false;
-  return parts
-    .map((part) => {
-      if (part.startsWith('<')) {
-        if (/^<span\b[^>]*data-token=/i.test(part)) insideTokenSpan = true;
-        if (/^<\/span>/i.test(part)) insideTokenSpan = false;
-        return part;
-      }
-      if (insideTokenSpan) return part;
-      return part.replace(/@([A-Za-z0-9_-]+)/g, (match, id) => {
-        if (!allowedIds.has(id)) return match;
-        const display = getDisplay(id);
-        const safeTitle = display.title ? ` title="${escapeHtml(display.title)}"` : '';
-        const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
-        return `<span data-token="${id}" class="${cls}"${safeTitle}>${escapeHtml(display.text)}</span>`;
-      });
-    })
-    .join('');
-}
-
-function applyTableSizing(html: string): string {
-  return html.replace(/<table([^>]*)>/gi, (match, attrs) => {
-    const widthMatch = attrs.match(/data-width\s*=\s*"([^"]+)"/i);
-    if (!widthMatch) return '<table>';
-    const raw = widthMatch[1].trim();
-    if (!/^\d{1,3}$/.test(raw)) return '<table>';
-    const numeric = Math.min(100, Math.max(10, Number(raw)));
-    return `<table style="width:${numeric}%">`;
-  });
 }
 
 function getTokenFromSelection(): string | null {
@@ -92,6 +54,8 @@ interface ReportPanelProps {
 
 export interface ReportPanelHandle {
   insertToken: (id: string) => void;
+  getEditorHtml: () => string;
+  setEditorHtml: (html: string) => void;
 }
 
 const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onSelect, selectedId }, ref) => {
@@ -102,19 +66,29 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   const [editorHtml, setEditorHtml] = useState<string>('');
   const editorRef = useRef<HTMLDivElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
-  const previewContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storageKey = 'igor-page-calc-report-html';
   const demoTemplate = parkingDemoBundle.reportHtml || '';
   const [tableRows, setTableRows] = useState<number>(3);
   const [tableCols, setTableCols] = useState<number>(3);
   const [tableWidth, setTableWidth] = useState<number>(100);
-  const [viewMode, setViewMode] = useState<'formulas' | 'values'>('formulas');
+  const [viewMode, setViewMode] = useState<'formulas' | 'values'>('values');
   const [reportScale, setReportScale] = useState<number>(1);
   const fontSizeKey = 'igor-page-calc-report-font-size';
   const [fontSize, setFontSize] = useState<number>(14);
+  const [tokenPopup, setTokenPopup] = useState<{ id: string; x: number; y: number } | null>(null);
   const tokenStyles = `.report-token{cursor:pointer;font-weight:600;color:var(--pico-color);} .report-token-active{background:#ffe08a;color:#222;padding:0 2px;border-radius:3px;}`;
-  const numberInputStyle = { width: 96, marginBottom: 0, paddingRight: 20, fontSize: 13 };
+  const numberInputStyle = { width: 70, marginBottom: 0, paddingRight: 12, fontSize: 12, height: 28 };
+
+  const errorItems = useMemo(() => {
+    return blocks
+      .filter((b) => isErrorValue(values[b.id]))
+      .map((b) => ({
+        id: b.id,
+        label: b.label || b.id,
+        message: extractErrorMessage(values[b.id]) || 'Неизвестная ошибка',
+      }));
+  }, [blocks, values]);
 
   useEffect(() => {
     const saved = localStorage.getItem(storageKey);
@@ -161,6 +135,20 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
     if (!editorHtml) return;
     localStorage.setItem(storageKey, editorHtml);
   }, [editorHtml]);
+
+  useEffect(() => {
+    const handleReportReplace = (event: Event) => {
+      const custom = event as CustomEvent<string>;
+      if (!custom.detail || typeof custom.detail !== 'string') return;
+      setEditorHtml(custom.detail);
+      if (editorRef.current && document.activeElement !== editorRef.current) {
+        editorRef.current.innerHTML = custom.detail;
+      }
+    };
+
+    window.addEventListener('report-html-replace', handleReportReplace);
+    return () => window.removeEventListener('report-html-replace', handleReportReplace);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(fontSizeKey, String(fontSize));
@@ -217,6 +205,9 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   const getTokenHint = useCallback((id: string) => {
     const block = blockMap.get(id);
     if (!block) return '';
+    if (block.description && block.description.trim()) {
+      return block.description.trim();
+    }
     if (block.type === 'formula') {
       const valuesLine = `@${block.id} = ${formatFormulaValues(block)}`.trim();
       const tokensLine = `${formatValue(values[block.id])} = ${formatFormulaTokens(block)}`.trim();
@@ -225,26 +216,51 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
     return formatValue(values[id]);
   }, [blockMap, formatFormulaTokens, formatFormulaValues, values]);
 
-  const getDisplayForMode = useCallback((id: string) => {
+  const getTokenPopupLines = useCallback((id: string) => {
+    const block = blockMap.get(id);
+    if (block && block.type === 'formula') {
+      const valuesLine = `${formatValue(values[id])} = ${formatFormulaValues(block)}`.trim();
+      const tokensLine = `@${id} = ${formatFormulaTokens(block)}`.trim();
+      return { line1: valuesLine, line2: tokensLine };
+    }
+    return { line1: formatValue(values[id]), line2: `@${id}` };
+  }, [blockMap, formatFormulaTokens, formatFormulaValues, values]);
+
+  const getDisplayForMode = useCallback((id: string, suffix?: string) => {
     const block = blockMap.get(id);
     const value = values[id];
     const title = getTokenHint(id);
-    if (!block) {
-      return { text: formatValue(value), title };
+    // Токен @id:expr — формула с числами и результат (в окне формулы; round убран из отображения)
+    if (suffix === 'expr' && block) {
+      const text = buildFormulaWithValues(block, values, (v) => formatValue(v), false, true);
+      return { text, title };
     }
-    if (block.type === 'formula') {
-      const valuesLine = `@${block.id} = ${formatFormulaValues(block)}`.trim();
-      const tokensLine = `${formatValue(values[block.id])} = ${formatFormulaTokens(block)}`.trim();
-      if (viewMode === 'values') {
-        return { text: valuesLine, title };
-      }
-      return { text: tokensLine, title };
+    // Токен @id:exprOnly или @id.stepsCalculations — шаги вычислений (выражение с числами, без round)
+    if ((suffix === 'exprOnly' || suffix === 'stepsCalculations') && block) {
+      const text = getStepsCalculations(block, values, (v) => formatValue(v));
+      return { text, title };
+    }
+    if (viewMode === 'formulas') {
+      const tokenText = suffix ? (suffix === 'stepsCalculations' ? `@${id}.${suffix}` : `@${id}:${suffix}`) : `@${id}`;
+      return { text: tokenText, title };
     }
     if (isErrorValue(value)) {
       return { text: `Ошибка: ${formatValue(value)}`, title };
     }
+    // В ячейке значения — только число (подстановка "= expr" только в ячейке формулы через @id:exprOnly)
     return { text: formatValue(value), title };
   }, [blockMap, formatFormulaTokens, formatFormulaValues, getTokenHint, viewMode, values]);
+
+  const handleTokenClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null;
+    const token = target?.dataset?.token;
+    if (!token) {
+      setTokenPopup(null);
+      return;
+    }
+    onSelect?.(token);
+    setTokenPopup({ id: token, x: event.clientX, y: event.clientY });
+  }, [onSelect]);
 
   const previewHtml = useMemo(() => {
     const safeHtml = sanitizeHtml(editorHtml || '');
@@ -258,23 +274,25 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   }, [editorHtml, blocks, selectedId, getDisplayForMode]);
 
   useEffect(() => {
-    if (viewMode !== 'formulas') return;
     const editor = editorRef.current;
     if (!editor) return;
     if (document.activeElement === editor) return;
     if (editor.innerHTML !== decoratedEditorHtml) {
       editor.innerHTML = decoratedEditorHtml;
     }
-  }, [viewMode, decoratedEditorHtml]);
+  }, [decoratedEditorHtml]);
 
   useEffect(() => {
     if (!selectedId) return;
-    const container = viewMode === 'formulas' ? editorContainerRef.current : previewContainerRef.current;
+    const container = editorContainerRef.current;
     if (!container) return;
-    const target = container.querySelector(`[data-token="${selectedId}"]`) as HTMLElement | null;
+    const target =
+      container.querySelector(`[data-token="${selectedId}"]`) as HTMLElement | null
+      ?? container.querySelector(`[data-token^="${selectedId}."]`) as HTMLElement | null
+      ?? container.querySelector(`[data-token^="${selectedId}:"]`) as HTMLElement | null;
     if (!target) return;
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [selectedId, viewMode, editorHtml, previewHtml]);
+  }, [selectedId, editorHtml, previewHtml]);
 
   const applyFormat = (command: string) => {
     document.execCommand(command, false);
@@ -301,7 +319,17 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
     }
   }, [getTokenHint, viewMode]);
 
-  useImperativeHandle(ref, () => ({ insertToken }), [insertToken]);
+  const getEditorHtml = useCallback(() => {
+    if (editorRef.current) return editorRef.current.innerHTML;
+    return editorHtml;
+  }, [editorHtml]);
+
+  const setEditorHtmlExternal = useCallback((html: string) => {
+    setEditorHtml(html);
+    if (editorRef.current) editorRef.current.innerHTML = html;
+  }, []);
+
+  useImperativeHandle(ref, () => ({ insertToken, getEditorHtml, setEditorHtml: setEditorHtmlExternal }), [insertToken, getEditorHtml, setEditorHtmlExternal]);
 
   const insertTable = () => {
     const rows = Math.min(20, Math.max(1, tableRows));
@@ -318,8 +346,9 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   };
 
   const exportJson = () => {
+    const normalizedBlocks = blocks.map((block) => block.type === 'data_table' ? toMatrixTableBlock(block as any) : block);
     const payload = {
-      blocks,
+      blocks: normalizedBlocks,
       reportHtml: editorHtml,
     };
     const json = JSON.stringify(payload, null, 2);
@@ -335,8 +364,9 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   };
 
   const exportDemoJson = () => {
+    const normalizedBlocks = (parkingDemo as Block[]).map((block) => block.type === 'data_table' ? toMatrixTableBlock(block as any) : block);
     const payload = {
-      blocks: parkingDemo as Block[],
+      blocks: normalizedBlocks,
       reportHtml: demoTemplate,
     };
     const json = JSON.stringify(payload, null, 2);
@@ -402,8 +432,7 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
             editorRef.current.innerHTML = nextReportHtml;
           }
         }
-      } catch (error) {
-        console.error('Ошибка импорта JSON:', error);
+      } catch {
         alert('Не удалось импортировать JSON');
       }
     };
@@ -422,29 +451,52 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
           top: 0,
           zIndex: 2,
           background: 'var(--pico-card-background-color)',
-          paddingBottom: 6,
+          paddingBottom: 4,
           borderBottom: '1px solid var(--pico-border-color)',
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
-          gap: 6,
+          gap: 4,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.05rem', margin: 0 }}>Редактор отчета</h2>
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
+        {errorItems.length > 0 && (
+          <div
+            style={{
+              padding: '6px 8px',
+              border: '1px solid #ffc107',
+              borderRadius: 6,
+              background: '#3b2e07',
+              color: '#ffe39a',
+              fontSize: 12,
+            }}
+          >
+            Обнаружены ошибки в данных. Исправьте значения таблиц/вводов и повторите расчет.
+            {errorItems.slice(0, 3).map((item) => (
+              <div key={item.id} style={{ marginTop: 4 }}>
+                • {item.label}: {item.message}
+              </div>
+            ))}
+            {errorItems.length > 3 && (
+              <div style={{ marginTop: 4 }}>… и еще {errorItems.length - 3} ошибок</div>
+            )}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: '100%', alignItems: 'center' }}>
             <button
               type="button"
               onClick={() => setViewMode(viewMode === 'formulas' ? 'values' : 'formulas')}
-              style={{ fontSize: 13 }}
+              style={{ fontSize: 12, padding: '4px 8px' }}
             >
               {viewMode === 'formulas' ? 'Показать значения' : 'Показать формулы'}
             </button>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              Размер шрифта
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              Шрифт, px
               <input
                 type="number"
                 min={10}
@@ -453,16 +505,8 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
                 onChange={(e) => setFontSize(Number(e.target.value) || 14)}
                 style={numberInputStyle}
               />
-              <input
-                type="range"
-                min={10}
-                max={28}
-                value={fontSize}
-                onChange={(e) => setFontSize(Number(e.target.value) || 14)}
-                style={{ width: 120 }}
-              />
             </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               Масштаб
               <input
                 type="range"
@@ -470,12 +514,16 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
                 max={140}
                 value={Math.round(reportScale * 100)}
                 onChange={(e) => setReportScale(Number(e.target.value) / 100)}
-                style={{ width: 140 }}
+                onWheel={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                style={{ width: 110 }}
               />
             </label>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, width: '100%', alignItems: 'center' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               Строки
               <input
                 type="number"
@@ -486,7 +534,7 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
                 style={numberInputStyle}
               />
             </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               Столбцы
               <input
                 type="number"
@@ -497,7 +545,7 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
                 style={numberInputStyle}
               />
             </label>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
               Ширина %
               <input
                 type="number"
@@ -508,37 +556,37 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
                 style={numberInputStyle}
               />
             </label>
-            <button type="button" onClick={insertTable} style={{ fontSize: 13 }}>
+            <button type="button" onClick={insertTable} style={{ fontSize: 12, padding: '4px 8px' }}>
               Вставить таблицу
+            </button>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => applyFormat('bold')} style={{ fontSize: 12, padding: '4px 8px' }}>
+                Жирный
+              </button>
+              <button type="button" onClick={() => applyFormat('italic')} style={{ fontSize: 12, padding: '4px 8px' }}>
+                Курсив
+              </button>
+              <button type="button" onClick={() => applyFormat('underline')} style={{ fontSize: 12, padding: '4px 8px' }}>
+                Подчеркнутый
+              </button>
+              <button type="button" onClick={() => applyFormat('removeFormat')} style={{ fontSize: 12, padding: '4px 8px' }}>
+                Очистить формат
+              </button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <button type="button" onClick={exportJson} style={{ fontSize: 12, padding: '4px 8px' }}>
+              Экспорт JSON
+            </button>
+            <button type="button" onClick={importJson} style={{ fontSize: 12, padding: '4px 8px' }}>
+              Импорт JSON
+            </button>
+            <button type="button" onClick={loadDemo} style={{ fontSize: 12, padding: '4px 8px' }}>
+              Загрузить демо
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <button type="button" onClick={() => applyFormat('bold')} style={{ fontSize: 13 }}>
-            Жирный
-          </button>
-          <button type="button" onClick={() => applyFormat('italic')} style={{ fontSize: 13 }}>
-            Курсив
-          </button>
-          <button type="button" onClick={() => applyFormat('underline')} style={{ fontSize: 13 }}>
-            Подчеркнутый
-          </button>
-          <button type="button" onClick={() => applyFormat('removeFormat')} style={{ fontSize: 13 }}>
-            Очистить формат
-          </button>
-          <button type="button" onClick={exportJson} style={{ fontSize: 13 }}>
-            Экспорт JSON
-          </button>
-          <button type="button" onClick={exportDemoJson} style={{ fontSize: 13 }}>
-            Экспорт демо JSON
-          </button>
-          <button type="button" onClick={importJson} style={{ fontSize: 13 }}>
-            Импорт JSON
-          </button>
-          <button type="button" onClick={loadDemo} style={{ fontSize: 13 }}>
-            Загрузить демо
-          </button>
-        </div>
+
       </div>
 
       <input
@@ -555,62 +603,75 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
         }}
       />
 
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingBottom: 8 }}>
-        {viewMode === 'formulas' ? (
-          <div ref={editorContainerRef}>
-            <div
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning
-              onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
-              onMouseUp={() => {
-                const token = getTokenFromSelection();
-                if (token && onSelect) {
-                  onSelect(token);
-                }
-              }}
-              style={{
-                minHeight: 260,
-                padding: 12,
-                fontSize,
-                background: 'var(--pico-code-background-color)',
-                color: 'var(--pico-color)',
-                border: '1px solid var(--pico-border-color)',
-                borderRadius: 8,
-                outline: 'none',
-                transform: `scale(${reportScale})`,
-                transformOrigin: '0 0',
-                width: `${100 / reportScale}%`,
-              }}
-            />
-          </div>
-        ) : (
-          <div ref={previewContainerRef}>
-            <div
-              style={{
-                minHeight: 260,
-                padding: 12,
-                border: '1px solid var(--pico-border-color)',
-                borderRadius: 8,
-                background: 'var(--pico-card-background-color)',
-                color: 'var(--pico-color)',
-                fontSize,
-                transform: `scale(${reportScale})`,
-                transformOrigin: '0 0',
-                width: `${100 / reportScale}%`,
-              }}
-              onClick={(e) => {
-                const target = e.target as HTMLElement | null;
-                const token = target?.dataset?.token;
-                if (token && onSelect) {
-                  onSelect(token);
-                }
-              }}
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </div>
-        )}
+      <div
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 8 }}
+        onWheel={(e) => e.stopPropagation()}
+        onScroll={() => setTokenPopup(null)}
+        onClick={(e) => handleTokenClick(e)}
+      >
+        <div ref={editorContainerRef} style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => {
+              const raw = (e.target as HTMLDivElement).innerHTML;
+              const normalized = sanitizeHtml(raw).replace(/<span\b[^>]*data-token="([^"]+)"[^>]*>.*?<\/span>/gi, (_match, id) => {
+                return `<span data-token="${id}" class="report-token">@${id}</span>`;
+              });
+              setEditorHtml(normalized);
+            }}
+            onMouseUp={() => {
+              const token = getTokenFromSelection();
+              if (token && onSelect) {
+                onSelect(token);
+              }
+            }}
+            onClick={handleTokenClick}
+            style={{
+              minHeight: 260,
+              padding: 12,
+              fontSize,
+              background: 'var(--pico-code-background-color)',
+              color: 'var(--pico-color)',
+              border: '1px solid var(--pico-border-color)',
+              borderRadius: 8,
+              outline: 'none',
+              transform: `scale(${reportScale})`,
+              transformOrigin: '0 0',
+              width: `${100 / reportScale}%`,
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              whiteSpace: 'pre-wrap',
+            }}
+          />
+        </div>
       </div>
+
+      {tokenPopup && (
+        <div
+          style={{
+            position: 'fixed',
+            left: Math.min(window.innerWidth - 260, tokenPopup.x + 12),
+            top: Math.min(window.innerHeight - 90, tokenPopup.y + 12),
+            background: 'var(--pico-card-background-color)',
+            color: 'var(--pico-color)',
+            border: '1px solid var(--pico-border-color)',
+            borderRadius: 8,
+            padding: '6px 8px',
+            fontSize: 12,
+            boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+            zIndex: 10,
+            maxWidth: 240,
+            whiteSpace: 'pre-wrap',
+          }}
+        >
+          <div>{getTokenPopupLines(tokenPopup.id).line1}</div>
+          <div style={{ marginTop: 4, color: 'var(--pico-muted-color)' }}>
+            {getTokenPopupLines(tokenPopup.id).line2}
+          </div>
+        </div>
+      )}
 
 
     </section>

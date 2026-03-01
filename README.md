@@ -1,174 +1,105 @@
 # Igor Page Calc
 
-Веб-конструктор калькуляторов с публикацией и ревью. Хостинг — Cloudflare Pages.
+Веб-конструктор инженерных калькуляторов с публикацией и ревью. SPA на React + Vite, хостинг — Cloudflare Pages.
 
 ## Возможности
-- ✅ Гостевой доступ без регистрации (cookie/localStorage)
-- ✅ Конструктор калькуляторов из блоков (14 типов блоков)
-- ✅ Подача на публикацию и ручное ревью
-- ✅ Админ-панель для управления и ревью (`/admin/review`)
-- ✅ Публичные калькуляторы по ссылке (`/calc/:id`)
-- ✅ Визуализация графиков (line, bar, pie, area)
-- ✅ Визуализация зависимостей между блоками
-- ✅ Автодополнение в формулах
-- ✅ Drag-and-drop для перестановки блоков
-- ✅ Валидация и безопасность (XSS защита, валидация URL, формул)
-- ✅ Экспорт/импорт схем в JSON
+
+- Конструктор калькуляторов из блоков (16 типов: input, formula, data_table, chart и др.)
+- Подача на публикацию и ручное ревью
+- Публичные калькуляторы по ссылке (`/calculators/:slug`)
+- Админ-панель для ревью (`/admin/review`)
+- Планировщик задач (Гантт, только для админа)
+- Визуализация зависимостей между блоками
+- Автодополнение в формулах
+- Drag-and-drop для перестановки блоков
+- Экспорт/импорт схем в JSON
+- Светлая и тёмная тема
+- XSS защита, валидация URL и формул
 
 ## Технологии
-- React/Next.js или Vite (SPA)
-- Zustand (состояние)
-- math.js (расчёты, поддержка Excel-стиля: арифметика, округления, min/max/sum/if и др. — <https://mathjs.org/docs/expressions/syntax.html>)
-- Cloudflare Pages (хостинг)
 
-## Запуск локально
-1. Установить зависимости: `npm install`
-2. Запустить dev-сервер: `npm run dev`
+- **React 18** + **Vite** (SPA)
+- **Zustand** (состояние)
+- **math.js** (расчёты — арифметика, округления, min/max/sum, тернарные условия)
+- **TypeScript**
+- **PicoCSS** (UI)
+- **Cloudflare Pages** (хостинг)
+
+## Запуск
+
+```sh
+npm install
+npm run dev      # dev-сервер http://localhost:5173
+npm run build    # сборка в dist/
+npm test         # юнит-тесты (vitest)
+```
 
 ## Деплой
-- Push в main/master — автодеплой на Cloudflare Pages
+
+Push в main → автодеплой на Cloudflare Pages. Защита админки через Cloudflare Access — см. [CLOUDFLARE_ACCESS.md](CLOUDFLARE_ACCESS.md).
 
 ## Структура проекта
-- Подробно: .project-structure.md
 
-## Инструкции и workflow
-- .project-instructions.md — бизнес-логика, паттерны, правила
-- WORKFLOW.md — рабочие процессы
-- SECURITY.md — меры безопасности
-- LIMITATIONS.md — ограничения проекта (таблицы, производительность)
-- ANALYSIS.md — анализ проекта и выполненные задачи
-
-## Инструкция для AI Copilot/ChatGPT: генерация схемы калькулятора
-
-Чтобы AI корректно сгенерировал схему калькулятора для конструктора Igor.Page Engine, используйте следующую инструкцию:
-
----
-
-**Требуется:**
-Сгенерировать описание калькулятора в формате JSON (или markdown с блоком кода), где каждый блок — это отдельный элемент схемы (input, formula, data_table, chart, text и т.д.).
-
-**Формат вывода:**
-```json
-[
-  {
-    "id": "a",
-    "type": "input",
-    "label": "Площадь квартиры",
-    "inputType": "number",
-    "defaultValue": 50,
-    "unit": "м²"
-  },
-  {
-    "id": "b",
-    "type": "input",
-    "label": "Количество комнат",
-    "inputType": "number",
-    "defaultValue": 2
-  },
-  {
-    "id": "table1",
-    "type": "data_table",
-    "name": "Тарифы",
-    "columns": ["Зона", "Тариф"],
-    "rows": [
-      {"Зона": "A", "Тариф": 100},
-      {"Зона": "B", "Тариф": 80}
-    ]
-  },
-  {
-    "id": "sum",
-    "type": "formula",
-    "label": "Стоимость",
-    "formula": "a * 100 + b * 50",
-    "dependencies": ["a", "b"]
-  },
-  {
-    "id": "chart1",
-    "type": "chart",
-    "chartType": "bar",
-    "dataSource": "table1",
-    "xKey": "Зона",
-    "yKey": "Тариф"
-  },
-  {
-    "id": "desc",
-    "type": "text",
-    "content": "Введите параметры и получите расчёт стоимости.",
-    "style": "p"
-  }
-]
+```
+src/
+├── app/                          # Страницы (роутинг по pathname)
+│   ├── admin/editor/page.tsx     # Редактор калькуляторов
+│   ├── admin/review/ReviewPanel.tsx  # Панель ревью
+│   ├── calculators/CalculatorsListPage.tsx  # Список опубликованных
+│   ├── planner/PlannerPage.tsx   # Планировщик (Гантт)
+│   ├── public/PublicCalculator.tsx  # Публичный вид калькулятора
+│   └── welcome/WelcomePage.tsx   # Главная
+├── components/editor/            # UI-компоненты редактора
+│   ├── PropertyEditor.tsx        # Редактор свойств блока
+│   ├── ReportPanel.tsx           # Панель отчёта
+│   ├── NodesList.tsx             # Список блоков
+│   ├── DataVisualization.tsx     # Визуализация данных
+│   ├── TableVisualEditor.tsx     # Редактор таблиц
+│   ├── ChartRenderer.tsx         # Рендер графиков
+│   ├── ValidationErrors.tsx      # Ошибки валидации
+│   └── DependencyGraph.tsx       # Граф зависимостей
+├── lib/                          # Ядро
+│   ├── engine.ts                 # Расчётный движок (math.js)
+│   ├── store.ts                  # Zustand-стейт (blocks + values)
+│   ├── calculatorStorage.ts      # Сохранение/загрузка в localStorage
+│   ├── reportHtml.ts             # Подстановка токенов в отчёт
+│   ├── validation.ts             # Валидация блоков
+│   ├── security.ts               # XSS, URL, формулы
+│   ├── formula.ts                # Парсинг формул
+│   ├── tableData.ts              # Нормализация таблиц
+│   └── errors.ts                 # Сообщения об ошибках
+├── types/
+│   └── blocks.ts                 # Типы всех блоков
+├── data/                         # Демо-данные
+│   ├── parking_demo.json         # Блоки демо-калькулятора
+│   └── parking_demo_bundle.json  # Бандл (блоки + reportHtml)
+├── main.tsx                      # Точка входа, роутинг
+└── index.css                     # Стили + PicoCSS + темы
 ```
 
-**Правила:**
-- Каждый блок должен иметь уникальный id.
-- Для формул указывать dependencies (id блоков, от которых зависит формула).
-- Для таблиц (data_table) — указывать name, columns, rows.
-- Для графиков (chart) — указывать тип, источник данных, оси.
-- Для текстовых блоков — content и style.
-- Все числовые значения и формулы должны быть валидны для расчёта.
-- Не использовать хардкоды — все параметры должны быть в блоках.
+## Роутинг
 
-**Особое правило для таблиц и select:**
-- Если требуется выпадающий список (select), связанный с таблицей (data_table),
-  - options должны формироваться из нужной колонки таблицы (например, из "Зона" таблицы table1).
-  - В формуле обращаться к ячейке таблицы по выбранному значению: например, table1[table1_select]["Тариф"].
-- dependencies формулы должны включать id таблицы и id select-блока.
+| Путь | Страница | Доступ |
+|------|----------|--------|
+| `/` | Главная | Все |
+| `/editor` | Редактор калькуляторов | Все |
+| `/admin/review` | Панель ревью | Все (кнопки действий — только админ) |
+| `/calculators` | Список опубликованных | Все |
+| `/calculators/:slug` | Публичный калькулятор | Все |
+| `/planner` | Планировщик (Гантт) | Только админ |
+| `/?admin=1` | Включить режим админа | — |
+| `/?admin=0` | Выключить режим админа | — |
 
-**На выходе нужен только JSON (или markdown с блоком кода), без пояснений.**
+## Документация
 
----
-
-Рекомендуется использовать этот шаблон для всех AI-генераций схем калькуляторов.
-
-## Типы блоков выбора (select):**
-- `input` с inputType: "select" — статический список опций (options).
-- `select_from_table` — динамический список опций из столбца таблицы (dataSource, column).
-- `select_from_object` — динамический список опций из объекта (objectSource).
-
-**Пример блока выбора из таблицы:**
-```json
-{
-  "id": "zone_select",
-  "type": "select_from_table",
-  "label": "Зона",
-  "dataSource": "table1",
-  "column": "Зона"
-}
-```
-
-**Пример блока выбора из объекта:**
-```json
-{
-  "id": "option_select",
-  "type": "select_from_object",
-  "label": "Выбор опции",
-  "objectSource": "constants_block"
-}
-```
-
-**Используйте эти типы для гибких выпадающих списков и динамических связей между блоками.**
-
-## Расширенные возможности select_from_table:**
-- `range` — ограничение значений по диапазону (min/max).
-- `filter` — фильтрация строк по другим столбцам (например, только "жилой").
-- `multipleColumns` — формирование опций из нескольких столбцов (например, "A (жилой)").
-
-**Пример:**
-```json
-{
-  "id": "zone_select",
-  "type": "select_from_table",
-  "label": "Зона",
-  "dataSource": "table1",
-  "column": "Зона",
-  "range": { "min": 10, "max": 100 },
-  "filter": { "Тип": "жилой" },
-  "multipleColumns": ["Зона", "Тип"]
-}
-```
-
-> Эти возможности позволяют гибко формировать выпадающие списки, но не превращают систему в полноценный Excel — только базовые сценарии для удобства конструктора.
+| Файл | Содержание |
+|------|------------|
+| [AI_CALCULATOR_PROMPT.md](AI_CALCULATOR_PROMPT.md) | Инструкция для ИИ по генерации JSON-схем калькуляторов |
+| [CLOUDFLARE_ACCESS.md](CLOUDFLARE_ACCESS.md) | Настройка защиты админки через Cloudflare Access |
+| [WORKFLOW.md](WORKFLOW.md) | Рабочий процесс: от черновика до публикации |
+| [UI_RULES.md](UI_RULES.md) | Правила оформления UI |
+| [CHANGELOG.md](CHANGELOG.md) | История изменений |
 
 ## Контакты
-- [GitHub](https://github.com/your-repo)
-- [Telegram]
+
+- [Telegram](https://t.me/IGOR_CHEVELA)

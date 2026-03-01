@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import type { Block } from '../types/blocks';
 import { validateBlocks } from './validation';
+import { toMatrixTableBlock } from './tableData';
 
 
 // Store хранит массив blocks (описание схемы) и values (значения по id)
@@ -28,8 +29,6 @@ const loadFromStorage = (): { blocks: Block[]; values: Record<string, number | s
       if (Array.isArray(loadedBlocks) && loadedBlocks.length > 0) {
         const validation = validateBlocks(loadedBlocks);
         if (!validation.valid) {
-          console.warn('Ошибки валидации при загрузке:', validation.errors);
-          // Возвращаем пустые блоки, если валидация не прошла
           return { blocks: [], values: {} };
         }
       }
@@ -39,8 +38,8 @@ const loadFromStorage = (): { blocks: Block[]; values: Record<string, number | s
         values: parsed.values || {},
       };
     }
-  } catch (e) {
-    console.warn('Ошибка загрузки из localStorage:', e);
+  } catch {
+    // ignore corrupted storage
   }
   return { blocks: [], values: {} };
 };
@@ -49,8 +48,8 @@ const loadFromStorage = (): { blocks: Block[]; values: Record<string, number | s
 const saveToStorage = (blocks: Block[], values: Record<string, number | string>) => {
   try {
     localStorage.setItem('igor-page-calc', JSON.stringify({ blocks, values }));
-  } catch (e) {
-    console.warn('Ошибка сохранения в localStorage:', e);
+  } catch {
+    // ignore storage write error
   }
 };
 
@@ -60,22 +59,21 @@ export const useCalcStore = create<CalcState>((set, get) => ({
   blocks: initialState.blocks,
   values: initialState.values,
   setBlocks: (blocks) => {
-    // Валидация перед сохранением
-    if (blocks.length > 0) {
-      const validation = validateBlocks(blocks);
-      if (!validation.valid) {
-        console.error('❌ Ошибки валидации блоков:', validation.errors);
-        // Показываем предупреждение пользователю
-        const errorCount = validation.errors.length;
-        const errorMessages = validation.errors.slice(0, 3).map(e => `• ${e.blockId}: ${e.message}`).join('\n');
-        const moreErrors = errorCount > 3 ? `\n... и ещё ${errorCount - 3} ошибок` : '';
-        console.warn(`⚠️ Обнаружено ${errorCount} ошибок валидации:\n${errorMessages}${moreErrors}\n\nПроверьте панель ошибок валидации.`);
-      } else {
-        console.log('✅ Блоки валидированы успешно');
+    const normalizedBlocks = blocks.map((block) => {
+      if (block.type === 'data_table') {
+        return toMatrixTableBlock(block as any);
+      }
+      return block;
+    });
+    // Валидация перед сохранением (только предупреждения, не блокируем сохранение)
+    if (normalizedBlocks.length > 0) {
+      const validation = validateBlocks(normalizedBlocks);
+      if (!validation.valid && validation.errors.length > 0) {
+        // Валидация не прошла — ошибки видны в панели ValidationErrors
       }
     }
-    set({ blocks });
-    saveToStorage(blocks, get().values);
+    set({ blocks: normalizedBlocks });
+    saveToStorage(normalizedBlocks, get().values);
   },
   setValues: (values) => {
     set({ values });
