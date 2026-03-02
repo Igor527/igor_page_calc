@@ -2,12 +2,14 @@
 node_modules/
 .next/
 .vercel/
+.DS_Store
+
+# Секреты: не коммитить. Копируйте .env.example → .env и заполните (Mistral, Firebase).
 .env
 .env.*
 !.env.example
-.DS_Store
 
-# Ключи и секреты (папка secrets — заготовки коммитим, реальные ключи не коммитить)
+# Папка secrets: коммитим только README, реальные ключи — в .env
 secrets/*
 !secrets/README.txt
 npm-debug.log*

@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { LANG_OPTIONS, detectLanguage, translate, TRANSLATION_SERVERS_INFO, testMistralAccess } from '@/lib/dictionaryApi';
+import { schedulePush, pushDictionary } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-dictionary-entries';
 const PRIORITY_STORAGE_KEY = 'igor-dictionary-priority';
@@ -46,6 +47,30 @@ function savePriorityLanguages(list: string[]) {
   localStorage.setItem(PRIORITY_STORAGE_KEY, JSON.stringify(list));
 }
 
+/** Данные словаря для экспорта в репо. */
+export function getDictionaryBundle(): { entries: DictionaryEntry[]; priorityLangs: string[] } {
+  return { entries: loadEntries(), priorityLangs: loadPriorityLanguages() };
+}
+
+/** Подставить данные из репо. */
+export function setDictionaryFromBundle(data: { entries?: DictionaryEntry[]; priorityLangs?: string[] }): void {
+  if (data.entries && Array.isArray(data.entries)) saveEntries(data.entries);
+  if (data.priorityLangs && Array.isArray(data.priorityLangs)) savePriorityLanguages(data.priorityLangs);
+}
+
+/** Загрузить словарь из data/dictionary.json (если есть в репо). */
+export async function loadDictionaryBundle(): Promise<boolean> {
+  try {
+    const res = await fetch('./data/dictionary.json');
+    if (!res.ok) return false;
+    const data = await res.json();
+    setDictionaryFromBundle(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function langName(code: string): string {
   return LANG_OPTIONS.find(o => o.code === code)?.name ?? code;
 }
@@ -70,6 +95,9 @@ const DictionaryPage: React.FC = () => {
   useEffect(() => {
     savePriorityLanguages(priorityLangs);
   }, [priorityLangs]);
+  useEffect(() => {
+    schedulePush('dictionary', () => pushDictionary(entries, priorityLangs));
+  }, [entries, priorityLangs]);
 
   const entriesByLang = useMemo(() => {
     const byLang = new Map<string, DictionaryEntry[]>();

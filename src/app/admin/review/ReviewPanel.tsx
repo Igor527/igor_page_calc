@@ -7,6 +7,7 @@ import {
   addComment,
   updateCalculatorSlug,
   loadCalculator,
+  downloadPublishedBundle,
   type SavedCalculator,
   type CalculatorStatus 
 } from '@/lib/calculatorStorage';
@@ -64,7 +65,14 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       {/* Левая панель - список калькуляторов */}
       <div style={{ flex: '0 0 300px', borderRight: '1px solid var(--pico-border-color)', overflowY: 'auto' }}>
         <h2 style={{ fontSize: '1.2rem', marginBottom: 12 }}>Ревью калькуляторов</h2>
-        
+        <p style={{ fontSize: 12, color: 'var(--pico-muted-color)', marginBottom: 12 }}>
+          Опубликуйте калькуляторы, затем нажмите «Экспорт для GitHub» — положите скачанный файл в репо в <code>public/data/calculators.json</code> и сделайте push. На сайте будет этот список.
+        </p>
+        <div style={{ marginBottom: 12 }}>
+          <button type="button" className="outline" style={{ fontSize: 12 }} onClick={downloadPublishedBundle}>
+            Экспорт для GitHub (calculators.json)
+          </button>
+        </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', marginBottom: 8, fontSize: 13, fontWeight: 500 }}>
             Фильтр по статусу:

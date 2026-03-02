@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { sanitizeHtml } from '@/lib/security';
+import { schedulePush, pushPosts } from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -97,6 +98,40 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
 }
 
 /* ═══════════════════ Storage ═══════════════════ */
+
+let blogBundle: BlogPost[] | null = null;
+
+export function loadBlogBundle(): Promise<void> {
+  return fetch('./data/posts.json')
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
+      const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
+      blogBundle = list.map((p) => ({
+        ...p,
+        tags: p.tags ?? [],
+        coverImage: p.coverImage ?? '',
+        polls: p.polls ?? [],
+        todos: p.todos ?? [],
+      }));
+    })
+    .catch(() => { blogBundle = null; });
+}
+
+/** Для отображения: из файла репо, если загружен, иначе localStorage */
+export function getPostsForDisplay(): BlogPost[] {
+  if (blogBundle) return blogBundle;
+  return loadPosts();
+}
+
+export function downloadPostsBundle(): void {
+  const posts = loadPosts();
+  const blob = new Blob([JSON.stringify({ version: 1, exportedAt: Date.now(), posts }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'posts.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 function loadPosts(): BlogPost[] {
   try {
@@ -551,18 +586,24 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { savePosts(posts); }, [posts]);
+  useEffect(() => {
+    schedulePush('blog', () => pushPosts(posts));
+  }, [posts]);
+
+  // Гости видят посты из data/posts.json (если есть), админ — только из localStorage для редактирования
+  const displayPosts = isAdmin ? posts : getPostsForDisplay();
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
-    for (const p of posts) { for (const t of (p.tags ?? [])) set.add(t); }
+    for (const p of displayPosts) { for (const t of (p.tags ?? [])) set.add(t); }
     return [...set].sort();
-  }, [posts]);
+  }, [displayPosts]);
 
   const visiblePosts = useMemo(() => {
-    let list = isAdmin ? posts : posts.filter(p => p.published);
+    let list = isAdmin ? posts : displayPosts.filter(p => p.published);
     if (filterTag) list = list.filter(p => p.tags?.includes(filterTag));
     return list.sort((a, b) => sortAsc ? a.updatedAt - b.updatedAt : b.updatedAt - a.updatedAt);
-  }, [posts, isAdmin, filterTag, sortAsc]);
+  }, [posts, displayPosts, isAdmin, filterTag, sortAsc]);
 
   const startNew = () => {
     setEditing('__new__');
@@ -759,7 +800,10 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             </div>
           </div>
         ) : isAdmin ? (
-          <button onClick={startNew} style={{ marginBottom: 20, width: '100%' }}>+ Новый пост</button>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+            <button onClick={startNew} style={{ flex: '1 1 auto' }}>+ Новый пост</button>
+            <button onClick={downloadPostsBundle} className="outline" title="Скачать posts.json для public/data/">Экспорт для GitHub</button>
+          </div>
         ) : null}
 
         {visiblePosts.length === 0 && (
@@ -865,7 +909,7 @@ const PostCard: React.FC<{
 /* ═══════════════════ BlogPostView (single post) ═══════════════════ */
 
 const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAdmin }) => {
-  const posts = loadPosts();
+  const posts = getPostsForDisplay();
   const post = posts.find(p => p.slug === slug);
 
   useEffect(() => {

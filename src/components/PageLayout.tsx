@@ -1,11 +1,13 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { PageSection, SectionType } from '@/lib/pageLayouts';
 import {
   loadPageSections,
   savePageSections,
   resetPageSections,
   getDefaults,
+  getAllLayouts,
 } from '@/lib/pageLayouts';
+import { pushLayouts } from '@/lib/githubSync';
 import { sanitizeHtml } from '@/lib/security';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { getPublishedCalculators } from '@/lib/calculatorStorage';
@@ -18,6 +20,7 @@ const linkBtnClass =
 interface Props {
   pageId: string;
   isAdmin: boolean;
+  dataVersion?: number;
   children?: React.ReactNode;
   footer?: React.ReactNode;
 }
@@ -250,17 +253,22 @@ const ctrlBtn: React.CSSProperties = {
   lineHeight: 1.2,
 };
 
-const PageLayout: React.FC<Props> = ({ pageId, isAdmin, children, footer }) => {
+const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, footer }) => {
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<PageSection[]>(() => loadPageSections(pageId));
   const [editId, setEditId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (dataVersion != null) setSections(loadPageSections(pageId));
+  }, [dataVersion, pageId]);
 
   /* persistence */
   const handleSave = useCallback(() => {
     savePageSections(pageId, sections);
     setEditing(false);
     setEditId(null);
+    pushLayouts(getAllLayouts()).catch(() => {});
   }, [pageId, sections]);
 
   const handleCancel = useCallback(() => {

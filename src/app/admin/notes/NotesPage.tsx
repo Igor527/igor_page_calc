@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { sanitizeHtml } from '@/lib/security';
+import { schedulePush, pushNotes } from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -72,6 +73,39 @@ function load<T>(key: string, fallback: T): T {
 }
 function save(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+/** Загружает data/notes.json из репо и подставляет в localStorage (репо — источник истины при загрузке). */
+export function loadNotesBundle(): Promise<boolean> {
+  return fetch('./data/notes.json')
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((data: { notes?: Note[]; folders?: NoteFolder[] }) => {
+      const notes = Array.isArray(data.notes) ? data.notes : [];
+      const folders = Array.isArray(data.folders) ? data.folders : [];
+      if (notes.length > 0 || folders.length > 0) {
+        const normalized = notes.map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
+        save(NOTES_KEY, normalized);
+        save(FOLDERS_KEY, folders);
+        return true;
+      }
+      return false;
+    })
+    .catch(() => false);
+}
+
+/** Скачивает notes.json из текущего localStorage для размещения в public/data/ */
+export function downloadNotesBundle(): void {
+  const notes = load<Note[]>(NOTES_KEY, []);
+  const folders = load<NoteFolder[]>(FOLDERS_KEY, []);
+  const blob = new Blob(
+    [JSON.stringify({ version: 1, exportedAt: Date.now(), notes, folders }, null, 2)],
+    { type: 'application/json' }
+  );
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'notes.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 function makeNoteId(): string {
@@ -607,7 +641,7 @@ const NoteCard: React.FC<{
 
 /* ═══════════════════ Main NotesPage ═══════════════════ */
 
-const NotesPage: React.FC = () => {
+const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [notes, setNotes] = useState<Note[]>(() => {
     const arr = load<Note[]>(NOTES_KEY, []);
     return arr.map(n => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
@@ -633,6 +667,29 @@ const NotesPage: React.FC = () => {
 
   useEffect(() => { save(NOTES_KEY, notes); }, [notes]);
   useEffect(() => { save(FOLDERS_KEY, folders); }, [folders]);
+
+  useEffect(() => {
+    schedulePush('notes', () => pushNotes(notes, folders));
+  }, [notes, folders]);
+
+  // При первом открытии подгрузить data/notes.json из репо
+  useEffect(() => {
+    loadNotesBundle().then((seeded) => {
+      if (seeded) {
+        const loaded = load<Note[]>(NOTES_KEY, []).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
+        setNotes(loaded);
+        setFolders(load(FOLDERS_KEY, []));
+      }
+    });
+  }, []);
+
+  // После загрузки бандла в main — подтянуть данные из localStorage
+  useEffect(() => {
+    if (dataVersion == null) return;
+    const loaded = load<Note[]>(NOTES_KEY, []).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
+    setNotes(loaded);
+    setFolders(load(FOLDERS_KEY, []));
+  }, [dataVersion]);
 
   // Migrate old v1
   useEffect(() => {
@@ -882,6 +939,9 @@ const NotesPage: React.FC = () => {
               Импорт папки
             </button>
           </div>
+          <button onClick={downloadNotesBundle} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Скачать notes.json для public/data/">
+            Экспорт для GitHub
+          </button>
           <input ref={importInputRef} type="file" accept=".md,.txt,.json" multiple onChange={handleImport} style={{ display: 'none' }} />
           <input ref={folderImportRef} type="file" onChange={handleFolderImport} style={{ display: 'none' }}
             {...{ webkitdirectory: '', directory: '' } as any} />

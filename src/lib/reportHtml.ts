@@ -6,14 +6,18 @@
 import { escapeHtml } from '@/lib/security';
 import type { Block } from '@/types/blocks';
 
+/** Имена функций, которые убираем при отображении формулы в отчёте (floor, ceil, round и т.п.). */
+const ROUNDING_DISPLAY_STRIP = ['round', 'floor', 'ceil'];
+
 /**
- * Убирает все внешние round(...) из формулы только для отображения (расчёт остаётся с round).
- * Например: "round(max(0, x))" → "max(0, x)", "round(round(x))" → "x".
+ * Убирает внешние round/floor/ceil(...) из формулы только для отображения (расчёт не меняется).
+ * Например: "floor(10 * 3)" → "10 * 3", "round(max(0, x))" → "max(0, x)".
  */
 export function stripRoundForDisplay(formula: string): string {
   let t = formula.trim();
   for (;;) {
-    if (!/^round\s*\(/i.test(t)) return t;
+    const match = t.match(new RegExp(`^(${ROUNDING_DISPLAY_STRIP.join('|')})\\s*\\(`, 'i'));
+    if (!match) return t;
     const open = t.indexOf('(');
     let depth = 0;
     let found = false;

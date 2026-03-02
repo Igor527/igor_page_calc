@@ -80,8 +80,8 @@ export function saveCalculator(
       };
     }
 
-    // Загружаем существующий калькулятор, если есть (нужен для existing?.slug и т.д.)
-    const existing = loadCalculator(id);
+    // Загружаем существующий калькулятор из localStorage, если есть (нужен для existing?.slug и т.д.)
+    const existing = loadCalculatorFromStorage(id);
     let normalizedSlug: string | undefined;
     if (slug !== undefined && slug !== '') {
       normalizedSlug = normalizeSlug(slug);
@@ -157,22 +157,52 @@ export function saveCalculator(
 }
 
 /**
- * Загружает калькулятор по ID
+ * Загружает калькулятор по ID из localStorage (внутренний вызов, без учёта бандла).
  */
-export function loadCalculator(id: string): SavedCalculator | null {
+function loadCalculatorFromStorage(id: string): SavedCalculator | null {
   try {
     const saved = localStorage.getItem(`calc-${id}`);
     if (!saved) return null;
-
-    const calculator = JSON.parse(saved) as SavedCalculator;
-    return calculator;
+    return JSON.parse(saved) as SavedCalculator;
   } catch {
     return null;
   }
 }
 
+/**
+ * Загружает калькулятор по ID. Сначала бандл из репо, затем localStorage.
+ */
+export function loadCalculator(id: string): SavedCalculator | null {
+  if (publishedBundle) {
+    const fromBundle = publishedBundle.find((c) => c.id === id);
+    if (fromBundle) return fromBundle;
+  }
+  return loadCalculatorFromStorage(id);
+}
+
 const CALC_LIST_KEY = 'calculators-list';
 const CALC_PREFIX = 'calc-';
+
+/** Список опубликованных калькуляторов из JSON в репо (при наличии). Приоритет над localStorage для публичного списка. */
+let publishedBundle: SavedCalculator[] | null = null;
+
+const PUBLISHED_JSON_URL = './data/calculators.json';
+
+/**
+ * Загружает опубликованный список из репо (data/calculators.json). Вызвать при старте приложения.
+ * После загрузки getPublishedCalculators() и getCalculatorBySlug() отдают данные из бандла.
+ */
+export function loadPublishedBundle(): Promise<void> {
+  return fetch(PUBLISHED_JSON_URL)
+    .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+    .then((data: { version?: number; calculators?: SavedCalculator[] }) => {
+      const list = Array.isArray(data.calculators) ? data.calculators : [];
+      publishedBundle = list.filter((c) => c.status === 'published');
+    })
+    .catch(() => {
+      publishedBundle = null;
+    });
+}
 
 /**
  * Собирает список калькуляторов по всем ключам calc-* в localStorage (источник истины).
@@ -186,7 +216,7 @@ function getCalculatorListFromStorageKeys(): Array<{ id: string; title: string; 
     if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
     const id = key.slice(CALC_PREFIX.length);
     if (!id) continue;
-    const calc = loadCalculator(id);
+    const calc = loadCalculatorFromStorage(id);
     if (calc) {
       result.push({
         id: calc.id,
@@ -232,19 +262,29 @@ export function getNextCalculatorNumber(): number {
 
 /**
  * Загружает калькулятор по адресу (slug). Для ссылки /calculators/:slug.
+ * Сначала бандл из репо, затем localStorage.
  */
 export function getCalculatorBySlug(slug: string): SavedCalculator | null {
+  if (publishedBundle) {
+    const fromBundle = publishedBundle.find((c) => (c.slug ?? c.id) === slug);
+    if (fromBundle) return fromBundle;
+  }
   const list = getCalculatorList();
   const item = list.find((c) => c.slug === slug);
   if (!item) return null;
-  return loadCalculator(item.id);
+  return loadCalculatorFromStorage(item.id);
 }
 
 /**
  * Список опубликованных калькуляторов для страницы /calculators и главной.
- * Собирается по всем ключам calc-* в localStorage (без ограничения и без опоры на calculators-list).
+ * Если загружен бандл из data/calculators.json — берётся из него, иначе из localStorage.
  */
 export function getPublishedCalculators(): Array<{ id: string; title: string; slug?: string }> {
+  if (publishedBundle && publishedBundle.length > 0) {
+    return [...publishedBundle]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .map((c) => ({ id: c.id, title: c.title, slug: c.slug }));
+  }
   if (typeof localStorage === 'undefined') return [];
   const result: Array<{ id: string; title: string; slug?: string; updatedAt: number }> = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -252,7 +292,7 @@ export function getPublishedCalculators(): Array<{ id: string; title: string; sl
     if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
     const id = key.slice(CALC_PREFIX.length);
     if (!id) continue;
-    const calc = loadCalculator(id);
+    const calc = loadCalculatorFromStorage(id);
     if (calc?.status === 'published') {
       result.push({
         id: calc.id,
@@ -271,7 +311,7 @@ export function getPublishedCalculators(): Array<{ id: string; title: string; sl
  */
 export function updateCalculatorSlug(id: string, slug: string | undefined): { success: boolean; error?: string } {
   try {
-    const calculator = loadCalculator(id);
+    const calculator = loadCalculatorFromStorage(id);
     if (!calculator) return { success: false, error: 'Калькулятор не найден' };
     const normalized = slug !== undefined && slug !== '' ? normalizeSlug(slug) : undefined;
     if (normalized !== undefined && normalized.length === 0) {
@@ -306,7 +346,7 @@ export function updateCalculatorStatus(
   reviewedBy?: string
 ): { success: boolean; error?: string } {
   try {
-    const calculator = loadCalculator(id);
+    const calculator = loadCalculatorFromStorage(id);
     if (!calculator) {
       return { success: false, error: 'Калькулятор не найден' };
     }
@@ -363,7 +403,7 @@ export function addComment(
   author: string
 ): { success: boolean; error?: string; comment?: CalculatorComment } {
   try {
-    const calculator = loadCalculator(id);
+    const calculator = loadCalculatorFromStorage(id);
     if (!calculator) {
       return { success: false, error: 'Калькулятор не найден' };
     }
@@ -409,7 +449,7 @@ export function getCalculatorsByStatus(status: CalculatorStatus): SavedCalculato
     if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
     const id = key.slice(CALC_PREFIX.length);
     if (!id) continue;
-    const calc = loadCalculator(id);
+    const calc = loadCalculatorFromStorage(id);
     if (calc && calc.status === status) {
       calculators.push(calc);
     }
@@ -439,7 +479,42 @@ export function deleteCalculator(id: string): boolean {
  * Генерирует публичную ссылку на калькулятор (предпочитает slug, если задан)
  */
 export function getPublicUrl(calculatorId: string, baseUrl: string = window.location.origin): string {
-  const calc = loadCalculator(calculatorId);
+  const calc = loadCalculator(calculatorId) ?? loadCalculatorFromStorage(calculatorId);
   const path = calc?.slug ?? calculatorId;
   return `${baseUrl}/calculators/${path}`;
+}
+
+/** Формат файла data/calculators.json в репо */
+export interface PublishedBundleJson {
+  version: number;
+  exportedAt: number;
+  calculators: SavedCalculator[];
+}
+
+/**
+ * Собирает всех опубликованных калькуляторов из localStorage в объект для сохранения в репо.
+ * Положите результат в public/data/calculators.json и закоммитьте — на сайте будет этот список.
+ */
+export function buildPublishedBundle(): PublishedBundleJson {
+  const list = getCalculatorsByStatus('published');
+  return {
+    version: 1,
+    exportedAt: Date.now(),
+    calculators: list,
+  };
+}
+
+/**
+ * Скачивает файл calculators.json с опубликованными калькуляторами.
+ * Сохраните его в репо как public/data/calculators.json и сделайте push.
+ */
+export function downloadPublishedBundle(): void {
+  const bundle = buildPublishedBundle();
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'calculators.json';
+  a.click();
+  URL.revokeObjectURL(url);
 }

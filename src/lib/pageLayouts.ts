@@ -20,6 +20,32 @@ function loadAll(): Record<string, PageSection[]> {
   } catch { return {}; }
 }
 
+/** Все секции всех страниц (для экспорта в репо). */
+export function getAllLayouts(): Record<string, PageSection[]> {
+  return loadAll();
+}
+
+/** Подставить данные из репо (перезапись localStorage). */
+export function setAllLayoutsFromBundle(data: Record<string, PageSection[]>): void {
+  if (data && typeof data === 'object') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+}
+
+/** Загрузить порядок окон из data/layouts.json (если есть в репо). */
+export async function loadLayoutsBundle(): Promise<boolean> {
+  try {
+    const res = await fetch('./data/layouts.json');
+    if (!res.ok) return false;
+    const data = await res.json();
+    const layouts = data?.layouts ?? data;
+    if (layouts && typeof layouts === 'object') setAllLayoutsFromBundle(layouts);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadPageSections(pageId: string): PageSection[] {
   const all = loadAll();
   return all[pageId] ?? getDefaults(pageId);
@@ -55,7 +81,6 @@ export function getDefaults(pageId: string): PageSection[] {
         }),
         sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor' }),
         sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true }),
-        sec('w4', 'link', { linkLabel: 'Панель ревью', linkUrl: '/admin/review' }),
         sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
         sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
         sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),

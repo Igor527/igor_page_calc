@@ -12,7 +12,8 @@ import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
-import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList } from '@/lib/calculatorStorage';
+import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle } from '@/lib/calculatorStorage';
+import { pushCalculators } from '@/lib/githubSync';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
 import ValidationErrors from '@/components/editor/ValidationErrors';
@@ -71,16 +72,16 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
 
   const getReportHtml = () => reportRef.current?.getEditorHtml?.() ?? '';
 
-  const handleSubmitReview = () => {
+  const handlePublish = () => {
     if (!canSubmitReview) {
       const details = validation.errors.slice(0, 3).map((e) => `• ${e.blockId}: ${e.message}`).join('\n');
       const more = validation.errors.length > 3 ? `\n... и еще ${validation.errors.length - 3} ошибок` : '';
-      alert(`Нельзя отправить на ревью. Исправьте ошибки:\n${details}${more}`);
+      alert(`Нельзя опубликовать. Исправьте ошибки:\n${details}${more}`);
       return;
     }
     const title = window.prompt('Название калькулятора', 'Калькулятор');
     if (!title) return;
-    const slugPrompt = window.prompt('Адрес для ссылки (латиница, цифры, дефис). Оставьте пустым, чтобы использовать ID.', loadCalculator(localStorage.getItem('igor-page-calc-current-id') ?? '')?.slug ?? '');
+    const slugPrompt = window.prompt('Адрес для ссылки (латиница, цифры, дефис). Оставьте пустым для авто.', loadCalculator(localStorage.getItem('igor-page-calc-current-id') ?? '')?.slug ?? '');
     const slug = slugPrompt?.trim() || undefined;
 
     const storageKey = 'igor-page-calc-current-id';
@@ -90,19 +91,16 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     const calcId = existingId || generateCalculatorId();
     const reportHtml = getReportHtml();
 
-    const result = saveCalculator(calcId, title, blocks, values, 'review', 'Пользователь', reportHtml, slug);
+    const result = saveCalculator(calcId, title, blocks, values, 'published', undefined, reportHtml, slug);
     if (!result.success) {
-      alert(result.error || 'Не удалось отправить на ревью');
+      alert(result.error || 'Не удалось опубликовать');
       return;
     }
-    // После отправки на ревью — сбрасываем текущий id, чтобы следующая отправка/сохранение
-    // создали НОВЫЙ калькулятор, а не перезаписали этот.
-    localStorage.removeItem(storageKey);
-    forceNewCalculatorRef.current = true;
+    localStorage.setItem(storageKey, calcId);
     setListKey((k) => k + 1);
-    if (window.confirm('Отправлено на ревью. Заявки видны только в этом браузере (панель ревью — там же). Открыть панель ревью?')) {
-      window.open('/admin/review', '_blank');
-    }
+    setSaveMessage('Опубликован. Изменения автоматически отправляются в репо (если настроена синхронизация).');
+    setTimeout(() => setSaveMessage(null), 5000);
+    pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2)).catch(() => {});
   };
 
   const handleSaveDraft = () => {
@@ -303,7 +301,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                         style={{ display: 'block', width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}
                       >
                         <div style={{ fontWeight: 500 }}>{c.title}</div>
-                        <div style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>{c.status === 'published' ? 'Опубликован' : c.status === 'review' ? 'На ревью' : c.status === 'rejected' ? 'Отклонён' : 'Черновик'} · {new Date(c.updatedAt).toLocaleString('ru-RU')}</div>
+                        <div style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>{c.status === 'published' ? 'Опубликован' : 'Черновик'} · {new Date(c.updatedAt).toLocaleString('ru-RU')}</div>
                       </button>
                     ))
                   )}
@@ -389,9 +387,9 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         </button>
         <button
           type="button"
-          onClick={handleSubmitReview}
+          onClick={handlePublish}
           disabled={!canSubmitReview}
-          title={!canSubmitReview ? 'Исправьте ошибки в блоках перед отправкой' : 'Отправить на ревью'}
+          title={!canSubmitReview ? 'Исправьте ошибки в блоках' : 'Опубликовать (появится в списке после экспорта в репо)'}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -408,7 +406,15 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
             cursor: canSubmitReview ? 'pointer' : 'not-allowed',
           }}
         >
-          Отправить на ревью
+          Опубликовать
+        </button>
+        <button
+          type="button"
+          onClick={downloadPublishedBundle}
+          title="Скачать calculators.json — положите в public/data/ и запушьте в репо"
+          style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px', fontSize: 13, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-card-background-color)', color: 'var(--pico-color)', cursor: 'pointer' }}
+        >
+          Экспорт для GitHub
         </button>
         </div>
         <div style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>

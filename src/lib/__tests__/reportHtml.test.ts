@@ -29,6 +29,12 @@ describe('stripRoundForDisplay', () => {
   it('оставляет строку без round как есть', () => {
     expect(stripRoundForDisplay('a + b')).toBe('a + b');
   });
+
+  it('убирает floor и ceil для отображения в отчёте', () => {
+    expect(stripRoundForDisplay('floor(10 * 3)')).toBe('10 * 3');
+    expect(stripRoundForDisplay('ceil(x / 2)')).toBe('x / 2');
+    expect(stripRoundForDisplay('floor(round(a))')).toBe('a');
+  });
 });
 
 describe('parseReportToken', () => {
