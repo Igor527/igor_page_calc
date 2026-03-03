@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 import {
   fetchWeatherFromSheet,
+  parseWeatherCsv,
   getWeatherSheetUrl,
   getWeatherStationId,
   type WeatherRow,
@@ -28,6 +29,7 @@ const WeatherPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [csvUrl, setCsvUrl] = useState(getWeatherSheetUrl());
+  const [pasteCsv, setPasteCsv] = useState('');
 
   const load = useCallback(async (url: string) => {
     if (!url.trim()) {
@@ -105,6 +107,50 @@ const WeatherPage: React.FC = () => {
       {error && (
         <p style={{ color: 'var(--pico-del-color)', marginBottom: 16, fontSize: 14 }}>{error}</p>
       )}
+
+      {/* Запасной вариант: вставка CSV вручную */}
+      <details style={{ marginBottom: 16, fontSize: 13 }}>
+        <summary style={{ cursor: 'pointer', color: 'var(--pico-muted-color)' }}>
+          Если по ссылке не загружается — вставьте CSV вручную
+        </summary>
+        <p style={{ margin: '8px 0 6px', color: 'var(--pico-muted-color)' }}>
+          Откройте таблицу в браузере, скопируйте всё (Ctrl+A, Ctrl+C) или скачайте CSV и вставьте сюда.
+        </p>
+        <textarea
+          value={pasteCsv}
+          onChange={(e) => setPasteCsv(e.target.value)}
+          placeholder="Вставьте сюда содержимое CSV..."
+          rows={6}
+          style={{
+            width: '100%',
+            padding: 10,
+            fontSize: 12,
+            fontFamily: 'monospace',
+            border: '1px solid var(--pico-border-color)',
+            borderRadius: 6,
+            background: 'var(--pico-form-element-background-color)',
+            color: 'var(--pico-color)',
+            resize: 'vertical',
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setError(null);
+            try {
+              const rows = parseWeatherCsv(pasteCsv);
+              setData(rows);
+              if (rows.length === 0) setError('В вставленном тексте нет подходящих строк.');
+            } catch (e) {
+              setError(e instanceof Error ? e.message : 'Ошибка разбора CSV');
+            }
+          }}
+          className="primary"
+          style={{ marginTop: 8, padding: '8px 16px', fontSize: 13 }}
+        >
+          Применить
+        </button>
+      </details>
 
       {!error && data.length === 0 && !loading && (
         <div className="text-gray-500 dark:text-gray-400 mb-6" style={{ fontSize: 13 }}>

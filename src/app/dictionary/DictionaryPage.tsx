@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { LANG_OPTIONS, detectLanguage, translate, TRANSLATION_SERVERS_INFO, testMistralAccess } from '@/lib/dictionaryApi';
+import { LANG_OPTIONS, detectLanguage, translate, TRANSLATION_SERVERS_INFO, testMistralAccess, normalizeLangCode } from '@/lib/dictionaryApi';
 import { schedulePush, pushDictionary, getDictionaryFromRepo, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-dictionary-entries';
@@ -101,6 +101,18 @@ const DictionaryPage: React.FC = () => {
   const [selectedDictLang, setSelectedDictLang] = useState<string | null>(null);
   const [pullLoading, setPullLoading] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [manualSource, setManualSource] = useState('');
+  const [manualTranslation, setManualTranslation] = useState('');
+  const [manualFromLang, setManualFromLang] = useState('en');
+  const [manualToLang, setManualToLang] = useState('ru');
+  const [manualTranscription, setManualTranscription] = useState('');
+  const [editSource, setEditSource] = useState('');
+  const [editTranslation, setEditTranslation] = useState('');
+  const [editFromLang, setEditFromLang] = useState('en');
+  const [editToLang, setEditToLang] = useState('ru');
+  const [editTranscription, setEditTranscription] = useState('');
 
   useEffect(() => {
     savePriorityLanguages(priorityLangs);
@@ -169,10 +181,12 @@ const DictionaryPage: React.FC = () => {
     const res = await translate(trimmed, from, toLang);
     setLoading(false);
     if (res !== null) {
-      const savedFrom = res.detectedFromLang ?? (autoFrom ? detectLanguage(trimmed) : fromLang);
+      const rawDetected = res.detectedFromLang ?? (autoFrom ? detectLanguage(trimmed) : fromLang);
+      const savedFrom = normalizeLangCode(rawDetected) ?? rawDetected;
       setResult(res.text);
       setResultTranscription(res.transcription ?? null);
       setResultProvider(res.provider);
+      setResultDetectedLang(langName(savedFrom));
       if (addToDict) {
         const id = `e${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const newEntry: DictionaryEntry = {
@@ -200,6 +214,60 @@ const DictionaryPage: React.FC = () => {
 
   const removeEntry = useCallback((id: string) => {
     setEntries(prev => prev.filter(e => e.id !== id));
+  }, []);
+
+  const addManualEntry = useCallback(() => {
+    const src = manualSource.trim();
+    const tr = manualTranslation.trim();
+    if (!src || !tr) return;
+    const from = normalizeLangCode(manualFromLang) ?? manualFromLang;
+    const to = normalizeLangCode(manualToLang) ?? manualToLang;
+    const id = `e${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const newEntry: DictionaryEntry = {
+      id,
+      source: src,
+      translation: tr,
+      transcription: manualTranscription.trim() || undefined,
+      fromLang: from,
+      toLang: to,
+      addedAt: Date.now(),
+    };
+    setEntries(prev => [newEntry, ...prev]);
+    setManualSource('');
+    setManualTranslation('');
+    setManualTranscription('');
+    setShowManualForm(false);
+  }, [manualSource, manualTranslation, manualFromLang, manualToLang, manualTranscription]);
+
+  const updateEntry = useCallback((id: string, patch: Partial<Pick<DictionaryEntry, 'source' | 'translation' | 'transcription' | 'fromLang' | 'toLang'>>) => {
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, ...patch } : e));
+    setEditingEntryId(null);
+  }, []);
+
+  const startEdit = useCallback((entry: DictionaryEntry) => {
+    setEditingEntryId(entry.id);
+    setEditSource(entry.source);
+    setEditTranslation(entry.translation);
+    setEditFromLang(entry.fromLang);
+    setEditToLang(entry.toLang);
+    setEditTranscription(entry.transcription ?? '');
+  }, []);
+
+  const saveEdit = useCallback(() => {
+    if (!editingEntryId) return;
+    const from = normalizeLangCode(editFromLang) ?? editFromLang;
+    const to = normalizeLangCode(editToLang) ?? editToLang;
+    updateEntry(editingEntryId, {
+      source: editSource.trim(),
+      translation: editTranslation.trim(),
+      transcription: editTranscription.trim() || undefined,
+      fromLang: from,
+      toLang: to,
+    });
+  }, [editingEntryId, editSource, editTranslation, editFromLang, editToLang, editTranscription, updateEntry]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingEntryId(null);
   }, []);
 
   const movePriority = useCallback((index: number, delta: number) => {
@@ -441,8 +509,7 @@ const DictionaryPage: React.FC = () => {
             </select>
           </div>
 
-          {entries.length > 0 && (
-            <>
+          <>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <h2 style={{ fontSize: 18, margin: 0 }}>Мой словарь</h2>
                 <select
@@ -454,7 +521,56 @@ const DictionaryPage: React.FC = () => {
                     <option key={opt.value || '_all'} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  className="outline"
+                  style={{ fontSize: 12, padding: '4px 10px' }}
+                  onClick={() => setShowManualForm(v => !v)}
+                >
+                  {showManualForm ? 'Скрыть форму' : 'Добавить вручную'}
+                </button>
               </div>
+              {showManualForm && (
+                <div style={{ marginBottom: 16, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--pico-muted-color)', marginBottom: 8 }}>Добавить запись без перевода: исходное слово, перевод и языки.</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={manualSource}
+                      onChange={e => setManualSource(e.target.value)}
+                      placeholder="Исходное слово/фраза"
+                      style={{ padding: '6px 10px', fontSize: 14 }}
+                    />
+                    <input
+                      type="text"
+                      value={manualTranslation}
+                      onChange={e => setManualTranslation(e.target.value)}
+                      placeholder="Перевод"
+                      style={{ padding: '6px 10px', fontSize: 14 }}
+                    />
+                    <input
+                      type="text"
+                      value={manualTranscription}
+                      onChange={e => setManualTranscription(e.target.value)}
+                      placeholder="Произношение (IPA, необязательно)"
+                      style={{ padding: '6px 10px', fontSize: 13 }}
+                    />
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <select value={manualFromLang} onChange={e => setManualFromLang(e.target.value)} style={{ fontSize: 13, padding: '4px 8px' }}>
+                        {LANG_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}
+                      </select>
+                      <span style={{ color: 'var(--pico-muted-color)' }}>→</span>
+                      <select value={manualToLang} onChange={e => setManualToLang(e.target.value)} style={{ fontSize: 13, padding: '4px 8px' }}>
+                        {LANG_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}
+                      </select>
+                      <button type="button" className="primary" onClick={addManualEntry} style={{ fontSize: 13 }}>Сохранить</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {entries.length === 0 && !showManualForm && (
+                <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', marginBottom: 12 }}>Пока записей нет. Переведите с галочкой «Добавить в словарь» или нажмите «Добавить вручную».</p>
+              )}
               {entriesByLang.map(({ lang, items }) => (
                 <div key={lang} style={{ marginBottom: 20 }}>
                   <h3 style={{ fontSize: 14, color: 'var(--pico-muted-color)', marginBottom: 8, fontWeight: 600 }}>
@@ -473,42 +589,63 @@ const DictionaryPage: React.FC = () => {
                           flexWrap: 'wrap',
                         }}
                       >
-                        <button
-                          type="button"
-                          className="outline"
-                          style={{ textAlign: 'left', flex: '1 1 200px', minWidth: 0, fontSize: 14, display: 'block' }}
-                          onClick={() => fillFromEntry(entry)}
-                        >
-                          <span>
-                            <strong>{entry.source}</strong>
-                            <span style={{ color: 'var(--pico-muted-color)', margin: '0 6px' }}>→</span>
-                            {entry.translation}
-                          </span>
-                          {entry.transcription && (
-                            <span style={{ display: 'block', fontSize: 12, color: 'var(--pico-muted-color)', fontStyle: 'italic', marginTop: 2 }}>
-                              Произношение: [{entry.transcription}]
-                            </span>
-                          )}
-                          <span style={{ fontSize: 11, color: 'var(--pico-muted-color)', marginLeft: 6 }}>
-                            {langName(entry.fromLang)} → {langName(entry.toLang)}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          className="outline secondary"
-                          style={{ fontSize: 12, padding: '4px 8px' }}
-                          onClick={() => removeEntry(entry.id)}
-                          title="Удалить"
-                        >
-                          ✕
-                        </button>
+                        {editingEntryId === entry.id ? (
+                          <div style={{ flex: '1 1 100%', display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: 'var(--pico-card-background-color)', borderRadius: 6 }}>
+                            <input type="text" value={editSource} onChange={e => setEditSource(e.target.value)} placeholder="Исходное" style={{ padding: '6px 8px', fontSize: 13 }} />
+                            <input type="text" value={editTranslation} onChange={e => setEditTranslation(e.target.value)} placeholder="Перевод" style={{ padding: '6px 8px', fontSize: 13 }} />
+                            <input type="text" value={editTranscription} onChange={e => setEditTranscription(e.target.value)} placeholder="Произношение (IPA)" style={{ padding: '6px 8px', fontSize: 12 }} />
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <select value={editFromLang} onChange={e => setEditFromLang(e.target.value)} style={{ fontSize: 12, padding: '4px 6px' }}>
+                                {LANG_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}
+                              </select>
+                              <span style={{ color: 'var(--pico-muted-color)' }}>→</span>
+                              <select value={editToLang} onChange={e => setEditToLang(e.target.value)} style={{ fontSize: 12, padding: '4px 6px' }}>
+                                {LANG_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.name}</option>)}
+                              </select>
+                              <button type="button" className="primary" onClick={saveEdit} style={{ fontSize: 12 }}>Сохранить</button>
+                              <button type="button" className="outline" onClick={cancelEdit} style={{ fontSize: 12 }}>Отмена</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className="outline"
+                              style={{ textAlign: 'left', flex: '1 1 200px', minWidth: 0, fontSize: 14, display: 'block' }}
+                              onClick={() => fillFromEntry(entry)}
+                            >
+                              <span>
+                                <strong>{entry.source}</strong>
+                                <span style={{ color: 'var(--pico-muted-color)', margin: '0 6px' }}>→</span>
+                                {entry.translation}
+                              </span>
+                              {entry.transcription && (
+                                <span style={{ display: 'block', fontSize: 12, color: 'var(--pico-muted-color)', fontStyle: 'italic', marginTop: 2 }}>
+                                  Произношение: [{entry.transcription}]
+                                </span>
+                              )}
+                              <span style={{ fontSize: 11, color: 'var(--pico-muted-color)', marginLeft: 6 }}>
+                                {langName(entry.fromLang)} → {langName(entry.toLang)}
+                              </span>
+                            </button>
+                            <button type="button" className="outline" style={{ fontSize: 12, padding: '4px 8px' }} onClick={() => startEdit(entry)} title="Изменить (в т.ч. язык)">✎</button>
+                            <button
+                              type="button"
+                              className="outline secondary"
+                              style={{ fontSize: 12, padding: '4px 8px' }}
+                              onClick={() => removeEntry(entry.id)}
+                              title="Удалить"
+                            >
+                              ✕
+                            </button>
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
                 </div>
               ))}
             </>
-          )}
         </section>
 
       <p style={{ marginTop: 24, fontSize: 12, color: 'var(--pico-muted-color)' }}>

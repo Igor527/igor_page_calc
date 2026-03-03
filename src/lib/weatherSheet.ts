@@ -112,9 +112,23 @@ function looksLikeDataRow(cells: string[]): boolean {
   return false;
 }
 
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (res: Response) => Promise<string> }[] = [
+  {
+    name: 'allorigins',
+    getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    parse: async (res) => {
+      const data = await res.json() as { contents?: string };
+      return data?.contents ?? '';
+    },
+  },
+  {
+    name: 'corsproxy',
+    getUrl: (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+];
 
-/** Загрузить текст по URL; при CORS (Failed to fetch) — повторить через прокси. */
+/** Загрузить текст по URL; при CORS (Failed to fetch) — пробуем прокси по очереди. */
 async function fetchText(url: string): Promise<string> {
   try {
     const res = await fetch(url, { cache: 'no-store' });
@@ -124,25 +138,29 @@ async function fetchText(url: string): Promise<string> {
     const isCorsOrNetwork =
       e instanceof TypeError ||
       (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError')));
-    if (isCorsOrNetwork) {
-      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-      const res = await fetch(proxyUrl, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`Прокси: HTTP ${res.status}`);
-      return await res.text();
+    if (!isCorsOrNetwork) throw e;
+
+    for (const proxy of CORS_PROXIES) {
+      try {
+        const proxyUrl = proxy.getUrl(url);
+        const res = await fetch(proxyUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`${proxy.name}: HTTP ${res.status}`);
+        const text = await proxy.parse(res);
+        if (text && text.trim().length > 0) return text;
+      } catch (_) {
+        continue;
+      }
     }
-    throw e;
+    throw new Error('Не удалось загрузить данные (CORS). Попробуйте позже или другой прокси.');
   }
 }
 
 /**
- * Загрузить CSV по URL (Google Таблица: Файл → Публикация в интернете → CSV)
- * и преобразовать в массив WeatherRow.
- * При блокировке CORS запрос повторяется через прокси.
- * Поддерживается формат с заголовками и без (AirStationLog: B=дата, E=температура, F=PM2.5, G=PM10, H=давление).
+ * Разобрать текст CSV в массив WeatherRow (без загрузки по сети).
+ * Поддерживается формат с заголовками и без (AirStationLog).
  */
-export async function fetchWeatherFromSheet(csvUrl: string): Promise<WeatherRow[]> {
-  const text = await fetchText(csvUrl);
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+export function parseWeatherCsv(csvText: string): WeatherRow[] {
+  const lines = csvText.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 1) return [];
 
   const firstCells = parseCsvLine(lines[0]);
@@ -212,4 +230,12 @@ export async function fetchWeatherFromSheet(csvUrl: string): Promise<WeatherRow[
   }
   rows.sort((a, b) => a.date - b.date);
   return rows;
+}
+
+/**
+ * Загрузить CSV по URL (с повтором через CORS-прокси при ошибке).
+ */
+export async function fetchWeatherFromSheet(csvUrl: string): Promise<WeatherRow[]> {
+  const text = await fetchText(csvUrl);
+  return parseWeatherCsv(text);
 }

@@ -27,6 +27,27 @@ export const LANG_OPTIONS: { code: string; name: string }[] = [
   { code: 'la', name: 'Латынь' },
 ];
 
+const LANG_CODES = new Set(LANG_OPTIONS.map((o) => o.code));
+
+/** 3-буквенные коды ISO 639-2 → 2-буквенные для совпадения с LANG_OPTIONS */
+const ISO3_TO_2: Record<string, string> = {
+  eng: 'en', rus: 'ru', deu: 'de', fra: 'fr', spa: 'es', ita: 'it', por: 'pt', ukr: 'uk', pol: 'pl',
+  srp: 'sr', hrv: 'hr', bos: 'bs', ell: 'el', zho: 'zh', jpn: 'ja', kor: 'ko', ara: 'ar', tur: 'tr',
+  nld: 'nl', swe: 'sv', lat: 'la',
+};
+
+/** Нормализовать код языка от Mistral: привести к одному из LANG_OPTIONS. */
+export function normalizeLangCode(raw: string | undefined): string | undefined {
+  if (!raw || typeof raw !== 'string') return undefined;
+  const s = raw.trim().toLowerCase().slice(0, 6).replace(/\s*\(.*\)$/, '');
+  const two = s.slice(0, 2);
+  const three = s.slice(0, 3);
+  if (LANG_CODES.has(two)) return two;
+  if (LANG_CODES.has(three)) return three;
+  if (ISO3_TO_2[three]) return ISO3_TO_2[three];
+  return LANG_CODES.has(s) ? s : undefined;
+}
+
 function hasScript(text: string, regex: RegExp): boolean {
   return regex.test(text);
 }
@@ -185,11 +206,12 @@ function parseTranslationWithTranscription(content: string): MistralTranslationR
   return { text, transcription };
 }
 
-/** Парсит ответ с автоопределением языка: строка 1 — код языка (ISO 639-1), строка 2 — перевод, строка 3 — транскрипция */
+/** Парсит ответ с автоопределением языка: строка 1 — код языка (ISO 639-1), строка 2 — перевод, строка 3 — транскрипция. Категория языка приводится к одному из LANG_OPTIONS. */
 function parseDetectAndTranslate(content: string): MistralTranslationResult | null {
   const lines = content.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length < 2) return null;
-  const detectedCode = (lines[0] ?? '').replace(/\s*\(.*\)$/, '').trim().slice(0, 6).toLowerCase();
+  const rawCode = (lines[0] ?? '').trim();
+  const detectedFromLang = normalizeLangCode(rawCode);
   const text = lines[1] ?? '';
   let transcription: string | undefined;
   if (lines.length > 2) {
@@ -199,8 +221,7 @@ function parseDetectAndTranslate(content: string): MistralTranslationResult | nu
       : third;
     if (transcription === '—' || transcription === '-' || !transcription) transcription = undefined;
   }
-  const code = /^[a-z]{2,3}$/.test(detectedCode) ? detectedCode : undefined;
-  return { text, transcription, detectedFromLang: code };
+  return { text, transcription, detectedFromLang: detectedFromLang ?? undefined };
 }
 
 async function translateMistral(text: string, fromLang: string, toLang: string): Promise<MistralTranslationResult | null> {
