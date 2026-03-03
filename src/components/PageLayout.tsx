@@ -407,14 +407,19 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
           </span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {getSyncConfig() && (
-              <button
-                type="button"
-                onClick={handlePullFromRepo}
-                disabled={pullLoading}
-                style={{ ...ctrlBtn, fontSize: 12 }}
-              >
-                {pullLoading ? 'Загрузка…' : 'С репо'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handlePullFromRepo}
+                  disabled={pullLoading}
+                  style={{ ...ctrlBtn, fontSize: 12 }}
+                >
+                  {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+                </button>
+                <button type="button" onClick={() => pushLayouts(getAllLayouts()).catch(() => {})} style={{ ...ctrlBtn, fontSize: 12 }}>
+                  Загрузить в репо
+                </button>
+              </>
             )}
             <button
               type="button"

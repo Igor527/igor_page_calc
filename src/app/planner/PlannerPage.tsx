@@ -406,9 +406,14 @@ const PlannerPage: React.FC = () => {
           Вставить из буфера
         </button>
         {getSyncConfig() && (
-          <button type="button" onClick={handlePullFromRepo} disabled={pullLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pullLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
-            {pullLoading ? 'Загрузка…' : 'С репо'}
-          </button>
+          <>
+            <button type="button" onClick={handlePullFromRepo} disabled={pullLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pullLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
+              {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+            </button>
+            <button type="button" onClick={() => pushPlanner(tasks).catch(() => {})} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
+              Загрузить в репо
+            </button>
+          </>
         )}
         {pullError && <span style={{ fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</span>}
         <button type="button" onClick={handleReset} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>

@@ -428,7 +428,15 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
             title="Загрузить опубликованный список калькуляторов из репо"
             style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px', fontSize: 13, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-card-background-color)', color: 'var(--pico-color)', cursor: pullCalcLoading ? 'wait' : 'pointer' }}
           >
-            {pullCalcLoading ? 'Загрузка…' : 'С репо'}
+            {pullCalcLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+          </button>
+          <button
+            type="button"
+            onClick={() => pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2)).catch(() => {})}
+            title="Сохранить опубликованный список калькуляторов в репо"
+            style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px', fontSize: 13, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-card-background-color)', color: 'var(--pico-color)', cursor: 'pointer' }}
+          >
+            Загрузить в репо
           </button>
         )}
         <button

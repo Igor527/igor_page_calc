@@ -980,8 +980,11 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           </div>
           {getSyncConfig() && (
             <>
-              <button onClick={handlePullFromRepo} disabled={pullLoading} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Загрузить заметки из репо (последний пуш — источник истины)">
-                {pullLoading ? 'Загрузка…' : 'Синхронизировать с репо'}
+              <button onClick={handlePullFromRepo} disabled={pullLoading} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Выгрузить последний сохранённый вариант из репо">
+                {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+              </button>
+              <button onClick={() => pushNotes(notes, folders).catch(() => {})} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Сохранить текущие заметки в репо">
+                Загрузить в репо
               </button>
               {pullError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</p>}
             </>

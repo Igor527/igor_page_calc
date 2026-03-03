@@ -343,7 +343,10 @@ const DictionaryPage: React.FC = () => {
         {getSyncConfig() && (
           <>
             <button type="button" className="outline" style={{ fontSize: 12 }} onClick={handlePullFromRepo} disabled={pullLoading}>
-              {pullLoading ? 'Загрузка…' : 'Синхронизировать с репо'}
+              {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+            </button>
+            <button type="button" className="outline" style={{ fontSize: 12 }} onClick={() => pushDictionary(entries, priorityLangs).then(() => {})}>
+              Загрузить в репо
             </button>
             {pullError && <span style={{ fontSize: 12, color: 'var(--pico-del-color)' }}>{pullError}</span>}
           </>

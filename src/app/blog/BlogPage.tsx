@@ -908,26 +908,26 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             {getSyncConfig() && (
               <div style={{ marginBottom: 20, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)', fontSize: 13 }}>
                 <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--pico-muted-color)' }}>
-                  Изменения с телефона и с компьютера объединяются по времени: перед отправкой загружаем репо и сливаем (удаления не теряются). С телефона можно нажать «Отправить сейчас» для немедленной отправки в репо.
+                  Изменения с телефона и с компьютера объединяются по времени: перед отправкой загружаем репо и сливаем (удаления не теряются). С телефона можно нажать «Загрузить в репо» для немедленной отправки.
                 </p>
                 {(syncStatus !== 'idle' || syncError) && (
                   <div style={{ marginBottom: 8, color: syncStatus === 'error' ? 'var(--color-danger)' : 'var(--pico-muted-color)' }}>
-                    {syncStatus === 'pending' && `Через ${BLOG_PUSH_DELAY_MS / 1000} сек отправка в репо (сначала загрузка с сервера и объединение).`}
-                    {syncStatus === 'loading' && 'Загрузка с репо…'}
-                    {syncStatus === 'sending' && 'Отправка в репо…'}
-                    {syncStatus === 'ok' && 'Отправлено в репо.'}
+                    {syncStatus === 'pending' && `Через ${BLOG_PUSH_DELAY_MS / 1000} сек загрузка в репо (сначала выгрузка из репо и объединение).`}
+                    {syncStatus === 'loading' && 'Выгружаем последний сэйв из репо…'}
+                    {syncStatus === 'sending' && 'Загружаем в репо…'}
+                    {syncStatus === 'ok' && 'Загружено в репо.'}
                     {syncStatus === 'error' && syncError}
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   {syncStatus === 'pending' && (
                     <>
-                      <button type="button" onClick={handleSyncNow} style={{ fontSize: 12 }}>Отправить сейчас</button>
+                      <button type="button" onClick={handleSyncNow} style={{ fontSize: 12 }}>Загрузить в репо</button>
                       <button type="button" onClick={handleCancelPush} className="secondary" style={{ fontSize: 12 }}>Отменить отправку</button>
                     </>
                   )}
                   <button type="button" onClick={handlePullOnly} className="outline" style={{ fontSize: 12 }} title="Загрузить с репо и объединить с локальными">
-                    Синхронизировать с репо
+                    Выгрузить последний сэйв из репо
                   </button>
                 </div>
               </div>
