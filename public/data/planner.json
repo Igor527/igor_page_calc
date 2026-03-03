@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1772577227938,
+  "exportedAt": 1772577290661,
   "tasks": [
     {
       "id": "1",
@@ -8,7 +8,10 @@
       "start": 1772501247191,
       "end": 1772496000000,
       "progress": 40,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Катя"
+      ]
     },
     {
       "id": "2",
@@ -16,7 +19,10 @@
       "start": 1772664147191,
       "end": 1772755200000,
       "progress": 14,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Миша"
+      ]
     },
     {
       "id": "3",
@@ -24,15 +30,21 @@
       "start": 1772496000000,
       "end": 1772496000000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Кирилл"
+      ]
     },
     {
       "id": "4",
-      "name": "ЗапускСтрогиноСреда_КУ_1этап",
+      "name": "СтрогиноСреда_КУ_1этап",
       "start": 1772409600000,
       "end": 1772496000000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Миша"
+      ]
     },
     {
       "id": "task-1772571980122",
@@ -40,7 +52,10 @@
       "start": 1772496000000,
       "end": 1772582400000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Миша"
+      ]
     },
     {
       "id": "task-1772571987371",
@@ -48,7 +63,10 @@
       "start": 1772582400000,
       "end": 1772582400000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Миша"
+      ]
     },
     {
       "id": "task-1772571999893",
@@ -56,7 +74,8 @@
       "start": 1772582400000,
       "end": 1772755200000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": []
     },
     {
       "id": "task-1772575951902",
@@ -64,7 +83,8 @@
       "start": 1772582400000,
       "end": 1772755200000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": []
     },
     {
       "id": "task-1772575977852",
@@ -72,7 +92,8 @@
       "start": 1773014400000,
       "end": 1773360000000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": []
     }
   ]
 }
