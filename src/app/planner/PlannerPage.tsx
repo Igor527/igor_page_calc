@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
+import { schedulePush, pushPlanner } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-page-planner-tasks';
 
@@ -150,9 +151,33 @@ const PlannerPage: React.FC = () => {
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
+  const [plannerLoaded, setPlannerLoaded] = useState(false);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const ganttScrollRef = useRef<HTMLDivElement>(null);
   const syncFromRef = useRef<'table' | 'gantt' | null>(null);
+
+  // Загрузка задач из public/data/planner.json (при первом открытии)
+  useEffect(() => {
+    if (plannerLoaded) return;
+    setPlannerLoaded(true);
+    fetch('./data/planner.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const raw = data?.tasks;
+        if (!Array.isArray(raw) || raw.length === 0) return;
+        const parsed: Task[] = raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
+          ...t,
+          start: new Date(typeof t.start === 'number' ? t.start : t.start),
+          end: new Date(typeof t.end === 'number' ? t.end : t.end),
+        }));
+        setTasks(parsed);
+        try {
+          const toStore = parsed.map((t) => ({ ...t, start: t.start.getTime(), end: t.end.getTime() }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+        } catch {}
+      })
+      .catch(() => {});
+  }, [plannerLoaded]);
 
   useEffect(() => {
     const tableEl = tableScrollRef.current;
@@ -186,6 +211,7 @@ const PlannerPage: React.FC = () => {
         end: t.end.getTime(),
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+      schedulePush('planner', () => pushPlanner(tasks));
     } catch (e) {
       console.warn('Planner: не удалось сохранить задачи', e);
     }

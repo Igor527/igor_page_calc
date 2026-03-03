@@ -155,3 +155,15 @@ export async function pushLayouts(layouts: Record<string, unknown[]>): Promise<S
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), layouts }, null, 2);
   return putFile(dataPath('layouts.json'), payload, 'Автосинхронизация: порядок окон');
 }
+
+/** Задачи планировщика (Гантт): start/end как timestamp (number). */
+export async function pushPlanner(tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>): Promise<SyncResult> {
+  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
+  const serialized = tasks.map((t) => ({
+    ...t,
+    start: t.start instanceof Date ? t.start.getTime() : t.start,
+    end: t.end instanceof Date ? t.end.getTime() : t.end,
+  }));
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), tasks: serialized }, null, 2);
+  return putFile(dataPath('planner.json'), payload, 'Автосинхронизация: планировщик');
+}

@@ -53,9 +53,19 @@ npm test                # тесты (vitest)
   - Вход в админку по ссылке **https://urbanplanner.page/welcome_me** (или https://www.urbanplanner.page/welcome_me). На продакшене вход через Google/GitHub часто работает стабильнее, чем на localhost (нет auth/internal-error из-за куки/COOP).
   - Секреты для сборки: в настройках проекта на хостинге (GitHub → Settings → Secrets and variables; Cloudflare Pages → Settings → Environment variables) задайте `VITE_FIREBASE_*` и `VITE_ADMIN_EMAIL` (или `VITE_ADMIN_GITHUB_IDS`), как в локальном `.env`.
 
-## Синхронизация с GitHub
+## Синхронизация с GitHub (админка и быстрый деплой)
 
-На главной в режиме админа: блок «Синхронизация с GitHub» (owner, repo, ветка, Personal Access Token). После настройки изменения в заметках, блоге, словаре, калькуляторах и порядке окон автоматически пушатся в репо (`public/data/*.json`). Данные при загрузке сайта подтягиваются из этих файлов. См. [public/data/README.txt](public/data/README.txt).
+Вход в админку: **https://urbanplanner.page/welcome_me** (Google/GitHub/email). Ссылка на сайте не светится — только прямая.
+
+На главной в режиме админа: блок **«Синхронизация с GitHub»** (owner, repo, ветка, Personal Access Token с правами repo). После настройки все изменения автоматически пушатся в репо в папку **public/data/**:
+- **Посты блога** (в т.ч. с картинками обложек) — добавление, правка, удаление → `posts.json`
+- **Заметки** и папки → `notes.json`
+- **Калькуляторы и отчёты** — публикация из редактора → `calculators.json`
+- **Словарь** → `dictionary.json`
+- **Порядок окон** на главной → `layouts.json`
+- **Планировщик (Гантт)** → `planner.json`
+
+Данные при загрузке сайта подтягиваются из этих файлов. После пуша в репо деплой идёт через GitHub Actions — сайт обновляется. См. [public/data/README.txt](public/data/README.txt).
 
 ## Перед публикацией
 
