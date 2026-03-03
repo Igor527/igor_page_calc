@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1772568146150,
+  "exportedAt": 1772576668429,
   "entries": [
+    {
+      "id": "e1772569140463-xubnzc",
+      "source": "Zahtev",
+      "translation": "Запрос",
+      "transcription": "[zɑːtˈlɛf]",
+      "fromLang": "sr",
+      "toLang": "ru",
+      "addedAt": 1772569140463
+    },
     {
       "id": "e1772568132688-hktock",
       "source": "Могу ли оплатить алкоголь на кассе самообсуживания",
