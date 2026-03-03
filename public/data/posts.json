@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1772504299290,
+  "exportedAt": 1772504307277,
   "posts": [
     {
       "id": "post_0a4j2s4_mm9xdgr3",
@@ -16,9 +16,7 @@
         "zoom": 1.21
       },
       "createdAt": 1772501072654,
-      "updatedAt": 1772503643038,
-      "polls": [],
-      "todos": []
+      "updatedAt": 1772504304752
     }
   ]
 }
