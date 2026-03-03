@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import {
   fetchWeatherFromSheet,
+  fetchWeatherFromFirebase,
+  getWeatherFirebaseConfig,
   parseWeatherCsv,
   getWeatherSheetUrl,
   getWeatherStationId,
@@ -28,12 +30,32 @@ const WeatherPage: React.FC = () => {
   const [data, setData] = useState<WeatherRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'firebase' | 'csv' | null>(null);
   const [csvUrl, setCsvUrl] = useState(getWeatherSheetUrl());
   const [pasteCsv, setPasteCsv] = useState('');
 
+  const loadFromFirebase = useCallback(async () => {
+    const config = getWeatherFirebaseConfig();
+    if (!config) return false;
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await fetchWeatherFromFirebase(config);
+      setData(rows);
+      setSource('firebase');
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка загрузки из Firebase');
+      setData([]);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const load = useCallback(async (url: string) => {
     if (!url.trim()) {
-      setError('Укажите URL CSV (Google Таблица: Публикация в интернете → CSV) или задайте VITE_WEATHER_SHEET_CSV_URL в .env');
+      setError('Укажите URL CSV или настройте Firebase (VITE_FIREBASE_DATABASE_URL + VITE_WEATHER_DATA_KEY).');
       setData([]);
       return;
     }
@@ -42,6 +64,7 @@ const WeatherPage: React.FC = () => {
     try {
       const rows = await fetchWeatherFromSheet(url);
       setData(rows);
+      setSource('csv');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка загрузки данных');
       setData([]);
@@ -51,12 +74,16 @@ const WeatherPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const config = getWeatherFirebaseConfig();
     const url = getWeatherSheetUrl();
-    if (url) {
+    if (config) {
+      setCsvUrl(url);
+      loadFromFirebase().catch(() => {});
+    } else if (url) {
       setCsvUrl(url);
       load(url);
     }
-  }, [load]);
+  }, [loadFromFirebase, load]);
 
   const hasTemp = data.some((r) => r.temperature != null);
   const hasPressure = data.some((r) => r.pressure != null);
@@ -75,27 +102,34 @@ const WeatherPage: React.FC = () => {
         </p>
       )}
 
-      {/* URL и обновить */}
+      {/* Источник: Firebase или URL CSV */}
+      {source === 'firebase' && (
+        <p style={{ fontSize: 12, color: 'var(--pico-muted-color)', marginBottom: 8 }}>
+          Данные из Firebase (лог из Google Таблицы через скрипт).
+        </p>
+      )}
       <div style={{ marginBottom: 24, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <input
-          type="url"
-          value={csvUrl}
-          onChange={(e) => setCsvUrl(e.target.value)}
-          placeholder="URL CSV (Google Таблица → Публикация в интернете → CSV)"
-          style={{
-            flex: '1',
-            minWidth: 200,
-            padding: '8px 12px',
-            fontSize: 13,
-            border: '1px solid var(--pico-border-color)',
-            borderRadius: 6,
-            background: 'var(--pico-form-element-background-color)',
-            color: 'var(--pico-color)',
-          }}
-        />
+        {!getWeatherFirebaseConfig() && (
+          <input
+            type="url"
+            value={csvUrl}
+            onChange={(e) => setCsvUrl(e.target.value)}
+            placeholder="URL CSV (Google Таблица → Публикация в интернете → CSV)"
+            style={{
+              flex: '1',
+              minWidth: 200,
+              padding: '8px 12px',
+              fontSize: 13,
+              border: '1px solid var(--pico-border-color)',
+              borderRadius: 6,
+              background: 'var(--pico-form-element-background-color)',
+              color: 'var(--pico-color)',
+            }}
+          />
+        )}
         <button
           type="button"
-          onClick={() => load(csvUrl)}
+          onClick={() => (getWeatherFirebaseConfig() ? loadFromFirebase() : load(csvUrl))}
           disabled={loading}
           className="primary"
           style={{ padding: '8px 16px', fontSize: 13 }}

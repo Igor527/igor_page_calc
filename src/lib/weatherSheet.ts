@@ -97,6 +97,14 @@ export function getWeatherSheetUrl(): string {
   return getEnv('VITE_WEATHER_SHEET_CSV_URL');
 }
 
+/** Конфиг для загрузки лога из Firebase Realtime Database (Google Script пушит туда данные). */
+export function getWeatherFirebaseConfig(): { databaseUrl: string; dataKey: string } | null {
+  const url = getEnv('VITE_FIREBASE_DATABASE_URL').replace(/\/$/, '');
+  const key = getEnv('VITE_WEATHER_DATA_KEY');
+  if (!url || !key) return null;
+  return { databaseUrl: url, dataKey: key };
+}
+
 export function getWeatherStationId(): string {
   return getEnv('VITE_WEATHER_STATION_ID');
 }
@@ -113,6 +121,16 @@ function looksLikeDataRow(cells: string[]): boolean {
 }
 
 const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (res: Response) => Promise<string> }[] = [
+  {
+    name: 'cors.lol',
+    getUrl: (u) => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'corsfix',
+    getUrl: (u) => `https://proxy.corsfix.com/?${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
   {
     name: 'allorigins-raw',
     getUrl: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -143,9 +161,24 @@ const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (
   },
 ];
 
-/** Загрузить текст по URL; при CORS — пробуем прокси по очереди. */
+/** Загрузить текст по URL; при CORS — пробуем dev-прокси (только в dev), затем публичные прокси. */
 async function fetchText(url: string): Promise<string> {
   const fetchOpts: RequestInit = { cache: 'no-store', redirect: 'follow' };
+
+  // В режиме разработки (npm run dev) запрос идёт через Vite-прокси — CORS не мешает
+  if (typeof window !== 'undefined' && import.meta.env.DEV) {
+    try {
+      const proxyUrl = `/api/weather-csv?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl, fetchOpts);
+      if (res.ok) {
+        const text = await res.text();
+        if (text?.trim()) return text;
+      }
+    } catch {
+      // fallback на прямую загрузку и публичные прокси
+    }
+  }
+
   try {
     const res = await fetch(url, fetchOpts);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -175,7 +208,7 @@ async function fetchText(url: string): Promise<string> {
       }
     }
     throw new Error(
-      'Не удалось загрузить CSV (CORS). Варианты: 1) Откройте ссылку в новой вкладке → скопируйте весь текст → вставьте в блок «Вставьте CSV вручную» ниже. 2) Проверьте URL: нужна именно «Публикация в интернете» (Файл → Публикация в интернете → CSV), не «Настройки доступа». Прокси: ' +
+      'Не удалось загрузить данные (CORS). Варианты: 1) Запустите сайт через npm run dev — в dev режиме CSV грузится через локальный прокси без CORS. 2) Откройте ссылку CSV в новой вкладке → скопируйте весь текст (Ctrl+A, Ctrl+C) → вставьте в блок «Вставьте CSV вручную» ниже. 3) Проверьте URL: нужна «Публикация в интернете» (Файл → Публикация в интернете → CSV). Прокси: ' +
         errors.join('; ')
     );
   }
@@ -255,6 +288,44 @@ export function parseWeatherCsv(csvText: string): WeatherRow[] {
     });
   }
   rows.sort((a, b) => a.date - b.date);
+  return rows;
+}
+
+/**
+ * Загрузить лог из Firebase Realtime Database (данные туда отправляет Google Apps Script из таблицы).
+ * REST: GET .../weather/{dataKey}/rows.json (последние 10000 точек по дате).
+ */
+export async function fetchWeatherFromFirebase(config: { databaseUrl: string; dataKey: string }): Promise<WeatherRow[]> {
+  const { databaseUrl, dataKey } = config;
+  const path = `weather/${encodeURIComponent(dataKey)}/rows.json`;
+  const url = `${databaseUrl}/${path}`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Firebase: ${res.status}`);
+  const raw = (await res.json()) as Record<string, { date: number; temperature?: number; pressure?: number; pm1?: number; pm25?: number; pm10?: number; station?: string }> | null;
+  if (!raw || typeof raw !== 'object') return [];
+  const MAX_POINTS = 10000;
+  const rows: WeatherRow[] = Object.values(raw)
+    .filter((r) => r && typeof r.date === 'number')
+    .sort((a, b) => a.date - b.date)
+    .slice(-MAX_POINTS)
+    .map((r) => {
+    const date = r?.date ?? 0;
+    return {
+      date,
+      dateLabel: new Date(date).toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      temperature: r.temperature,
+      pressure: r.pressure,
+      pm1: r.pm1,
+      pm25: r.pm25,
+      pm10: r.pm10,
+      station: r.station,
+    };
+  });
   return rows;
 }
 

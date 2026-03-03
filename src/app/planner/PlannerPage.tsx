@@ -16,12 +16,26 @@ const GANTT_HEADER_HEIGHT = 52;
 const GANTT_HEADER_HEIGHT_MOBILE = 44;
 const TABLE_WIDTH = 640;
 
-/** Палитра цветов для полос Ганта (каждая задача — свой цвет) */
+/** Палитра цветов для полос Ганта и для выбора цвета меток */
 const GANTT_BAR_PALETTE = [
   '#4a90d9', '#7b68ee', '#50c878', '#e6a23c', '#f56c6c', '#c77eb5', '#20b2aa', '#dda0dd',
 ];
-function getBarStyles(index: number, barColor?: string): Task['styles'] {
-  const bg = barColor ?? GANTT_BAR_PALETTE[index % GANTT_BAR_PALETTE.length];
+
+export type LabelWithColor = { name: string; color?: string };
+
+function getBarStyles(
+  index: number,
+  barColor?: string,
+  taskLabels?: string[],
+  labelColors?: Record<string, string>
+): Task['styles'] {
+  let bg: string;
+  if (labelColors && taskLabels?.length) {
+    const firstLabelColor = taskLabels.map((l) => labelColors[l]).find(Boolean);
+    bg = firstLabelColor ?? barColor ?? GANTT_BAR_PALETTE[index % GANTT_BAR_PALETTE.length];
+  } else {
+    bg = barColor ?? GANTT_BAR_PALETTE[index % GANTT_BAR_PALETTE.length];
+  }
   const progress = 'rgba(0,0,0,0.25)';
   return {
     backgroundColor: bg,
@@ -151,12 +165,15 @@ function loadStoredTasks(): PlannerTask[] {
   }
 }
 
-function loadStoredLabels(): string[] {
+function loadStoredLabels(): LabelWithColor[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_LABELS);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map((x: unknown) =>
+      typeof x === 'string' ? { name: x } : x && typeof x === 'object' && 'name' in x ? { name: String((x as any).name), color: (x as any).color } : null
+    ).filter(Boolean) as LabelWithColor[];
   } catch {
     return [];
   }
@@ -187,7 +204,7 @@ function getDefaultTasks(): PlannerTask[] {
 
 const PlannerPage: React.FC = () => {
   const [tasks, setTasks] = useState<PlannerTask[]>(loadStoredTasks);
-  const [labelsList, setLabelsList] = useState<string[]>(loadStoredLabels);
+  const [labelsList, setLabelsList] = useState<LabelWithColor[]>(loadStoredLabels);
   const [labelsPanelOpen, setLabelsPanelOpen] = useState(false);
   const [newLabelName, setNewLabelName] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Day);
@@ -347,12 +364,21 @@ const PlannerPage: React.FC = () => {
   const addLabelToList = useCallback((name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    setLabelsList((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed].sort()));
+    setLabelsList((prev) => {
+      if (prev.some((l) => l.name === trimmed)) return prev;
+      return [...prev, { name: trimmed }].sort((a, b) => a.name.localeCompare(b.name));
+    });
     setNewLabelName('');
   }, []);
 
+  const setLabelColor = useCallback((labelName: string, color: string) => {
+    setLabelsList((prev) =>
+      prev.map((l) => (l.name === labelName ? { ...l, color: color || undefined } : l))
+    );
+  }, []);
+
   const removeLabelFromList = useCallback((label: string) => {
-    setLabelsList((prev) => prev.filter((l) => l !== label));
+    setLabelsList((prev) => prev.filter((l) => l.name !== label));
     setTasks((prev) =>
       prev.map((t) => ({ ...t, labels: (t.labels ?? []).filter((l) => l !== label) }))
     );
@@ -400,13 +426,38 @@ const PlannerPage: React.FC = () => {
     setPasteOpen(false);
   };
 
-  // Задачи для Ганта: без зависимостей, без milestone, цвет из barColor или по палитре
-  const ganttTasks = tasks.map((t, i) => ({
+  const labelColors = React.useMemo(
+    () =>
+      labelsList.reduce<Record<string, string>>((acc, l, i) => {
+        acc[l.name] = l.color ?? GANTT_BAR_PALETTE[i % GANTT_BAR_PALETTE.length];
+        return acc;
+      }, {}),
+    [labelsList]
+  );
+
+  const [filterByLabel, setFilterByLabel] = useState<string | null>(null);
+  const [groupByLabels, setGroupByLabels] = useState(false);
+
+  const displayedTasks = React.useMemo(() => {
+    let list = filterByLabel
+      ? tasks.filter((t) => (t.labels ?? []).includes(filterByLabel))
+      : [...tasks];
+    if (groupByLabels && labelsList.length > 0) {
+      const primary = (t: PlannerTask) => (t.labels ?? [])[0] ?? '';
+      const order = new Map(labelsList.map((l, i) => [l.name, i]));
+      order.set('', labelsList.length);
+      list.sort((a, b) => (order.get(primary(a)) ?? 999) - (order.get(primary(b)) ?? 999));
+    }
+    return list;
+  }, [tasks, filterByLabel, groupByLabels, labelsList]);
+
+  // Задачи для Ганта: без зависимостей, без milestone, цвет по метке или barColor или палитра
+  const ganttTasks = displayedTasks.map((t, i) => ({
     ...t,
     progress: t.progress === 0 ? 0.5 : t.progress,
     dependencies: undefined,
     type: 'task' as const,
-    styles: getBarStyles(i, t.barColor),
+    styles: getBarStyles(i, t.barColor, t.labels, labelColors),
   }));
 
   const handleReset = () => {
@@ -509,6 +560,25 @@ const PlannerPage: React.FC = () => {
           </>
         )}
         {pullError && <span style={{ fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</span>}
+        {labelsList.length > 0 && (
+          <>
+            <select
+              value={filterByLabel ?? ''}
+              onChange={(e) => setFilterByLabel(e.target.value || null)}
+              title="Показать загрузку одного сотрудника"
+              style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid var(--pico-border-color)', fontSize: 12, background: 'var(--pico-background-color)', color: 'var(--pico-color)', height: 28 }}
+            >
+              <option value="">Все</option>
+              {labelsList.map((l) => (
+                <option key={l.name} value={l.name}>{l.name}</option>
+              ))}
+            </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }} title="Группировать задачи по первой метке (сотруднику)">
+              <input type="checkbox" checked={groupByLabels} onChange={(e) => setGroupByLabels(e.target.checked)} />
+              Группа по меткам
+            </label>
+          </>
+        )}
         <button
           type="button"
           onClick={() => { setLabelsPanelOpen((o) => !o); }}
@@ -571,24 +641,37 @@ const PlannerPage: React.FC = () => {
               Добавить
             </button>
             {labelsList.length > 0 && (
-              <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+              <span style={{ fontSize: 12, color: 'var(--pico-muted-color)', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                 {labelsList.map((l) => (
                   <span
-                    key={l}
-                    onClick={() => removeLabelFromList(l)}
-                    title="Удалить метку из списка (уберёт и у всех задач)"
+                    key={l.name}
                     style={{
-                      display: 'inline-block',
-                      marginRight: 6,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
                       padding: '2px 6px',
                       borderRadius: 4,
-                      background: 'var(--pico-primary-background)',
-                      color: 'var(--pico-primary)',
-                      cursor: 'pointer',
+                      background: l.color ? `${l.color}22` : 'var(--pico-primary-background)',
+                      color: l.color || 'var(--pico-primary)',
                       fontSize: 11,
                     }}
                   >
-                    {l} ×
+                    <input
+                      type="color"
+                      value={labelColors[l.name] ?? '#4a90d9'}
+                      onChange={(e) => setLabelColor(l.name, e.target.value)}
+                      title="Цвет метки (и полосы Ганта)"
+                      style={{ width: 20, height: 18, padding: 0, border: 'none', cursor: 'pointer', background: 'transparent' }}
+                    />
+                    <span>{l.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeLabelFromList(l.name)}
+                      title="Удалить метку"
+                      style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </span>
@@ -696,14 +779,37 @@ const PlannerPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {tasks.length === 0 ? (
+                {displayedTasks.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}>
-                      Нет задач. Нажмите «+ Задача», чтобы добавить.
+                      {filterByLabel ? 'Нет задач у выбранного сотрудника.' : 'Нет задач. Нажмите «+ Задача», чтобы добавить.'}
                     </td>
                   </tr>
                 ) : (
-                tasks.map((t) => (
+                (() => {
+                  const rows: Array<{ type: 'group'; label: string } | { type: 'task'; task: PlannerTask }> = [];
+                  if (groupByLabels && labelsList.length > 0) {
+                    let lastLabel = '';
+                    for (const t of displayedTasks) {
+                      const primary = (t.labels ?? [])[0] ?? '';
+                      if (primary !== lastLabel) {
+                        lastLabel = primary;
+                        rows.push({ type: 'group', label: primary || 'Без метки' });
+                      }
+                      rows.push({ type: 'task', task: t });
+                    }
+                  } else {
+                    displayedTasks.forEach((t) => rows.push({ type: 'task', task: t }));
+                  }
+                  return rows.map((row) =>
+                    row.type === 'group' ? (
+                      <tr key={`group-${row.label}`} style={{ borderBottom: '1px solid var(--pico-border-color)' }}>
+                        <td colSpan={7} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
+                          {row.label}
+                        </td>
+                      </tr>
+                    ) : (
+                ( (t: PlannerTask) => (
                   <tr key={t.id} style={{ height: rowH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                     <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 160, minWidth: 120 }}>
                       <input
@@ -750,8 +856,8 @@ const PlannerPage: React.FC = () => {
                               fontSize: 10,
                               padding: '1px 4px',
                               borderRadius: 3,
-                              background: 'var(--pico-primary-background)',
-                              color: 'var(--pico-primary)',
+                              background: labelColors[l] ? `${labelColors[l]}33` : 'var(--pico-primary-background)',
+                              color: labelColors[l] ? '#fff' : 'var(--pico-primary)',
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
@@ -778,8 +884,8 @@ const PlannerPage: React.FC = () => {
                           }}
                         >
                           <option value="">+</option>
-                          {labelsList.filter((l) => !(t.labels ?? []).includes(l)).map((l) => (
-                            <option key={l} value={l}>{l}</option>
+                          {labelsList.filter((l) => !(t.labels ?? []).includes(l.name)).map((l) => (
+                            <option key={l.name} value={l.name}>{l.name}</option>
                           ))}
                         </select>
                       </div>
@@ -847,7 +953,7 @@ const PlannerPage: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                ))
+                ) )(row.task) )
                 )}
               </tbody>
             </table>

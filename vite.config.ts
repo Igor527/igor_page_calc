@@ -2,6 +2,39 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 // path и __dirname не нужны для alias в Vite
 
+/** В dev: прокси для загрузки CSV по URL (обход CORS). */
+function weatherCsvProxyPlugin() {
+  return {
+    name: 'weather-csv-proxy',
+    configureServer(server: import('vite').ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/weather-csv?')) {
+          next();
+          return;
+        }
+        const u = new URL(req.url, 'http://localhost');
+        const target = u.searchParams.get('url');
+        if (!target) {
+          res.statusCode = 400;
+          res.end('Missing url');
+          return;
+        }
+        try {
+          const resp = await fetch(target, { headers: { Accept: 'text/csv,text/plain,*/*' } });
+          res.statusCode = resp.status;
+          res.setHeader('Content-Type', resp.headers.get('Content-Type') || 'text/plain; charset=utf-8');
+          const text = await resp.text();
+          res.end(text);
+        } catch (e) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.end('Proxy error: ' + (e instanceof Error ? e.message : String(e)));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   // Ключ Mistral в dev подставляется прокси, чтобы обойти CORS
   const env = loadEnv(mode, process.cwd(), '');
@@ -10,7 +43,7 @@ export default defineConfig(({ mode }) => {
   return {
   // Сайт публикуется на https://urbanplanner.page (custom domain)
   base: '/',
-  plugins: [react()],
+  plugins: [react(), weatherCsvProxyPlugin()],
   resolve: {
     alias: {
       '@': '/src',
