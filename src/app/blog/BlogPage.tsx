@@ -768,6 +768,12 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
           <p className="text-sm" style={{ color: 'var(--pico-muted-color)' }}>
             Новости, статьи и заметки о проекте.
           </p>
+          <p className="text-sm mt-2" style={{ color: 'var(--pico-muted-color)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <a href="/feed.xml" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--pico-primary)' }}>Подписаться на блог (RSS)</a>
+            <button type="button" className="outline" style={{ fontSize: 11, padding: '2px 8px' }} onClick={() => navigator.clipboard.writeText(`${typeof window !== 'undefined' ? window.location.origin : ''}/feed.xml`)} title="Скопировать ссылку на ленту">Копировать ссылку</button>
+            <span style={{ color: 'var(--pico-muted-color)' }}>·</span>
+            <a href="/rss" style={{ color: 'var(--pico-primary)' }}>RSS подписки</a>
+          </p>
         </header>
 
         {/* Sort + Tag filter */}

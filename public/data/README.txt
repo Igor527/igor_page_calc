@@ -17,4 +17,6 @@
 
 Без этих файлов данные берутся только из localStorage.
 
+RSS лента блога: при сборке (npm run build) из posts.json генерируется feed.xml в корне сайта. Ссылка /feed.xml — для подписчиков (Feedly, Inoreader и т.п.). Базовый URL сайта задаётся в SITE_BASE_URL при сборке (по умолчанию https://urbanplanner.page).
+
 Опционально в .env или в секретах сборки: VITE_GITHUB_SYNC_OWNER, VITE_GITHUB_SYNC_REPO, VITE_GITHUB_SYNC_BRANCH — подставляются в форму «Синхронизация с GitHub» (токен вводится один раз в форме и хранится в localStorage).

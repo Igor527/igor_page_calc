@@ -14,6 +14,7 @@ const NotesPage = React.lazy(() => import('./app/admin/notes/NotesPage'));
 const DictionaryPage = React.lazy(() => import('./app/dictionary/DictionaryPage'));
 const CvPage = React.lazy(() => import('./app/cv/CvPage'));
 const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
+const RssPage = React.lazy(() => import('./app/rss/RssPage'));
 import { BlogList, BlogPostView, loadBlogBundle } from './app/blog/BlogPage';
 import { loadDictionaryBundle, setDictionaryFromBundle } from './app/dictionary/DictionaryPage';
 import { loadNotesBundle, applyNotesFromRepoData } from './app/admin/notes/NotesPage';
@@ -230,6 +231,9 @@ function App() {
       );
     }
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><WeatherPage /></React.Suspense>;
+  }
+  if (path === '/rss') {
+    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><RssPage /></React.Suspense>;
   }
   if (path === '/blog') {
     return <BlogList isAdmin={isAdmin} />;
