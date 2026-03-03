@@ -129,10 +129,18 @@ export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<S
   return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
 }
 
-/** Авто-пуш постов блога. */
-export async function pushPosts(posts: unknown[]): Promise<SyncResult> {
+/** Авто-пуш постов блога. В репо updatedAt = время пуша только у постов из modifiedPostIds. */
+export async function pushPosts(
+  posts: unknown[],
+  modifiedPostIds?: Set<string>
+): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), posts }, null, 2);
+  const now = Date.now();
+  const ids = modifiedPostIds ?? new Set<string>();
+  const postsWithPushTime = (posts as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>).map((p) =>
+    ids.has(String(p.id ?? '')) ? { ...p, updatedAt: now } : p
+  );
+  const payload = JSON.stringify({ version: 1, exportedAt: now, posts: postsWithPushTime }, null, 2);
   return putFile(dataPath('posts.json'), payload, 'Автосинхронизация: блог');
 }
 

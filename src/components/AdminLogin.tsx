@@ -93,7 +93,7 @@ export const AdminLogin: React.FC<{
   const fromSecret = (import.meta as unknown as { env?: { VITE_SECRET_LOADED?: string } }).env?.VITE_SECRET_LOADED === 'yes';
 
   return (
-    <div style={{ padding: '32px 24px', maxWidth: 380, margin: '0 auto' }}>
+    <div style={{ padding: '24px 20px 32px', maxWidth: 380, margin: '0 auto' }}>
       <h2 style={{ marginBottom: 24, fontSize: 22, textAlign: 'center' }}>Вход в режим админа</h2>
       {fromSecret && (
         <p style={{ fontSize: 11, color: 'var(--pico-muted-color)', textAlign: 'center', marginBottom: 12 }}>
@@ -110,6 +110,7 @@ export const AdminLogin: React.FC<{
             width: '100%',
             padding: '12px 20px',
             fontSize: 16,
+            minHeight: 44,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -137,6 +138,7 @@ export const AdminLogin: React.FC<{
             width: '100%',
             padding: '12px 20px',
             fontSize: 16,
+            minHeight: 44,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -163,8 +165,9 @@ export const AdminLogin: React.FC<{
           }}
           style={{
             width: '100%',
-            padding: '10px 20px',
+            padding: '12px 20px',
             fontSize: 14,
+            minHeight: 44,
             background: 'transparent',
             color: 'var(--pico-muted-color)',
             border: '1px dashed var(--pico-border-color)',
@@ -184,8 +187,9 @@ export const AdminLogin: React.FC<{
           }}
           style={{
             width: '100%',
-            padding: '10px 20px',
+            padding: '12px 20px',
             fontSize: 14,
+            minHeight: 44,
             background: 'transparent',
             color: 'var(--pico-muted-color)',
             border: '1px dashed var(--pico-border-color)',
@@ -254,7 +258,7 @@ export const AdminLogin: React.FC<{
             required
             autoComplete="email"
             placeholder="admin@example.com"
-            style={{ marginBottom: 14 }}
+            style={{ marginBottom: 14, fontSize: 16, minHeight: 44 }}
           />
           <label style={{ display: 'block', marginBottom: 6 }}>Пароль</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16 }}>
@@ -264,7 +268,7 @@ export const AdminLogin: React.FC<{
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ flex: 1, minWidth: 0, fontSize: 16, minHeight: 44 }}
             />
             <button
               type="button"

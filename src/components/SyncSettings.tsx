@@ -63,7 +63,7 @@ const SyncSettings: React.FC = () => {
         type="button"
         onClick={() => setOpen(!open)}
         className="outline"
-        style={{ fontSize: 12 }}
+        style={{ fontSize: 14, minHeight: 44, padding: '10px 14px' }}
       >
         {open ? '▼' : '▶'} Синхронизация с GitHub
       </button>
@@ -80,7 +80,10 @@ const SyncSettings: React.FC = () => {
           <p style={{ margin: '0 0 8px', color: 'var(--pico-muted-color)', fontSize: 12 }}>
             Заполните репозиторий и Personal Access Token (права repo). После сохранения изменения в заметках, блоге, словаре, калькуляторах и порядке окон будут автоматически пушиться в репо.
           </p>
-          <div style={{ display: 'grid', gap: 8, maxWidth: 400 }}>
+          <p style={{ margin: '0 0 10px', color: 'var(--pico-muted-color)', fontSize: 11 }}>
+            Работает с телефона (Android и iPhone): войдите в админку, один раз настройте синхронизацию — сохранять и пушить в репо можно с любого устройства.
+          </p>
+          <div style={{ display: 'grid', gap: 10, maxWidth: 400 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ fontSize: 11 }}>Владелец репо (owner)</span>
               <input
@@ -88,7 +91,7 @@ const SyncSettings: React.FC = () => {
                 value={owner}
                 onChange={(e) => setOwner(e.target.value)}
                 placeholder="username"
-                style={{ padding: '6px 8px', fontSize: 13 }}
+                style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -98,7 +101,7 @@ const SyncSettings: React.FC = () => {
                 value={repo}
                 onChange={(e) => setRepo(e.target.value)}
                 placeholder="igor_page_calc"
-                style={{ padding: '6px 8px', fontSize: 13 }}
+                style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -108,7 +111,7 @@ const SyncSettings: React.FC = () => {
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
                 placeholder="main"
-                style={{ padding: '6px 8px', fontSize: 13 }}
+                style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -118,22 +121,22 @@ const SyncSettings: React.FC = () => {
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="ghp_..."
-                style={{ padding: '6px 8px', fontSize: 13 }}
+                style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-            <button type="button" onClick={handleSave} style={{ fontSize: 12 }}>
+          <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+            <button type="button" onClick={handleSave} style={{ fontSize: 14, minHeight: 44, padding: '10px 16px' }}>
               Сохранить
             </button>
-            <button type="button" onClick={handleTest} className="secondary" style={{ fontSize: 12 }}>
+            <button type="button" onClick={handleTest} className="secondary" style={{ fontSize: 14, minHeight: 44, padding: '10px 16px' }}>
               Проверить подключение
             </button>
             <button
               type="button"
               onClick={() => { setSyncConfig(null); setOwner(''); setRepo(''); setBranch('main'); setToken(''); setTestResult('Сброшено'); }}
               className="secondary"
-              style={{ fontSize: 12 }}
+              style={{ fontSize: 14, minHeight: 44, padding: '10px 16px' }}
             >
               Отключить
             </button>

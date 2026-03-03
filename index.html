@@ -2,7 +2,14 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f2937" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Igor.Page" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://*.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.github.com https://api.mistral.ai https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://accounts.google.com https://*.firebaseapp.com https://*.github.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.google.com;" />
   <title>Igor.Page Engine</title>
   <meta name="description" content="Igor.Page Engine — конструктор калькуляторов, блог и инструменты для автоматизации расчётов." />
@@ -15,14 +22,14 @@
     body{margin:0;min-height:100vh;background:#f9fafb;color:#1f2937;}
     html.dark body{background:#111827;color:#f3f4f6;}
     #root{padding-top:112px;padding-bottom:56px;min-height:100vh;box-sizing:border-box;}
-    #header-container header{position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;}
+    #header-container header{position:fixed;top:0;left:0;right:0;z-index:1000;background:#fff;border-bottom:1px solid #e5e7eb;padding-top:env(safe-area-inset-top,0);}
     html.dark #header-container header{background:#111827;border-color:#374151;}
     #header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:flex-end;padding:12px 16px;}
     #header-container a,#header-container button{display:inline-block;padding:6px 12px;font-size:14px;font-weight:500;border-radius:6px;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;cursor:pointer;}
     #header-container a:hover,#header-container button:hover{background:#f9fafb;}
     html.dark #header-container a,html.dark #header-container button{background:#1f2937;border-color:#4b5563;color:#e5e7eb;}
     html.dark #header-container a:hover,html.dark #header-container button:hover{background:#374151;}
-    #footer-container footer{position:fixed;bottom:0;left:0;right:0;z-index:1000;background:#fff;border-top:1px solid #e5e7eb;}
+    #footer-container footer{position:fixed;bottom:0;left:0;right:0;z-index:1000;background:#fff;border-top:1px solid #e5e7eb;padding-bottom:env(safe-area-inset-bottom,0);}
     html.dark #footer-container footer{background:#111827;border-color:#374151;}
     #footer-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:16px;padding:12px 16px;}
     #footer-container a{color:#4b5563;text-decoration:none;}

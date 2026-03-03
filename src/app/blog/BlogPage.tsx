@@ -102,7 +102,7 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
 let blogBundle: BlogPost[] | null = null;
 
 export function loadBlogBundle(): Promise<void> {
-  return fetch('./data/posts.json')
+  return fetch('./data/posts.json', { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
       const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
@@ -584,10 +584,15 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const [sortAsc, setSortAsc] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const modifiedPostIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => { savePosts(posts); }, [posts]);
   useEffect(() => {
-    schedulePush('blog', () => pushPosts(posts));
+    schedulePush('blog', () => {
+      const ids = new Set(modifiedPostIdsRef.current);
+      modifiedPostIdsRef.current.clear();
+      return pushPosts(posts, ids);
+    });
   }, [posts]);
 
   // Гости видят посты из data/posts.json (если есть), админ — только из localStorage для редактирования
@@ -636,8 +641,10 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         todos: todos.length > 0 ? todos : undefined,
         createdAt: now, updatedAt: now,
       };
+      modifiedPostIdsRef.current.add(post.id);
       setPosts(prev => [post, ...prev]);
     } else if (editing) {
+      modifiedPostIdsRef.current.add(editing);
       setPosts(prev => prev.map(p =>
         p.id === editing ? {
           ...p, title: title.trim(), content, slug: finalSlug, published: isPublished, tags: finalTags,
@@ -847,7 +854,7 @@ const PostCard: React.FC<{
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>{post.title}</h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <time>{new Date(post.updatedAt).toLocaleDateString('ru-RU')}</time>
+              <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
               <span>~{rt} мин</span>
               {views > 0 && <span>👁 {views}</span>}
               {isAdmin && !post.published && (
@@ -940,7 +947,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
         <header style={{ marginBottom: 24 }}>
           <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{post.title}</h1>
           <div style={{ fontSize: 13, color: 'var(--pico-muted-color)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <time>{new Date(post.updatedAt).toLocaleDateString('ru-RU')}</time>
+            <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
             <span>~{rt} мин чтения</span>
             {isAdmin && !post.published && (
               <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
