@@ -1,25 +1,7 @@
 {
   "version": 1,
-  "exportedAt": 1772506687892,
+  "exportedAt": 1772506768482,
   "posts": [
-    {
-      "id": "post_fndwe1x_mma0hxfp",
-      "title": "Второй тестовый пост",
-      "content": "",
-      "slug": "второй-тестовый-пост",
-      "published": true,
-      "tags": [],
-      "coverImage": "",
-      "coverSettings": {
-        "posX": 50,
-        "posY": 50,
-        "zoom": 1
-      },
-      "createdAt": 1772506319748,
-      "updatedAt": 1772506319748,
-      "polls": [],
-      "todos": []
-    },
     {
       "id": "post_0a4j2s4_mm9xdgr3",
       "title": "Привет",
