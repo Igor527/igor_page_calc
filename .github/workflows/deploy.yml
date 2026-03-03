@@ -43,6 +43,14 @@ jobs:
             echo "VITE_SECRET_LOADED=yes" >> .env
           fi
 
+      - name: Diagnose .env (no secrets printed)
+        run: |
+          if [ -f .env ]; then
+            echo "::notice:: .env exists, lines=$(wc -l < .env), VITE_* vars=$(grep -c '^VITE_' .env 2>/dev/null || echo 0)"
+          else
+            echo "::warning:: .env NOT created — ENV_FILE secret is empty or not set. Add it in repo Settings → Secrets → Actions (name exactly: ENV_FILE)."
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
