@@ -35,10 +35,10 @@ jobs:
 
       # Вариант: один секрет ENV_FILE с полным содержимым .env (строки вида VITE_XXX=значение)
       - name: Create .env from ENV_FILE secret
-        if: secrets.ENV_FILE != ''
         env:
           ENV_CONTENT: ${{ secrets.ENV_FILE }}
-        run: echo "$ENV_CONTENT" > .env
+        run: |
+          if [ -n "$ENV_CONTENT" ]; then echo "$ENV_CONTENT" > .env; fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
