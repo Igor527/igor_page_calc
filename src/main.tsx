@@ -233,6 +233,15 @@ function App() {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><WeatherPage /></React.Suspense>;
   }
   if (path === '/rss') {
+    if (!isAdmin) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <h2>Доступ по входу</h2>
+          <p style={{ color: 'var(--color-muted-text)' }}>RSS подписки доступны только в режиме админа.</p>
+          {linkToHome}
+        </div>
+      );
+    }
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><RssPage /></React.Suspense>;
   }
   if (path === '/blog') {

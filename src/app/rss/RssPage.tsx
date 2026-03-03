@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { fetchRssFeed, type RssEntry } from '@/lib/rssFetch';
 
 const STORAGE_KEY = 'igor-rss-lists';
 
@@ -43,6 +44,8 @@ const RssPage: React.FC = () => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editItemTitle, setEditItemTitle] = useState('');
   const [editItemUrl, setEditItemUrl] = useState('');
+  const [feedCache, setFeedCache] = useState<Record<string, { loading: boolean; error?: string; entries?: RssEntry[] }>>({});
+  const [expandedFeedUrl, setExpandedFeedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     saveLists(lists);
@@ -101,6 +104,17 @@ const RssPage: React.FC = () => {
 
   const cancelEdit = useCallback(() => {
     setEditingItemId(null);
+  }, []);
+
+  const loadFeed = useCallback(async (url: string) => {
+    setFeedCache(prev => ({ ...prev, [url]: { ...prev[url], loading: true, error: undefined } }));
+    setExpandedFeedUrl(url);
+    try {
+      const entries = await fetchRssFeed(url);
+      setFeedCache(prev => ({ ...prev, [url]: { loading: false, entries } }));
+    } catch (e) {
+      setFeedCache(prev => ({ ...prev, [url]: { loading: false, error: e instanceof Error ? e.message : 'Ошибка загрузки' } }));
+    }
   }, []);
 
   const blogRssUrl = typeof window !== 'undefined' ? `${window.location.origin}/feed.xml` : '/feed.xml';
@@ -213,12 +227,75 @@ const RssPage: React.FC = () => {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ flex: '1 1 200px', minWidth: 0, wordBreak: 'break-all' }}>
-                            {item.title}
-                          </a>
-                          <button type="button" className="outline" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => startEditItem(item)} title="Изменить">✎</button>
-                          <button type="button" className="outline secondary" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => removeItem(list.id, item.id)} title="Удалить">✕</button>
+                        <div style={{ marginBottom: expandedFeedUrl === item.url ? 12 : 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ flex: '1 1 200px', minWidth: 0, wordBreak: 'break-all' }}>
+                              {item.title}
+                            </a>
+                            <button
+                              type="button"
+                              className="outline"
+                              style={{ fontSize: 11, padding: '2px 8px' }}
+                              onClick={() => {
+                                if (expandedFeedUrl === item.url) setExpandedFeedUrl(null);
+                                else loadFeed(item.url);
+                              }}
+                              disabled={feedCache[item.url]?.loading}
+                              title={expandedFeedUrl === item.url ? 'Свернуть' : 'Загрузить и показать ленту'}
+                            >
+                              {feedCache[item.url]?.loading ? '…' : expandedFeedUrl === item.url ? 'Свернуть' : 'Показать ленту'}
+                            </button>
+                            <button type="button" className="outline" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => startEditItem(item)} title="Изменить">✎</button>
+                            <button type="button" className="outline secondary" style={{ fontSize: 11, padding: '2px 6px' }} onClick={() => removeItem(list.id, item.id)} title="Удалить">✕</button>
+                          </div>
+                          {expandedFeedUrl === item.url && feedCache[item.url] && (
+                            <div style={{ marginTop: 10, padding: '12px 0 0', borderTop: '1px solid var(--pico-border-color)' }}>
+                              {feedCache[item.url].error && (
+                                <p style={{ fontSize: 12, color: 'var(--pico-del-color)', marginBottom: 8 }}>{feedCache[item.url].error}</p>
+                              )}
+                              {feedCache[item.url].entries && (
+                                <button type="button" className="outline" style={{ fontSize: 11, marginBottom: 10 }} onClick={() => loadFeed(item.url)}>Обновить</button>
+                              )}
+                              {feedCache[item.url].entries && feedCache[item.url].entries!.length > 0 && (
+                                <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                                  {feedCache[item.url].entries!.map((entry, idx) => (
+                                    <li
+                                      key={idx}
+                                      style={{
+                                        padding: '10px 12px',
+                                        marginBottom: 8,
+                                        background: 'var(--pico-background-color)',
+                                        borderRadius: 8,
+                                        border: '1px solid var(--pico-border-color)',
+                                      }}
+                                    >
+                                      <a
+                                        href={entry.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}
+                                      >
+                                        {entry.title}
+                                      </a>
+                                      {entry.description && (
+                                        <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', margin: '4px 0 0', lineHeight: 1.45 }}>
+                                          {entry.description}
+                                        </p>
+                                      )}
+                                      {entry.pubDate && (
+                                        <time style={{ fontSize: 11, color: 'var(--pico-muted-color)', display: 'block', marginTop: 4 }}>
+                                          {new Date(entry.pubDate).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}
+                                        </time>
+                                      )}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {feedCache[item.url].entries?.length === 0 && !feedCache[item.url].loading && (
+                                <p style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>В ленте нет записей.</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       )}
                     </li>

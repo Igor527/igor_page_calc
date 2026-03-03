@@ -95,7 +95,7 @@ export function getDefaults(pageId: string): PageSection[] {
         sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true, showForGuest: true }),
         sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
         sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
-        sec('w6rss', 'link', { linkLabel: 'RSS подписки', linkUrl: '/rss' }),
+        sec('w6rss', 'link', { linkLabel: 'RSS подписки', linkUrl: '/rss', adminOnly: true }),
         sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
         sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
         sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv', adminOnly: true }),
