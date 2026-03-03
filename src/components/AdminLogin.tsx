@@ -90,9 +90,16 @@ export const AdminLogin: React.FC<{
     else setError(result.error ?? 'Ошибка входа');
   };
 
+  const fromSecret = (import.meta as unknown as { env?: { VITE_SECRET_LOADED?: string } }).env?.VITE_SECRET_LOADED === 'yes';
+
   return (
     <div style={{ padding: '32px 24px', maxWidth: 380, margin: '0 auto' }}>
       <h2 style={{ marginBottom: 24, fontSize: 22, textAlign: 'center' }}>Вход в режим админа</h2>
+      {fromSecret && (
+        <p style={{ fontSize: 11, color: 'var(--pico-muted-color)', textAlign: 'center', marginBottom: 12 }}>
+          Сборка: конфиг подхвачен из секрета GitHub (ENV_FILE).
+        </p>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
         <button

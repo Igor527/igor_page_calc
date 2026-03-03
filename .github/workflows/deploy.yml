@@ -38,7 +38,10 @@ jobs:
         env:
           ENV_CONTENT: ${{ secrets.ENV_FILE }}
         run: |
-          if [ -n "$ENV_CONTENT" ]; then echo "$ENV_CONTENT" > .env; fi
+          if [ -n "$ENV_CONTENT" ]; then
+            echo "$ENV_CONTENT" > .env
+            echo "VITE_SECRET_LOADED=yes" >> .env
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
