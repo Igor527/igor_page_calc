@@ -204,6 +204,17 @@ export function loadPublishedBundle(): Promise<void> {
     });
 }
 
+/** Подставить опубликованный список из строки (например, из репо по API). */
+export function loadPublishedBundleFromContent(content: string): void {
+  try {
+    const data = JSON.parse(content) as { calculators?: SavedCalculator[] };
+    const list = Array.isArray(data?.calculators) ? data.calculators : [];
+    publishedBundle = list.filter((c) => c.status === 'published');
+  } catch {
+    publishedBundle = null;
+  }
+}
+
 /**
  * Собирает список калькуляторов по всем ключам calc-* в localStorage (источник истины).
  * Используется для восстановления списка, если calculators-list усечён или повреждён.

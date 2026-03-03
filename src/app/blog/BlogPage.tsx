@@ -193,12 +193,6 @@ function mergeTags(manual: string[], auto: string[]): string[] {
   return [...set].sort();
 }
 
-function readingTime(html: string): number {
-  const text = html.replace(/<[^>]*>/g, ' ').trim();
-  const words = text.split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.round(words / 200));
-}
-
 /* ═══════════════════ TOC generator ═══════════════════ */
 
 interface TocItem { id: string; text: string; level: number }
@@ -633,6 +627,7 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     }
   }, [posts]);
 
+  // Планируем пуш через 6 с после изменений. Не отменяем при unmount — иначе при уходе со страницы (в т.ч. с телефона) пуш не выполнится.
   useEffect(() => {
     if (justPushedRef.current) {
       justPushedRef.current = false;
@@ -641,7 +636,6 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     if (!getSyncConfig() || modifiedPostIdsRef.current.size === 0) return;
     setSyncStatus('pending');
     schedulePushWithDelay('blog', BLOG_PUSH_DELAY_MS, runPullMergePush);
-    return () => cancelScheduledPush('blog');
   }, [posts, runPullMergePush]);
 
   const handleSyncNow = useCallback(() => {
@@ -904,7 +898,7 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             {getSyncConfig() && (
               <div style={{ marginBottom: 20, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)', fontSize: 13 }}>
                 <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--pico-muted-color)' }}>
-                  Изменения с телефона и с компьютера объединяются по времени: перед отправкой загружаем репо и сливаем (удаления не теряются).
+                  Изменения с телефона и с компьютера объединяются по времени: перед отправкой загружаем репо и сливаем (удаления не теряются). С телефона можно нажать «Отправить сейчас» для немедленной отправки в репо.
                 </p>
                 {(syncStatus !== 'idle' || syncError) && (
                   <div style={{ marginBottom: 8, color: syncStatus === 'error' ? 'var(--color-danger)' : 'var(--pico-muted-color)' }}>
@@ -958,7 +952,6 @@ const PostCard: React.FC<{
   post: BlogPost; isAdmin: boolean;
   onEdit: () => void; onDelete: () => void; onCopyLink: () => void;
 }> = ({ post, isAdmin, onEdit, onDelete, onCopyLink }) => {
-  const rt = readingTime(post.content);
   const toc = generateToc(post.content);
   const views = getViewCounts()[post.id] || 0;
 
@@ -973,7 +966,6 @@ const PostCard: React.FC<{
             <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>{post.title}</h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
               <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-              <span>~{rt} мин</span>
               {views > 0 && <span>👁 {views}</span>}
               {isAdmin && !post.published && (
                 <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
@@ -1051,7 +1043,6 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
     );
   }
 
-  const rt = readingTime(post.content);
   const toc = generateToc(post.content);
 
   return (
@@ -1066,7 +1057,6 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
           <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{post.title}</h1>
           <div style={{ fontSize: 13, color: 'var(--pico-muted-color)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-            <span>~{rt} мин чтения</span>
             {isAdmin && !post.published && (
               <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
             )}

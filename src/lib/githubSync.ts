@@ -190,6 +190,58 @@ export async function getPostsFromRepo(): Promise<Array<{ id?: string; updatedAt
   }
 }
 
+/** Загрузить JSON из репо по пути. Возвращает распарсенный объект или null. */
+async function getJsonFromRepo(path: string): Promise<unknown | null> {
+  const file = await getFile(path);
+  if (!file) return null;
+  try {
+    return JSON.parse(file.content);
+  } catch {
+    return null;
+  }
+}
+
+/** Заметки и папки из репо (notes.json). */
+export async function getNotesFromRepo(): Promise<{ notes: unknown[]; folders: unknown[] } | null> {
+  const data = await getJsonFromRepo(dataPath('notes.json')) as { notes?: unknown[]; folders?: unknown[] } | null;
+  if (!data) return null;
+  return {
+    notes: Array.isArray(data.notes) ? data.notes : [],
+    folders: Array.isArray(data.folders) ? data.folders : [],
+  };
+}
+
+/** Словарь из репо (dictionary.json). */
+export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; priorityLangs: string[] } | null> {
+  const data = await getJsonFromRepo(dataPath('dictionary.json')) as { entries?: unknown[]; priorityLangs?: string[] } | null;
+  if (!data) return null;
+  return {
+    entries: Array.isArray(data.entries) ? data.entries : [],
+    priorityLangs: Array.isArray(data.priorityLangs) ? data.priorityLangs : [],
+  };
+}
+
+/** Порядок окон из репо (layouts.json). */
+export async function getLayoutsFromRepo(): Promise<Record<string, unknown[]> | null> {
+  const data = await getJsonFromRepo(dataPath('layouts.json')) as { layouts?: Record<string, unknown[]> } | Record<string, unknown[]> | null;
+  if (!data) return null;
+  const layouts = (data as { layouts?: Record<string, unknown[]> }).layouts ?? data as Record<string, unknown[]>;
+  return layouts && typeof layouts === 'object' ? layouts : null;
+}
+
+/** Задачи планировщика из репо (planner.json). */
+export async function getPlannerFromRepo(): Promise<Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> | null> {
+  const data = await getJsonFromRepo(dataPath('planner.json')) as { tasks?: unknown[] } | null;
+  if (!data || !Array.isArray(data.tasks)) return null;
+  return data.tasks as Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>;
+}
+
+/** Содержимое calculators.json из репо (для подстановки в published bundle). */
+export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
+  const file = await getFile(dataPath('calculators.json'));
+  return file ? file.content : null;
+}
+
 /** Объединить посты с репо и локальные: по каждому id берётся версия с большим updatedAt (удаление не теряется). */
 export function mergePosts(
   remote: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,

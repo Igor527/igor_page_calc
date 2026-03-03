@@ -12,8 +12,8 @@ import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
-import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle } from '@/lib/calculatorStorage';
-import { pushCalculators } from '@/lib/githubSync';
+import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent } from '@/lib/calculatorStorage';
+import { pushCalculators, getCalculatorsJsonFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
 import ValidationErrors from '@/components/editor/ValidationErrors';
@@ -38,6 +38,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [pasteJsonOpen, setPasteJsonOpen] = useState(false);
   const [pasteJsonText, setPasteJsonText] = useState('');
   const [listKey, setListKey] = useState(0);
+  const [pullCalcLoading, setPullCalcLoading] = useState(false);
   const reportRef = useRef<ReportPanelHandle>(null);
   const saveDraftRef = useRef<() => void>(() => {});
   /** После «Пустой» / «Сбросить на демо» — при следующем сохранении всегда создаём новый калькулятор (новый id) */
@@ -408,6 +409,28 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         >
           Опубликовать
         </button>
+        {getSyncConfig() && (
+          <button
+            type="button"
+            onClick={async () => {
+              setPullCalcLoading(true);
+              try {
+                const json = await getCalculatorsJsonFromRepo();
+                if (json) {
+                  loadPublishedBundleFromContent(json);
+                  setListKey((k) => k + 1);
+                }
+              } finally {
+                setPullCalcLoading(false);
+              }
+            }}
+            disabled={pullCalcLoading}
+            title="Загрузить опубликованный список калькуляторов из репо"
+            style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px', fontSize: 13, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-card-background-color)', color: 'var(--pico-color)', cursor: pullCalcLoading ? 'wait' : 'pointer' }}
+          >
+            {pullCalcLoading ? 'Загрузка…' : 'С репо'}
+          </button>
+        )}
         <button
           type="button"
           onClick={downloadPublishedBundle}

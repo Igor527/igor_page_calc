@@ -6,8 +6,9 @@ import {
   resetPageSections,
   getDefaults,
   getAllLayouts,
+  loadLayoutsFromRepo,
 } from '@/lib/pageLayouts';
-import { pushLayouts } from '@/lib/githubSync';
+import { pushLayouts, getSyncConfig } from '@/lib/githubSync';
 import { sanitizeHtml } from '@/lib/security';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { getPublishedCalculators } from '@/lib/calculatorStorage';
@@ -20,6 +21,8 @@ const linkBtnClass =
 interface Props {
   pageId: string;
   isAdmin: boolean;
+  /** Ограниченный гость: видит только секции с showForGuest (планировщик, метеостанция). */
+  isLimitedGuest?: boolean;
   dataVersion?: number;
   children?: React.ReactNode;
   footer?: React.ReactNode;
@@ -253,11 +256,12 @@ const ctrlBtn: React.CSSProperties = {
   lineHeight: 1.2,
 };
 
-const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, footer }) => {
+const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, dataVersion, children, footer }) => {
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<PageSection[]>(() => loadPageSections(pageId));
   const [editId, setEditId] = useState<string | null>(null);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [pullLoading, setPullLoading] = useState(false);
 
   useEffect(() => {
     if (dataVersion != null) setSections(loadPageSections(pageId));
@@ -283,6 +287,16 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, f
     setSections(getDefaults(pageId));
     setEditing(false);
     setEditId(null);
+  }, [pageId]);
+
+  const handlePullFromRepo = useCallback(async () => {
+    setPullLoading(true);
+    try {
+      const ok = await loadLayoutsFromRepo();
+      if (ok) setSections(loadPageSections(pageId));
+    } finally {
+      setPullLoading(false);
+    }
   }, [pageId]);
 
   /* mutations */
@@ -336,7 +350,8 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, f
 
   /* render one section */
   const renderSection = (section: PageSection) => {
-    if (section.adminOnly && !isAdmin && !editing) return null;
+    const canSeeRestricted = isAdmin || (isLimitedGuest && section.showForGuest);
+    if (section.adminOnly && !canSeeRestricted && !editing) return null;
     switch (section.type) {
       case 'hero':
         return <HeroSection section={section} />;
@@ -390,7 +405,17 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, f
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--pico-color)' }}>
             Редактирование страницы
           </span>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {getSyncConfig() && (
+              <button
+                type="button"
+                onClick={handlePullFromRepo}
+                disabled={pullLoading}
+                style={{ ...ctrlBtn, fontSize: 12 }}
+              >
+                {pullLoading ? 'Загрузка…' : 'С репо'}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleReset}
@@ -421,7 +446,8 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, dataVersion, children, f
       {/* ─── Sections ─── */}
       <div className="grid gap-4">
         {sections.map((section, idx) => {
-          const hidden = section.adminOnly && !isAdmin && !editing;
+          const canSeeRestricted = isAdmin || (isLimitedGuest && section.showForGuest);
+          const hidden = section.adminOnly && !canSeeRestricted && !editing;
           const isDictLink = section.type === 'link' && section.linkUrl === '/dictionary';
           if (hidden || (isDictLink && !isAdmin)) return null;
           return (

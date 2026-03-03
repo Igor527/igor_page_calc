@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 
@@ -15,13 +15,23 @@ const DictionaryPage = React.lazy(() => import('./app/dictionary/DictionaryPage'
 const CvPage = React.lazy(() => import('./app/cv/CvPage'));
 const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
 import { BlogList, BlogPostView, loadBlogBundle } from './app/blog/BlogPage';
-import { loadDictionaryBundle } from './app/dictionary/DictionaryPage';
-import { loadNotesBundle } from './app/admin/notes/NotesPage';
-import { loadCalculator, getCalculatorBySlug, loadPublishedBundle } from './lib/calculatorStorage';
-import { loadLayoutsBundle } from './lib/pageLayouts';
+import { loadDictionaryBundle, setDictionaryFromBundle } from './app/dictionary/DictionaryPage';
+import { loadNotesBundle, applyNotesFromRepoData } from './app/admin/notes/NotesPage';
+import { loadCalculator, getCalculatorBySlug, loadPublishedBundle, loadPublishedBundleFromContent } from './lib/calculatorStorage';
+import { loadLayoutsBundle, setAllLayoutsFromBundle } from './lib/pageLayouts';
+import { applyPlannerFromRepoData } from './app/planner/PlannerPage';
+import {
+  getNotesFromRepo,
+  getDictionaryFromRepo,
+  getLayoutsFromRepo,
+  getPlannerFromRepo,
+  getCalculatorsJsonFromRepo,
+  getSyncConfig,
+} from './lib/githubSync';
 import {
   subscribeToAuth,
   isAdminUser,
+  isLimitedGuestUser,
   useFirebaseAdmin,
   setLegacyAdminFlag,
   getLegacyAdminFlag,
@@ -39,6 +49,12 @@ const linkToHome = <a href="/" style={linkStyle}>На главную</a>;
 function getIsAdmin(firebaseUser: unknown): boolean {
   if (useFirebaseAdmin()) return !!(firebaseUser && isAdminUser(firebaseUser as import('firebase/auth').User));
   return getLegacyAdminFlag();
+}
+
+/** Ограниченный гость: видит только планировщик и метеостанцию. */
+function getIsLimitedGuest(firebaseUser: unknown): boolean {
+  if (!useFirebaseAdmin() || !firebaseUser) return false;
+  return isLimitedGuestUser(firebaseUser as import('firebase/auth').User);
 }
 
 function App() {
@@ -83,7 +99,7 @@ function App() {
   // Вход в админку: /welcome_me (прямая ссылка, на сайте не светится)
   if (path === '/welcome_me') {
     if (useFirebaseAdmin()) {
-      if (firebaseUser && isAdminUser(firebaseUser)) {
+      if (firebaseUser && (isAdminUser(firebaseUser) || isLimitedGuestUser(firebaseUser))) {
         window.location.replace('/');
         return null;
       }
@@ -115,8 +131,9 @@ function App() {
   }
 
   const isAdmin = getIsAdmin(firebaseUser);
+  const isLimitedGuest = getIsLimitedGuest(firebaseUser);
 
-  // Загружаем данные из репо (calculators, posts, notes, layouts, dictionary)
+  // Загружаем данные: сначала статические файлы сайта, затем при админе и настроенной синхронизации — из репо по API (источник истины при входе в админку)
   const [bundleTick, setBundleTick] = useState(0);
   useEffect(() => {
     Promise.all([
@@ -127,6 +144,25 @@ function App() {
       loadDictionaryBundle(),
     ]).then(() => setBundleTick((n) => n + 1));
   }, []);
+
+  const pullAllFromRepo = useCallback(async () => {
+    const notes = await getNotesFromRepo();
+    if (notes) applyNotesFromRepoData(notes);
+    const dict = await getDictionaryFromRepo();
+    if (dict) setDictionaryFromBundle(dict);
+    const layouts = await getLayoutsFromRepo();
+    if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
+    const planner = await getPlannerFromRepo();
+    if (planner && planner.length > 0) applyPlannerFromRepoData(planner);
+    const calcJson = await getCalculatorsJsonFromRepo();
+    if (calcJson) loadPublishedBundleFromContent(calcJson);
+    setBundleTick((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin || !getSyncConfig()) return;
+    void pullAllFromRepo();
+  }, [isAdmin, pullAllFromRepo]);
 
   if (path.startsWith('/admin/notes')) {
     if (!isAdmin) {
@@ -148,11 +184,11 @@ function App() {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><EditorPage isAdmin={true} /></React.Suspense>;
   }
   if (path.startsWith('/planner')) {
-    if (!isAdmin) {
+    if (!isAdmin && !isLimitedGuest) {
       return (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Планировщик (Гантт) виден только в режиме админа.</p>
+          <h2>Доступ по входу</h2>
+          <p style={{ color: 'var(--color-muted-text)' }}>Планировщик (списки дел) доступен после входа (админ или гостевой аккаунт).</p>
           {linkToHome}
         </div>
       );
@@ -184,11 +220,11 @@ function App() {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage /></React.Suspense>;
   }
   if (path === '/weather') {
-    if (!isAdmin) {
+    if (!isAdmin && !isLimitedGuest) {
       return (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Метеостанция доступна только в режиме админа.</p>
+          <h2>Доступ по входу</h2>
+          <p style={{ color: 'var(--color-muted-text)' }}>Метеостанция доступна после входа (админ или гостевой аккаунт).</p>
           {linkToHome}
         </div>
       );
@@ -255,7 +291,7 @@ function App() {
   }
 
   // Главная: welcome
-  return <WelcomePage isAdmin={isAdmin} dataVersion={bundleTick} />;
+  return <WelcomePage isAdmin={isAdmin} isLimitedGuest={isLimitedGuest} dataVersion={bundleTick} onPullAllFromRepo={pullAllFromRepo} />;
 }
 
 // При падении приложения показываем сообщение вместо пустого экрана

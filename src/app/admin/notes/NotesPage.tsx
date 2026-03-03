@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { sanitizeHtml } from '@/lib/security';
-import { schedulePush, pushNotes } from '@/lib/githubSync';
+import { schedulePush, pushNotes, getNotesFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -75,7 +75,7 @@ function save(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
-/** Загружает data/notes.json из репо и подставляет в localStorage (репо — источник истины при загрузке). */
+/** Загружает data/notes.json из репо (статический файл сайта) и подставляет в localStorage. */
 export function loadNotesBundle(): Promise<boolean> {
   return fetch('./data/notes.json')
     .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -83,14 +83,33 @@ export function loadNotesBundle(): Promise<boolean> {
       const notes = Array.isArray(data.notes) ? data.notes : [];
       const folders = Array.isArray(data.folders) ? data.folders : [];
       if (notes.length > 0 || folders.length > 0) {
-        const normalized = notes.map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
-        save(NOTES_KEY, normalized);
-        save(FOLDERS_KEY, folders);
+        applyNotesFromRepoData({ notes, folders });
         return true;
       }
       return false;
     })
     .catch(() => false);
+}
+
+/** Подставить данные из репо в localStorage (нормализация полей). Вызывается при «загрузить с репо» и при глобальном pull. */
+export function applyNotesFromRepoData(data: { notes: unknown[]; folders: unknown[] }): void {
+  const notes = (data.notes ?? []).map((n) => {
+    const note = n as Note;
+    return { ...note, tags: note.tags ?? [], color: note.color ?? 'none', archived: note.archived ?? false, todos: note.todos ?? [] };
+  });
+  const folders = (data.folders ?? []) as NoteFolder[];
+  save(NOTES_KEY, notes);
+  save(FOLDERS_KEY, folders);
+}
+
+/** Загрузить заметки из репо по API (GitHub) и применить к localStorage. Возвращает успех и данные для обновления UI. */
+export async function loadNotesFromRepo(): Promise<{ ok: boolean; notes?: Note[]; folders?: NoteFolder[] }> {
+  const data = await getNotesFromRepo();
+  if (!data) return { ok: false };
+  applyNotesFromRepoData(data);
+  const notes = (data.notes as Note[]).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
+  const folders = data.folders as NoteFolder[];
+  return { ok: true, notes, folders };
 }
 
 /** Скачивает notes.json из текущего localStorage для размещения в public/data/ */
@@ -659,6 +678,8 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [showArchived, setShowArchived] = useState(false);
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [pullLoading, setPullLoading] = useState(false);
+  const [pullError, setPullError] = useState<string | null>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const folderImportRef = useRef<HTMLInputElement>(null);
@@ -690,6 +711,24 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     setNotes(loaded);
     setFolders(load(FOLDERS_KEY, []));
   }, [dataVersion]);
+
+  const handlePullFromRepo = useCallback(async () => {
+    setPullError(null);
+    setPullLoading(true);
+    try {
+      const result = await loadNotesFromRepo();
+      if (result.ok && result.notes != null && result.folders != null) {
+        setNotes(result.notes);
+        setFolders(result.folders);
+      } else {
+        setPullError('Не удалось загрузить данные из репо (файл отсутствует или ошибка).');
+      }
+    } catch (e) {
+      setPullError(e instanceof Error ? e.message : 'Ошибка загрузки');
+    } finally {
+      setPullLoading(false);
+    }
+  }, []);
 
   // Migrate old v1
   useEffect(() => {
@@ -939,6 +978,14 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
               Импорт папки
             </button>
           </div>
+          {getSyncConfig() && (
+            <>
+              <button onClick={handlePullFromRepo} disabled={pullLoading} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Загрузить заметки из репо (последний пуш — источник истины)">
+                {pullLoading ? 'Загрузка…' : 'Синхронизировать с репо'}
+              </button>
+              {pullError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</p>}
+            </>
+          )}
           <button onClick={downloadNotesBundle} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Скачать notes.json для public/data/">
             Экспорт для GitHub
           </button>

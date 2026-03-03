@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { LANG_OPTIONS, detectLanguage, translate, TRANSLATION_SERVERS_INFO, testMistralAccess } from '@/lib/dictionaryApi';
-import { schedulePush, pushDictionary } from '@/lib/githubSync';
+import { schedulePush, pushDictionary, getDictionaryFromRepo, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-dictionary-entries';
 const PRIORITY_STORAGE_KEY = 'igor-dictionary-priority';
@@ -58,7 +58,7 @@ export function setDictionaryFromBundle(data: { entries?: DictionaryEntry[]; pri
   if (data.priorityLangs && Array.isArray(data.priorityLangs)) savePriorityLanguages(data.priorityLangs);
 }
 
-/** Загрузить словарь из data/dictionary.json (если есть в репо). */
+/** Загрузить словарь из data/dictionary.json (статический файл сайта). */
 export async function loadDictionaryBundle(): Promise<boolean> {
   try {
     const res = await fetch('./data/dictionary.json');
@@ -69,6 +69,14 @@ export async function loadDictionaryBundle(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Загрузить словарь из репо по API и применить. Возвращает данные для обновления UI. */
+export async function loadDictionaryFromRepo(): Promise<{ ok: boolean; entries?: DictionaryEntry[]; priorityLangs?: string[] }> {
+  const data = await getDictionaryFromRepo();
+  if (!data) return { ok: false };
+  setDictionaryFromBundle(data);
+  return { ok: true, entries: data.entries as DictionaryEntry[], priorityLangs: data.priorityLangs };
 }
 
 function langName(code: string): string {
@@ -91,6 +99,8 @@ const DictionaryPage: React.FC = () => {
   const [entries, setEntries] = useState<DictionaryEntry[]>(() => loadEntries());
   const [priorityLangs, setPriorityLangs] = useState<string[]>(() => loadPriorityLanguages());
   const [selectedDictLang, setSelectedDictLang] = useState<string | null>(null);
+  const [pullLoading, setPullLoading] = useState(false);
+  const [pullError, setPullError] = useState<string | null>(null);
 
   useEffect(() => {
     savePriorityLanguages(priorityLangs);
@@ -234,6 +244,24 @@ const DictionaryPage: React.FC = () => {
     setResultProvider('Мой словарь');
   }, []);
 
+  const handlePullFromRepo = useCallback(async () => {
+    setPullError(null);
+    setPullLoading(true);
+    try {
+      const result = await loadDictionaryFromRepo();
+      if (result.ok && result.entries != null && result.priorityLangs != null) {
+        setEntries(result.entries);
+        setPriorityLangs(result.priorityLangs);
+      } else {
+        setPullError('Не удалось загрузить словарь из репо.');
+      }
+    } catch (e) {
+      setPullError(e instanceof Error ? e.message : 'Ошибка загрузки');
+    } finally {
+      setPullLoading(false);
+    }
+  }, []);
+
   return (
     <main className="max-w-[600px] mx-auto px-4 py-8">
       <h1 style={{ marginBottom: 8 }}>Словарь / Перевод</h1>
@@ -244,6 +272,14 @@ const DictionaryPage: React.FC = () => {
         Сервисы: {TRANSLATION_SERVERS_INFO}
       </p>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {getSyncConfig() && (
+          <>
+            <button type="button" className="outline" style={{ fontSize: 12 }} onClick={handlePullFromRepo} disabled={pullLoading}>
+              {pullLoading ? 'Загрузка…' : 'Синхронизировать с репо'}
+            </button>
+            {pullError && <span style={{ fontSize: 12, color: 'var(--pico-del-color)' }}>{pullError}</span>}
+          </>
+        )}
         <button type="button" className="outline" style={{ fontSize: 12 }} onClick={handleTestMistral}>
           Проверить доступ к Mistral
         </button>

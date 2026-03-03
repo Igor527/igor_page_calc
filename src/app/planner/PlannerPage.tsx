@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
-import { schedulePush, pushPlanner } from '@/lib/githubSync';
+import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-page-planner-tasks';
 
@@ -130,6 +130,14 @@ function loadStoredTasks(): Task[] {
   }
 }
 
+/** Подставить задачи из репо в localStorage. Вызывается при глобальном pull и из кнопки «Синхронизировать с репо». */
+export function applyPlannerFromRepoData(tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>): void {
+  if (!Array.isArray(tasks) || tasks.length === 0) return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  } catch {}
+}
+
 function getDefaultTasks(): Task[] {
   const now = new Date();
   const d = (days: number) => {
@@ -152,6 +160,8 @@ const PlannerPage: React.FC = () => {
   const [pasteText, setPasteText] = useState('');
   const [pasteError, setPasteError] = useState<string | null>(null);
   const [plannerLoaded, setPlannerLoaded] = useState(false);
+  const [pullLoading, setPullLoading] = useState(false);
+  const [pullError, setPullError] = useState<string | null>(null);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const ganttScrollRef = useRef<HTMLDivElement>(null);
   const syncFromRef = useRef<'table' | 'gantt' | null>(null);
@@ -316,6 +326,29 @@ const PlannerPage: React.FC = () => {
     }
   };
 
+  const handlePullFromRepo = useCallback(async () => {
+    setPullError(null);
+    setPullLoading(true);
+    try {
+      const raw = await getPlannerFromRepo();
+      if (raw && raw.length > 0) {
+        applyPlannerFromRepoData(raw);
+        const parsed: Task[] = raw.map((t) => ({
+          ...t,
+          start: new Date(t.start),
+          end: new Date(t.end),
+        }));
+        setTasks(parsed);
+      } else {
+        setPullError('В репо нет данных планировщика или ошибка загрузки.');
+      }
+    } catch (e) {
+      setPullError(e instanceof Error ? e.message : 'Ошибка загрузки');
+    } finally {
+      setPullLoading(false);
+    }
+  }, []);
+
   return (
     <div
       style={{
@@ -372,6 +405,12 @@ const PlannerPage: React.FC = () => {
         >
           Вставить из буфера
         </button>
+        {getSyncConfig() && (
+          <button type="button" onClick={handlePullFromRepo} disabled={pullLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pullLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
+            {pullLoading ? 'Загрузка…' : 'С репо'}
+          </button>
+        )}
+        {pullError && <span style={{ fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</span>}
         <button type="button" onClick={handleReset} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
           Сбросить к демо
         </button>

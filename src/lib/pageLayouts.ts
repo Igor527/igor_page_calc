@@ -1,3 +1,5 @@
+import { getLayoutsFromRepo } from './githubSync';
+
 export type SectionType = 'hero' | 'text' | 'link' | 'widget' | 'divider';
 
 export interface PageSection {
@@ -9,6 +11,8 @@ export interface PageSection {
   linkLabel?: string;
   linkUrl?: string;
   adminOnly?: boolean;
+  /** Показывать ограниченному гостю (списки дел, метеостанция). */
+  showForGuest?: boolean;
   widgetType?: string;
 }
 
@@ -32,7 +36,7 @@ export function setAllLayoutsFromBundle(data: Record<string, PageSection[]>): vo
   }
 }
 
-/** Загрузить порядок окон из data/layouts.json (если есть в репо). */
+/** Загрузить порядок окон из data/layouts.json (статический файл сайта). */
 export async function loadLayoutsBundle(): Promise<boolean> {
   try {
     const res = await fetch('./data/layouts.json');
@@ -44,6 +48,14 @@ export async function loadLayoutsBundle(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** Загрузить порядок окон из репо по API и применить. */
+export async function loadLayoutsFromRepo(): Promise<boolean> {
+  const layouts = await getLayoutsFromRepo();
+  if (!layouts) return false;
+  setAllLayoutsFromBundle(layouts as Record<string, PageSection[]>);
+  return true;
 }
 
 export function loadPageSections(pageId: string): PageSection[] {
@@ -80,13 +92,13 @@ export function getDefaults(pageId: string): PageSection[] {
           subtitle: 'Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе.',
         }),
         sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor' }),
-        sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true }),
+        sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true, showForGuest: true }),
         sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
         sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
         sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
         sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
         sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv', adminOnly: true }),
-        sec('w9', 'link', { linkLabel: 'Метеостанция', linkUrl: '/weather', adminOnly: true }),
+        sec('w9', 'link', { linkLabel: 'Метеостанция', linkUrl: '/weather', adminOnly: true, showForGuest: true }),
       ];
     case 'calculators':
       return [
