@@ -72,6 +72,16 @@ VITE_ADMIN_GITHUB_IDS=12345678
 
 Первый раз после включения Pages может понадобиться один ручной запуск или пуш в `main`. Статус смотрите во вкладке **Actions**; при успехе в **Settings → Pages** появится ссылка на сайт.
 
+### Если деплой упал (красный крестик в Actions)
+
+1. Откройте упавший запуск (например, **Deploy to GitHub Pages #94**) и нажмите на него.
+2. Посмотрите, **какой шаг красный**: чаще всего это **Install dependencies** (`npm ci`) или **Build** (`npm run build`).
+3. В логе шага внизу будет текст ошибки:
+   - **`npm ci`** — не совпадает `package-lock.json` с `package.json`. Выполните локально `npm install` и запушьте обновлённый `package-lock.json`.
+   - **`npm run build`** — ошибка сборки (TypeScript, Vite). Запустите локально `npm run build` и исправьте сообщения об ошибках.
+   - **ENV_FILE / .env** — если в логе есть предупреждение «.env NOT created», добавьте секрет **ENV_FILE** в Settings → Secrets and variables → Actions (скопируйте туда содержимое вашего `.env`).
+4. После правок сделайте коммит и пуш в `main` или нажмите **Re-run all jobs** у упавшего запуска (если правили только секреты).
+
 ---
 
 ## 5. Свой домен urbanplanner.page и DNS

@@ -801,15 +801,18 @@ const PlannerPage: React.FC = () => {
                   } else {
                     displayedTasks.forEach((t) => rows.push({ type: 'task', task: t }));
                   }
-                  return rows.map((row) =>
-                    row.type === 'group' ? (
-                      <tr key={`group-${row.label}`} style={{ borderBottom: '1px solid var(--pico-border-color)' }}>
-                        <td colSpan={7} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
-                          {row.label}
-                        </td>
-                      </tr>
-                    ) : (
-                ( (t: PlannerTask) => (
+                  return rows.map((row) => {
+                    if (row.type === 'group') {
+                      return (
+                        <tr key={`group-${row.label}`} style={{ borderBottom: '1px solid var(--pico-border-color)' }}>
+                          <td colSpan={7} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
+                            {row.label}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const t = row.task;
+                    return (
                   <tr key={t.id} style={{ height: rowH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                     <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 160, minWidth: 120 }}>
                       <input
@@ -953,7 +956,9 @@ const PlannerPage: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                ) )(row.task) )
+                    );
+                  });
+                })()
                 )}
               </tbody>
             </table>
