@@ -18,6 +18,7 @@
 openssl rand -hex 32
 ```
 
+
 Или любой пароль 20+ символов.
 
 ### 3. Правила Realtime Database
