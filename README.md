@@ -62,9 +62,8 @@ npm test                # тесты (vitest)
 1. **Тесты и сборка:** `npm run test:run` и `npm run build` — без ошибок.
 2. **Секреты:** в `.env` (или в переменных билда на хостинге) заданы нужные ключи; `.env` не коммитить.
 3. **Firebase (продакшен):** в Authorized domains добавлены `urbanplanner.page` и при необходимости `www.urbanplanner.page`; на хостинге заданы `VITE_FIREBASE_*` и `VITE_ADMIN_EMAIL` (или `VITE_ADMIN_GITHUB_IDS`).
-4. **Деплой:** пошаговая настройка GitHub Actions и публикация на GitHub Pages — в [DEPLOY_GITHUB.md](DEPLOY_GITHUB.md).
-5. **GitHub Pages:** если сайт в подпапке (например `username.github.io/igor_page_calc`), в `vite.config.ts` задайте `base: '/igor_page_calc/'`.
-6. **Данные:** при первом деплое в `public/data/` можно положить пустые или заготовки `*.json`; после настройки синхронизации они будут обновляться автоматически.
+4. **Деплой:** пошаговая настройка GitHub Actions и публикация на GitHub Pages — в [DEPLOY_GITHUB.md](DEPLOY_GITHUB.md). Сайт открывается по **https://urbanplanner.page** (custom domain), в проекте задано `base: '/'`.
+5. **Данные:** при первом деплое в `public/data/` можно положить пустые или заготовки `*.json`; после настройки синхронизации они будут обновляться автоматически.
 
 ## Роутинг
 

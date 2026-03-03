@@ -118,28 +118,12 @@ VITE_ADMIN_GITHUB_IDS=12345678
 
 ---
 
-## 6. Сайт в подпапке (`username.github.io/имя-репо/`)
+## 6. Проверка
 
-Если ваш сайт открывается по адресу вида `https://username.github.io/igor_page_calc/` (с именем репо в пути), в корне проекта в **vite.config.ts** задайте `base`:
-
-```ts
-return {
-  base: '/igor_page_calc/',  // замените на имя вашего репо
-  plugins: [react()],
-  // ... остальное без изменений
-};
-```
-
-Пересоберите и запушьте; workflow соберёт проект уже с этим `base`.
-
----
-
-## 7. Проверка
-
-- Откройте ссылку из **Settings → Pages** (или свой домен).
+- Откройте **https://urbanplanner.page** (или ссылку из Settings → Pages до настройки домена).
 - Главная, калькуляторы, блог должны открываться.
 - Переход по прямой ссылке (например `.../welcome_me`) должен открывать ту же SPA (для этого в workflow добавлено копирование `index.html` в `404.html`).
-- Вход в админку: `https://ваш-сайт/welcome_me` — после настройки Firebase и секретов должен работать вход через Google/GitHub или email.
+- Вход в админку: **https://urbanplanner.page/welcome_me** — после настройки Firebase и секретов должен работать вход через Google/GitHub или email.
 
 ---
 
@@ -152,6 +136,6 @@ return {
 | 3 | Settings → Pages → Source: **GitHub Actions**. |
 | 4 | Пуш в `main` или ручной Run workflow в Actions. |
 | 5 | (По желанию) Custom domain в Pages + DNS + домен в Firebase Authorized domains. |
-| 6 | (Если сайт в подпапке) Задать `base` в vite.config.ts. |
+| 6 | Сайт открывается по **https://urbanplanner.page**; в проекте `base: '/'` (vite.config.ts). |
 
 Файл workflow: [.github/workflows/deploy.yml](.github/workflows/deploy.yml).
