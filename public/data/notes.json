@@ -1,6 +1,18 @@
 {
   "version": 1,
-  "exportedAt": 1772506293003,
-  "notes": [],
+  "exportedAt": 1772566787519,
+  "notes": [
+    {
+      "id": "2026-03-03_20-39-44",
+      "title": "",
+      "content": "",
+      "folderId": null,
+      "createdAt": 1772566784906,
+      "updatedAt": 1772566784906,
+      "tags": [],
+      "color": "none",
+      "todos": []
+    }
+  ],
   "folders": []
 }
