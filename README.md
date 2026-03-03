@@ -25,6 +25,10 @@ npm test                # тесты (vitest)
 
 Файл **`.env`** в git не попадает (см. `.gitignore`). Всё чувствительное — только в `.env` или в переменных билда на хостинге.
 
+**Как это работает:** переменные с префиксом `VITE_` (например `VITE_FIREBASE_API_KEY`) при **сборке** подставляются Vite в код — они попадают в готовые JS-файлы в `dist/`. Поэтому:
+- **Локально:** вы заполняете `.env`, при `npm run dev` или `npm run build` Vite читает его, и значения оказываются в приложении.
+- **На продакшене:** файл `.env` не деплоится. Вместо него вы задаёте те же переменные в настройках хостинга (Cloudflare Pages → Settings → Environment variables, GitHub Actions → Secrets, Vercel → Environment Variables и т.д.). При деплое хостинг запускает сборку (`npm run build`), и в момент сборки эти переменные подставляются в код. В репозиторий и в готовый `dist/` попадают уже только подставленные значения (в виде строк в коде), сам `.env` никуда не уходит.
+
 1. Скопируйте **`.env.example`** в **`.env`**.
 2. Заполните:
    - **VITE_MISTRAL_API_KEY** — ключ [Mistral AI](https://console.mistral.ai/) для перевода в словаре. В dev запрос идёт через прокси Vite (ключ не уходит в браузер).
@@ -43,6 +47,12 @@ npm test                # тесты (vitest)
   4. В `.env` задайте `VITE_ADMIN_EMAIL=ваш@gmail.com` (тот же Google-аккаунт, которым будете входить). Несколько админов — через запятую.
   5. Откройте `/welcome_me`, нажмите «Войти через Google» — откроется окно выбора аккаунта Google, после входа вы окажетесь в режиме админа.
 
+  **Продакшен-домен (urbanplanner.page):**
+  - Деплой через **GitHub** (GitHub Pages, Cloudflare Pages с подключённым репо и т.п.) — продакшен-домен тот, что привязан к проекту (например urbanplanner.page). Репозиторий может быть **приватным**: хостинг получит доступ при подключении через OAuth, сборка идёт на его серверах.
+  - В **Firebase Console** → Project settings → **Authorized domains** добавьте домены: `urbanplanner.page` и `www.urbanplanner.page` (оба, если с www редиректите на основной или открываете с www).
+  - Вход в админку по ссылке **https://urbanplanner.page/welcome_me** (или https://www.urbanplanner.page/welcome_me). На продакшене вход через Google/GitHub часто работает стабильнее, чем на localhost (нет auth/internal-error из-за куки/COOP).
+  - Секреты для сборки: в настройках проекта на хостинге (GitHub → Settings → Secrets and variables; Cloudflare Pages → Settings → Environment variables) задайте `VITE_FIREBASE_*` и `VITE_ADMIN_EMAIL` (или `VITE_ADMIN_GITHUB_IDS`), как в локальном `.env`.
+
 ## Синхронизация с GitHub
 
 На главной в режиме админа: блок «Синхронизация с GitHub» (owner, repo, ветка, Personal Access Token). После настройки изменения в заметках, блоге, словаре, калькуляторах и порядке окон автоматически пушатся в репо (`public/data/*.json`). Данные при загрузке сайта подтягиваются из этих файлов. См. [public/data/README.txt](public/data/README.txt).
@@ -51,8 +61,10 @@ npm test                # тесты (vitest)
 
 1. **Тесты и сборка:** `npm run test:run` и `npm run build` — без ошибок.
 2. **Секреты:** в `.env` (или в переменных билда на хостинге) заданы нужные ключи; `.env` не коммитить.
-3. **GitHub Pages:** если сайт в подпапке (например `username.github.io/igor_page_calc`), в `vite.config.ts` задайте `base: '/igor_page_calc/'`.
-4. **Данные:** при первом деплое в `public/data/` можно положить пустые или заготовки `*.json`; после настройки синхронизации они будут обновляться автоматически.
+3. **Firebase (продакшен):** в Authorized domains добавлены `urbanplanner.page` и при необходимости `www.urbanplanner.page`; на хостинге заданы `VITE_FIREBASE_*` и `VITE_ADMIN_EMAIL` (или `VITE_ADMIN_GITHUB_IDS`).
+4. **Деплой:** пошаговая настройка GitHub Actions и публикация на GitHub Pages — в [DEPLOY_GITHUB.md](DEPLOY_GITHUB.md).
+5. **GitHub Pages:** если сайт в подпапке (например `username.github.io/igor_page_calc`), в `vite.config.ts` задайте `base: '/igor_page_calc/'`.
+6. **Данные:** при первом деплое в `public/data/` можно положить пустые или заготовки `*.json`; после настройки синхронизации они будут обновляться автоматически.
 
 ## Роутинг
 
@@ -73,6 +85,7 @@ npm test                # тесты (vitest)
 
 | Файл | Содержание |
 |------|------------|
+| [DEPLOY_GITHUB.md](DEPLOY_GITHUB.md) | Деплой на GitHub Pages через GitHub Actions (пошагово) |
 | [.env.example](.env.example) | Шаблон переменных (Mistral, Firebase) |
 | [secrets/README.txt](secrets/README.txt) | Где хранить ключи, что не коммитить |
 | [public/data/README.txt](public/data/README.txt) | Файлы данных и автосинхронизация с репо |

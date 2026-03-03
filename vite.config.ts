@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const mistralKey = env.VITE_MISTRAL_API_KEY ?? '';
 
   return {
+  // Сайт на GitHub Pages в подпапке: username.github.io/igor_page_calc/
+  base: '/igor_page_calc/',
   plugins: [react()],
   resolve: {
     alias: {
