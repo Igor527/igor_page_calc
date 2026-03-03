@@ -33,6 +33,22 @@ export function setSyncConfig(config: GitHubSyncConfig | null): void {
   localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
 }
 
+/** Сохранить конфиг с проверкой: возвращает ошибку, если localStorage недоступен (инкогнито, блокировка на Android). */
+export function setSyncConfigSafe(config: GitHubSyncConfig | null): { ok: boolean; error?: string } {
+  try {
+    if (typeof localStorage === 'undefined') return { ok: false, error: 'localStorage недоступен' };
+    if (!config) {
+      localStorage.removeItem(CONFIG_KEY);
+      return { ok: true };
+    }
+    localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    return { ok: true };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg || 'Не удалось сохранить настройки' };
+  }
+}
+
 /** Путь к файлу в репо (от корня). Для сайта используем public/data/... */
 export function dataPath(filename: string): string {
   return `public/data/${filename}`;

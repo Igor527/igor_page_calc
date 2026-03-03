@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSyncConfig, setSyncConfig, testConnection, type GitHubSyncConfig } from '@/lib/githubSync';
+import { getSyncConfig, setSyncConfig, setSyncConfigSafe, testConnection, type GitHubSyncConfig } from '@/lib/githubSync';
 
 function getEnv(name: string): string {
   try {
@@ -42,8 +42,12 @@ const SyncSettings: React.FC = () => {
       setTestResult('Укажите owner, repo и token');
       return;
     }
-    setSyncConfig(payload);
-    setTestResult('Сохранено. Нажмите «Проверить» для проверки.');
+    const result = setSyncConfigSafe(payload);
+    if (result.ok) {
+      setTestResult('Сохранено. Нажмите «Проверить» для проверки.');
+    } else {
+      setTestResult(result.error || 'Не удалось сохранить.');
+    }
   };
 
   const handleTest = async () => {
@@ -83,6 +87,9 @@ const SyncSettings: React.FC = () => {
           <p style={{ margin: '0 0 10px', color: 'var(--pico-muted-color)', fontSize: 11 }}>
             Работает с телефона (Android и iPhone): войдите в админку, один раз настройте синхронизацию — сохранять и пушить в репо можно с любого устройства.
           </p>
+          <p style={{ margin: '0 0 10px', color: 'var(--pico-muted-color)', fontSize: 11 }}>
+            На Android: не используйте режим инкогнито; в настройках браузера разрешите сайту «Файлы cookie и данные сайта» (Chrome: Настройки → Сайты → urbanplanner.page). Токен вставляйте вручную (длинное нажатие → Вставить).
+          </p>
           <div style={{ display: 'grid', gap: 10, maxWidth: 400 }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <span style={{ fontSize: 11 }}>Владелец репо (owner)</span>
@@ -118,9 +125,11 @@ const SyncSettings: React.FC = () => {
               <span style={{ fontSize: 11 }}>GitHub Personal Access Token</span>
               <input
                 type="password"
+                inputMode="text"
+                autoComplete="off"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="ghp_..."
+                placeholder="ghp_... (вставьте из буфера обмена)"
                 style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
@@ -134,7 +143,11 @@ const SyncSettings: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => { setSyncConfig(null); setOwner(''); setRepo(''); setBranch('main'); setToken(''); setTestResult('Сброшено'); }}
+              onClick={() => {
+              const r = setSyncConfigSafe(null);
+              setOwner(''); setRepo(''); setBranch('main'); setToken('');
+              setTestResult(r.ok ? 'Сброшено' : (r.error || 'Ошибка'));
+            }}
               className="secondary"
               style={{ fontSize: 14, minHeight: 44, padding: '10px 16px' }}
             >
@@ -142,7 +155,7 @@ const SyncSettings: React.FC = () => {
             </button>
           </div>
           {testResult != null && (
-            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--pico-muted-color)' }}>{testResult}</p>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: testResult.startsWith('Сохранено') || testResult.startsWith('Подключение') ? 'var(--pico-muted-color)' : 'var(--color-danger)' }}>{testResult}</p>
           )}
         </div>
       )}
