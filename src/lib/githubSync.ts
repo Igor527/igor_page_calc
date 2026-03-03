@@ -170,10 +170,48 @@ export function schedulePushWithDelay(
   }, delayMs);
 }
 
-/** Авто-пуш заметок (вызывать при изменении notes/folders). */
+/** Объединить заметки и папки: по id берётся версия с большим updatedAt; папки — по id, при дубликате локальные поверх. */
+function mergeNotes(
+  remoteNotes: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+  remoteFolders: Array<{ id?: string; [k: string]: unknown }>,
+  localNotes: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+  localFolders: Array<{ id?: string; [k: string]: unknown }>
+): { notes: unknown[]; folders: unknown[] } {
+  const notesById = new Map<string, { id?: string; updatedAt?: number; [k: string]: unknown }>();
+  for (const n of remoteNotes) {
+    const id = String(n.id ?? '');
+    if (id && (!notesById.has(id) || (n.updatedAt ?? 0) > (notesById.get(id)!.updatedAt ?? 0))) notesById.set(id, { ...n });
+  }
+  for (const n of localNotes) {
+    const id = String(n.id ?? '');
+    if (!id) continue;
+    const ex = notesById.get(id);
+    if (!ex || (n.updatedAt ?? 0) > (ex.updatedAt ?? 0)) notesById.set(id, { ...n });
+  }
+  const notes = [...notesById.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const foldersById = new Map<string, unknown>();
+  for (const f of remoteFolders) {
+    const id = String((f as { id?: string }).id ?? '');
+    if (id) foldersById.set(id, f);
+  }
+  for (const f of localFolders) {
+    const id = String((f as { id?: string }).id ?? '');
+    if (id) foldersById.set(id, f);
+  }
+  const folders = [...foldersById.values()];
+  return { notes, folders };
+}
+
+/** Авто-пуш заметок: перед отправкой загружаем репо и мержим по id + updatedAt. */
 export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes, folders }, null, 2);
+  const remote = await getNotesFromRepo();
+  const localNotes = notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>;
+  const localFolders = folders as Array<{ id?: string; [k: string]: unknown }>;
+  const remoteNotes = (remote?.notes ?? []) as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>;
+  const remoteFolders = (remote?.folders ?? []) as Array<{ id?: string; [k: string]: unknown }>;
+  const { notes: mergedNotes, folders: mergedFolders } = mergeNotes(remoteNotes, remoteFolders, localNotes, localFolders);
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes: mergedNotes, folders: mergedFolders }, null, 2);
   return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
 }
 
@@ -276,34 +314,140 @@ export async function pushPosts(
   return putFile(dataPath('posts.json'), payload, 'Автосинхронизация: блог');
 }
 
-/** Авто-пуш словаря. */
+/** Объединить словарь: по id записи берётся версия с большим addedAt; priorityLangs — локальные первые, потом дополнение из ремо. */
+function mergeDictionary(
+  remoteEntries: Array<{ id?: string; addedAt?: number; [k: string]: unknown }>,
+  remotePriority: string[],
+  localEntries: Array<{ id?: string; addedAt?: number; [k: string]: unknown }>,
+  localPriority: string[]
+): { entries: unknown[]; priorityLangs: string[] } {
+  const byId = new Map<string, { id?: string; addedAt?: number; [k: string]: unknown }>();
+  for (const e of remoteEntries) {
+    const id = String(e.id ?? '');
+    if (id && (!byId.has(id) || (e.addedAt ?? 0) > (byId.get(id)!.addedAt ?? 0))) byId.set(id, { ...e });
+  }
+  for (const e of localEntries) {
+    const id = String(e.id ?? '');
+    if (!id) continue;
+    const ex = byId.get(id);
+    if (!ex || (e.addedAt ?? 0) > (ex.addedAt ?? 0)) byId.set(id, { ...e });
+  }
+  const entries = [...byId.values()].sort((a, b) => (b.addedAt ?? 0) - (a.addedAt ?? 0));
+  const prioritySet = new Set(localPriority);
+  const priorityLangs = [...localPriority];
+  for (const code of remotePriority) if (!prioritySet.has(code)) { priorityLangs.push(code); prioritySet.add(code); }
+  return { entries, priorityLangs };
+}
+
+/** Авто-пуш словаря: перед отправкой загружаем репо и мержим по id + addedAt. */
 export async function pushDictionary(entries: unknown[], priorityLangs: string[]): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), entries, priorityLangs }, null, 2);
+  const remote = await getDictionaryFromRepo();
+  const localEntries = entries as Array<{ id?: string; addedAt?: number; [k: string]: unknown }>;
+  const remoteEntries = (remote?.entries ?? []) as Array<{ id?: string; addedAt?: number; [k: string]: unknown }>;
+  const remotePriority = (remote?.priorityLangs ?? []) as string[];
+  const { entries: mergedEntries, priorityLangs: mergedPriority } = mergeDictionary(remoteEntries, remotePriority, localEntries, priorityLangs);
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), entries: mergedEntries, priorityLangs: mergedPriority }, null, 2);
   return putFile(dataPath('dictionary.json'), payload, 'Автосинхронизация: словарь');
 }
 
-/** Авто-пуш калькуляторов (опубликованные из localStorage). */
-export async function pushCalculators(bundleJson: string): Promise<SyncResult> {
-  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  return putFile(dataPath('calculators.json'), bundleJson, 'Автосинхронизация: калькуляторы');
+/** Объединить калькуляторы: по id калькулятора локальная версия перекрывает удалённую. */
+function mergeCalculators(remoteJson: string | null, localJson: string): string {
+  if (!remoteJson?.trim()) return localJson;
+  try {
+    const remote = JSON.parse(remoteJson) as { calculators?: Array<{ id?: string; [k: string]: unknown }> };
+    const local = JSON.parse(localJson) as { calculators?: Array<{ id?: string; [k: string]: unknown }> };
+    const remoteList = remote?.calculators ?? [];
+    const localList = local?.calculators ?? [];
+    const byId = new Map<string, unknown>();
+    for (const c of remoteList) {
+      const id = String((c as { id?: string }).id ?? '');
+      if (id) byId.set(id, c);
+    }
+    for (const c of localList) {
+      const id = String((c as { id?: string }).id ?? '');
+      if (id) byId.set(id, c);
+    }
+    const merged = { ...local, calculators: [...byId.values()] };
+    return JSON.stringify(merged, null, 2);
+  } catch {
+    return localJson;
+  }
 }
 
-/** Авто-пуш порядка окон (layouts). */
+/** Авто-пуш калькуляторов: перед отправкой загружаем репо и мержим по id (локальные поверх). */
+export async function pushCalculators(bundleJson: string): Promise<SyncResult> {
+  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
+  const remoteJson = await getCalculatorsJsonFromRepo();
+  const merged = mergeCalculators(remoteJson, bundleJson);
+  return putFile(dataPath('calculators.json'), merged, 'Автосинхронизация: калькуляторы');
+}
+
+/** Объединить порядок окон: по каждому pageId секции мержатся по id секции, локальные поверх. */
+function mergeLayouts(remote: Record<string, unknown[]> | null, local: Record<string, unknown[]>): Record<string, unknown[]> {
+  const out: Record<string, unknown[]> = { ...remote };
+  for (const [pageId, sections] of Object.entries(local)) {
+    const rem = (remote ?? {})[pageId];
+    const remArr = Array.isArray(rem) ? rem : [];
+    const byId = new Map<string, unknown>();
+    for (const s of remArr) {
+      const id = String((s as { id?: string })?.id ?? '');
+      if (id) byId.set(id, s);
+    }
+    for (const s of sections) {
+      const id = String((s as { id?: string })?.id ?? '');
+      if (id) byId.set(id, s);
+    }
+    out[pageId] = [...byId.values()];
+  }
+  return out;
+}
+
+/** Авто-пуш порядка окон: перед отправкой загружаем репо и мержим по id секции. */
 export async function pushLayouts(layouts: Record<string, unknown[]>): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), layouts }, null, 2);
+  const remote = await getLayoutsFromRepo();
+  const merged = mergeLayouts(remote, layouts);
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), layouts: merged }, null, 2);
   return putFile(dataPath('layouts.json'), payload, 'Автосинхронизация: порядок окон');
 }
 
-/** Задачи планировщика (Гантт): start/end как timestamp (number). */
+/** Объединить задачи планировщика: по id задачи локальная версия перекрывает удалённую. */
+function mergePlanner(
+  remote: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> | null,
+  local: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>
+): Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> {
+  const byId = new Map<string, { id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>();
+  for (const t of remote ?? []) {
+    if (t.id) byId.set(t.id, { ...t, start: t.start, end: t.end });
+  }
+  for (const t of local) {
+    const start = t.start instanceof Date ? t.start.getTime() : (t.start as number);
+    const end = t.end instanceof Date ? t.end.getTime() : (t.end as number);
+    if (t.id) byId.set(t.id, { ...t, start, end });
+  }
+  return [...byId.values()];
+}
+
+/** Авто-пуш планировщика: перед отправкой загружаем репо и мержим по id задачи (локальные поверх). */
 export async function pushPlanner(tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const serialized = tasks.map((t) => ({
-    ...t,
-    start: t.start instanceof Date ? t.start.getTime() : t.start,
-    end: t.end instanceof Date ? t.end.getTime() : t.end,
-  }));
+  const remote = await getPlannerFromRepo();
+  const serialized = mergePlanner(remote, tasks);
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), tasks: serialized }, null, 2);
   return putFile(dataPath('planner.json'), payload, 'Автосинхронизация: планировщик');
+}
+
+/** Списки RSS из репо (rss-lists.json). */
+export async function getRssListsFromRepo(): Promise<{ lists: unknown[] } | null> {
+  const data = await getJsonFromRepo(dataPath('rss-lists.json')) as { lists?: unknown[] } | null;
+  if (!data) return null;
+  return { lists: Array.isArray(data.lists) ? data.lists : [] };
+}
+
+/** Пуш списков RSS в репо. */
+export async function pushRssLists(lists: unknown[]): Promise<SyncResult> {
+  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), lists }, null, 2);
+  return putFile(dataPath('rss-lists.json'), payload, 'Синхронизация: RSS подписки');
 }

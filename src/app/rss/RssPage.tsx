@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { fetchRssFeed, type RssEntry } from '@/lib/rssFetch';
+import { getRssListsFromRepo, pushRssLists, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-rss-lists';
 
@@ -30,6 +31,16 @@ function saveLists(lists: RssList[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lists));
 }
 
+/** Данные для экспорта в репо. */
+export function getRssListsBundle(): { lists: RssList[] } {
+  return { lists: loadLists() };
+}
+
+/** Подставить данные из репо. */
+export function setRssListsFromBundle(data: { lists?: RssList[] }): void {
+  if (data.lists && Array.isArray(data.lists)) saveLists(data.lists);
+}
+
 function genId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -46,6 +57,9 @@ const RssPage: React.FC = () => {
   const [editItemUrl, setEditItemUrl] = useState('');
   const [feedCache, setFeedCache] = useState<Record<string, { loading: boolean; error?: string; entries?: RssEntry[] }>>({});
   const [expandedFeedUrl, setExpandedFeedUrl] = useState<string | null>(null);
+  const [pullLoading, setPullLoading] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     saveLists(lists);
@@ -119,6 +133,35 @@ const RssPage: React.FC = () => {
 
   const blogRssUrl = typeof window !== 'undefined' ? `${window.location.origin}/feed.xml` : '/feed.xml';
 
+  const handlePullFromRepo = useCallback(async () => {
+    setSyncError(null);
+    setPullLoading(true);
+    try {
+      const data = await getRssListsFromRepo();
+      if (data?.lists && data.lists.length >= 0) {
+        setRssListsFromBundle(data);
+        setLists(data.lists as RssList[]);
+      }
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : 'Ошибка загрузки');
+    } finally {
+      setPullLoading(false);
+    }
+  }, []);
+
+  const handlePushToRepo = useCallback(async () => {
+    setSyncError(null);
+    setPushLoading(true);
+    try {
+      const res = await pushRssLists(lists);
+      if (!res.ok) setSyncError(res.error ?? 'Ошибка отправки');
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : 'Ошибка отправки');
+    } finally {
+      setPushLoading(false);
+    }
+  }, [lists]);
+
   const copyBlogRss = useCallback(() => {
     navigator.clipboard.writeText(blogRssUrl).catch(() => {});
   }, [blogRssUrl]);
@@ -144,6 +187,17 @@ const RssPage: React.FC = () => {
             Копировать ссылку
           </button>
         </div>
+        {getSyncConfig() && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--pico-border-color)' }}>
+            <button type="button" className="outline" style={{ fontSize: 12 }} onClick={handlePullFromRepo} disabled={pullLoading}>
+              {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+            </button>
+            <button type="button" className="outline" style={{ fontSize: 12 }} onClick={handlePushToRepo} disabled={pushLoading}>
+              {pushLoading ? 'Отправка…' : 'Загрузить в репо'}
+            </button>
+            {syncError && <span style={{ fontSize: 12, color: 'var(--pico-del-color)' }}>{syncError}</span>}
+          </div>
+        )}
       </section>
 
       {/* Списки подписок */}

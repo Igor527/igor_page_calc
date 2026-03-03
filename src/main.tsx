@@ -27,8 +27,10 @@ import {
   getLayoutsFromRepo,
   getPlannerFromRepo,
   getCalculatorsJsonFromRepo,
+  getRssListsFromRepo,
   getSyncConfig,
 } from './lib/githubSync';
+import { setRssListsFromBundle } from './app/rss/RssPage';
 import {
   subscribeToAuth,
   isAdminUser,
@@ -157,6 +159,8 @@ function App() {
     if (planner && planner.length > 0) applyPlannerFromRepoData(planner);
     const calcJson = await getCalculatorsJsonFromRepo();
     if (calcJson) loadPublishedBundleFromContent(calcJson);
+    const rssData = await getRssListsFromRepo();
+    if (rssData) setRssListsFromBundle(rssData);
     setBundleTick((n) => n + 1);
   }, []);
 
