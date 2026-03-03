@@ -59,6 +59,14 @@ export interface SyncResult {
   error?: string;
 }
 
+/** Декодировать base64 в UTF-8 (в браузере atob даёт бинарную строку в Latin-1, кириллица ломается). */
+function base64ToUtf8(base64: string): string {
+  const binary = atob(base64.replace(/\s/g, ''));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
 /**
  * Получить содержимое файла из репо. Возвращает { content, sha } или null при ошибке.
  */
@@ -73,7 +81,10 @@ export async function getFile(path: string): Promise<{ content: string; sha: str
   const data = await res.json();
   if (!data.content || !data.sha) return null;
   try {
-    const content = typeof atob !== 'undefined' ? atob(data.content.replace(/\s/g, '')) : Buffer.from(data.content, 'base64').toString('utf8');
+    const content =
+      typeof atob !== 'undefined'
+        ? base64ToUtf8(data.content)
+        : Buffer.from(data.content, 'base64').toString('utf8');
     return { content, sha: data.sha };
   } catch {
     return null;
