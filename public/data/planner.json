@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "exportedAt": 1772571885902,
+  "exportedAt": 1772571897542,
   "tasks": [
     {
       "id": "1",
-      "name": "Подготовка",
+      "name": "А",
       "start": 1772501247191,
       "end": 1772760447191,
       "progress": 40,
