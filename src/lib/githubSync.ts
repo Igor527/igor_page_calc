@@ -138,11 +138,64 @@ export function schedulePush(key: string, push: () => void | Promise<void>): voi
   }, DEBOUNCE_MS);
 }
 
+/** Отменить отложенный push (например, перед ручной отправкой или отменой). */
+export function cancelScheduledPush(key: string): void {
+  if (debounceTimers[key]) {
+    clearTimeout(debounceTimers[key]);
+    delete debounceTimers[key];
+  }
+}
+
+/** Запланировать push через заданное кол-во мс (для блога — пауза перед отправкой). */
+export function schedulePushWithDelay(
+  key: string,
+  delayMs: number,
+  push: () => void | Promise<void>
+): void {
+  if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
+  debounceTimers[key] = setTimeout(() => {
+    delete debounceTimers[key];
+    void Promise.resolve(push());
+  }, delayMs);
+}
+
 /** Авто-пуш заметок (вызывать при изменении notes/folders). */
 export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes, folders }, null, 2);
   return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
+}
+
+/** Посты из репо (public/data/posts.json). null если файла нет или ошибка. */
+export async function getPostsFromRepo(): Promise<Array<{ id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown }> | null> {
+  const file = await getFile(dataPath('posts.json'));
+  if (!file) return null;
+  try {
+    const data = JSON.parse(file.content) as { posts?: unknown[] };
+    const list = Array.isArray(data?.posts) ? data.posts : [];
+    return list as Array<{ id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown }>;
+  } catch {
+    return null;
+  }
+}
+
+/** Объединить посты с репо и локальные: по каждому id берётся версия с большим updatedAt (удаление не теряется). */
+export function mergePosts(
+  remote: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+  local: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>
+): Array<{ id?: string; updatedAt?: number; [k: string]: unknown }> {
+  const byId = new Map<string, { id?: string; updatedAt?: number; [k: string]: unknown }>();
+  for (const p of remote) {
+    const id = String(p.id ?? '');
+    if (id && (!byId.has(id) || (p.updatedAt ?? 0) > (byId.get(id)!.updatedAt ?? 0))) byId.set(id, { ...p });
+  }
+  for (const p of local) {
+    const id = String(p.id ?? '');
+    if (!id) continue;
+    const existing = byId.get(id);
+    if (!existing || (p.updatedAt ?? 0) > (existing.updatedAt ?? 0)) byId.set(id, { ...p });
+  }
+  return [...byId.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
 /** Авто-пуш постов блога. В репо updatedAt = время пуша только у постов из modifiedPostIds. */

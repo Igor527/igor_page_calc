@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { sanitizeHtml } from '@/lib/security';
-import { schedulePush, pushPosts } from '@/lib/githubSync';
+import {
+  getSyncConfig,
+  schedulePushWithDelay,
+  cancelScheduledPush,
+  pushPosts,
+  getPostsFromRepo,
+  mergePosts,
+} from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -51,6 +58,8 @@ interface BlogPost {
   todos?: BlogTodoItem[];
   createdAt: number;
   updatedAt: number;
+  /** Мягкое удаление: при синхронизации с репо удаление не теряется при пушах с другого устройства */
+  deleted?: boolean;
 }
 
 /* ═══════════════════ View counter ═══════════════════ */
@@ -106,21 +115,23 @@ export function loadBlogBundle(): Promise<void> {
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
       const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
-      blogBundle = list.map((p) => ({
-        ...p,
-        tags: p.tags ?? [],
-        coverImage: p.coverImage ?? '',
-        polls: p.polls ?? [],
-        todos: p.todos ?? [],
-      }));
+      blogBundle = list
+        .filter((p) => !(p as BlogPost & { deleted?: boolean }).deleted)
+        .map((p) => ({
+          ...p,
+          tags: p.tags ?? [],
+          coverImage: p.coverImage ?? '',
+          polls: p.polls ?? [],
+          todos: p.todos ?? [],
+        }));
     })
     .catch(() => { blogBundle = null; });
 }
 
-/** Для отображения: из файла репо, если загружен, иначе localStorage */
+/** Для отображения: из файла репо, если загружен, иначе localStorage (без удалённых) */
 export function getPostsForDisplay(): BlogPost[] {
   if (blogBundle) return blogBundle;
-  return loadPosts();
+  return loadPosts().filter((p) => !p.deleted);
 }
 
 export function downloadPostsBundle(): void {
@@ -138,12 +149,13 @@ function loadPosts(): BlogPost[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as BlogPost[];
-    return arr.map(p => ({
+    return arr.map((p) => ({
       ...p,
       tags: p.tags ?? [],
       coverImage: p.coverImage ?? '',
       polls: p.polls ?? [],
       todos: p.todos ?? [],
+      deleted: p.deleted ?? false,
     }));
   } catch { return []; }
 }
@@ -585,18 +597,91 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const titleRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const modifiedPostIdsRef = useRef<Set<string>>(new Set());
+  const justPushedRef = useRef(false);
+  const BLOG_PUSH_DELAY_MS = 6000;
+
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'loading' | 'sending' | 'ok' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => { savePosts(posts); }, [posts]);
-  useEffect(() => {
-    schedulePush('blog', () => {
-      const ids = new Set(modifiedPostIdsRef.current);
-      modifiedPostIdsRef.current.clear();
-      return pushPosts(posts, ids);
-    });
+
+  const runPullMergePush = useCallback(async () => {
+    setSyncStatus('loading');
+    setSyncError(null);
+    const remote = await getPostsFromRepo();
+    setSyncStatus('sending');
+    const merged = mergePosts(remote ?? [], posts) as BlogPost[];
+    const ids = new Set(modifiedPostIdsRef.current);
+    modifiedPostIdsRef.current.clear();
+    const result = await pushPosts(merged, ids);
+    if (result.ok) {
+      const normalized = merged.map((p) => ({
+        ...p,
+        tags: p.tags ?? [],
+        coverImage: p.coverImage ?? '',
+        polls: p.polls ?? [],
+        todos: p.todos ?? [],
+        deleted: p.deleted ?? false,
+      }));
+      setPosts(normalized);
+      justPushedRef.current = true;
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } else {
+      setSyncStatus('error');
+      setSyncError(result.error ?? 'Ошибка');
+    }
   }, [posts]);
 
-  // Гости видят посты из data/posts.json (если есть), админ — только из localStorage для редактирования
-  const displayPosts = isAdmin ? posts : getPostsForDisplay();
+  useEffect(() => {
+    if (justPushedRef.current) {
+      justPushedRef.current = false;
+      return;
+    }
+    if (!getSyncConfig() || modifiedPostIdsRef.current.size === 0) return;
+    setSyncStatus('pending');
+    schedulePushWithDelay('blog', BLOG_PUSH_DELAY_MS, runPullMergePush);
+    return () => cancelScheduledPush('blog');
+  }, [posts, runPullMergePush]);
+
+  const handleSyncNow = useCallback(() => {
+    cancelScheduledPush('blog');
+    setSyncStatus('pending');
+    void runPullMergePush();
+  }, [runPullMergePush]);
+
+  const handlePullOnly = useCallback(async () => {
+    cancelScheduledPush('blog');
+    setSyncStatus('loading');
+    setSyncError(null);
+    const remote = await getPostsFromRepo();
+    if (remote && remote.length >= 0) {
+      const merged = mergePosts(remote, posts) as BlogPost[];
+      const normalized = merged.map((p) => ({
+        ...p,
+        tags: p.tags ?? [],
+        coverImage: p.coverImage ?? '',
+        polls: p.polls ?? [],
+        todos: p.todos ?? [],
+        deleted: p.deleted ?? false,
+      }));
+      justPushedRef.current = true;
+      setPosts(normalized);
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } else {
+      setSyncStatus('idle');
+    }
+  }, [posts]);
+
+  const handleCancelPush = useCallback(() => {
+    cancelScheduledPush('blog');
+    setSyncStatus('idle');
+    setSyncError(null);
+  }, []);
+
+  // Гости видят посты из data/posts.json (если есть), админ — из localStorage без удалённых
+  const displayPosts = isAdmin ? posts.filter((p) => !p.deleted) : getPostsForDisplay();
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -605,8 +690,8 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   }, [displayPosts]);
 
   const visiblePosts = useMemo(() => {
-    let list = isAdmin ? posts : displayPosts.filter(p => p.published);
-    if (filterTag) list = list.filter(p => p.tags?.includes(filterTag));
+    let list = isAdmin ? posts.filter((p) => !p.deleted) : displayPosts.filter((p) => p.published);
+    if (filterTag) list = list.filter((p) => p.tags?.includes(filterTag));
     return list.sort((a, b) => sortAsc ? a.updatedAt - b.updatedAt : b.updatedAt - a.updatedAt);
   }, [posts, displayPosts, isAdmin, filterTag, sortAsc]);
 
@@ -657,7 +742,11 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   const handleDelete = (id: string) => {
     if (!window.confirm('Удалить пост?')) return;
-    setPosts(prev => prev.filter(p => p.id !== id));
+    modifiedPostIdsRef.current.add(id);
+    const now = Date.now();
+    setPosts((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, deleted: true, updatedAt: now } : p))
+    );
     if (editing === id) setEditing(null);
   };
 
@@ -807,10 +896,39 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
             </div>
           </div>
         ) : isAdmin ? (
-          <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-            <button onClick={startNew} style={{ flex: '1 1 auto' }}>+ Новый пост</button>
-            <button onClick={downloadPostsBundle} className="outline" title="Скачать posts.json для public/data/">Экспорт для GitHub</button>
-          </div>
+          <>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+              <button onClick={startNew} style={{ flex: '1 1 auto' }}>+ Новый пост</button>
+              <button onClick={downloadPostsBundle} className="outline" title="Скачать posts.json для public/data/">Экспорт для GitHub</button>
+            </div>
+            {getSyncConfig() && (
+              <div style={{ marginBottom: 20, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)', fontSize: 13 }}>
+                <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--pico-muted-color)' }}>
+                  Изменения с телефона и с компьютера объединяются по времени: перед отправкой загружаем репо и сливаем (удаления не теряются).
+                </p>
+                {(syncStatus !== 'idle' || syncError) && (
+                  <div style={{ marginBottom: 8, color: syncStatus === 'error' ? 'var(--color-danger)' : 'var(--pico-muted-color)' }}>
+                    {syncStatus === 'pending' && `Через ${BLOG_PUSH_DELAY_MS / 1000} сек отправка в репо (сначала загрузка с сервера и объединение).`}
+                    {syncStatus === 'loading' && 'Загрузка с репо…'}
+                    {syncStatus === 'sending' && 'Отправка в репо…'}
+                    {syncStatus === 'ok' && 'Отправлено в репо.'}
+                    {syncStatus === 'error' && syncError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {syncStatus === 'pending' && (
+                    <>
+                      <button type="button" onClick={handleSyncNow} style={{ fontSize: 12 }}>Отправить сейчас</button>
+                      <button type="button" onClick={handleCancelPush} className="secondary" style={{ fontSize: 12 }}>Отменить отправку</button>
+                    </>
+                  )}
+                  <button type="button" onClick={handlePullOnly} className="outline" style={{ fontSize: 12 }} title="Загрузить с репо и объединить с локальными">
+                    Синхронизировать с репо
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : null}
 
         {visiblePosts.length === 0 && (
