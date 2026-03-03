@@ -112,15 +112,36 @@ function looksLikeDataRow(cells: string[]): boolean {
   return false;
 }
 
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+/** Загрузить текст по URL; при CORS (Failed to fetch) — повторить через прокси. */
+async function fetchText(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  } catch (e) {
+    const isCorsOrNetwork =
+      e instanceof TypeError ||
+      (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError')));
+    if (isCorsOrNetwork) {
+      const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+      const res = await fetch(proxyUrl, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Прокси: HTTP ${res.status}`);
+      return await res.text();
+    }
+    throw e;
+  }
+}
+
 /**
- * Загрузить CSV по URL (Google Таблица: Файл → Открыть доступ → Публикация в интернете → CSV)
+ * Загрузить CSV по URL (Google Таблица: Файл → Публикация в интернете → CSV)
  * и преобразовать в массив WeatherRow.
- * Поддерживается формат с заголовками и без (например AirStationLog: первая строка — данные, колонки B=дата, E=температура, F=PM2.5, G=PM10, H=давление).
+ * При блокировке CORS запрос повторяется через прокси.
+ * Поддерживается формат с заголовками и без (AirStationLog: B=дата, E=температура, F=PM2.5, G=PM10, H=давление).
  */
 export async function fetchWeatherFromSheet(csvUrl: string): Promise<WeatherRow[]> {
-  const res = await fetch(csvUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Ошибка загрузки: ${res.status}`);
-  const text = await res.text();
+  const text = await fetchText(csvUrl);
   const lines = text.split(/\r?\n/).filter((l) => l.trim());
   if (lines.length < 1) return [];
 
