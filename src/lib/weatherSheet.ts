@@ -1,0 +1,194 @@
+/**
+ * Загрузка данных метеостанции из Google Таблицы (опубликованный CSV).
+ * Ожидаемые колонки (регистр и название гибкие): дата/время, температура, давление, pm1, pm2.5, pm10, номер станции.
+ */
+
+export interface WeatherRow {
+  date: number; // timestamp для графика
+  dateLabel: string; // для подписи оси
+  temperature?: number;
+  pressure?: number;
+  pm1?: number;
+  pm25?: number;
+  pm10?: number;
+  station?: string;
+}
+
+function getEnv(name: string): string {
+  try {
+    return String((import.meta.env as Record<string, unknown>)[name] ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
+/** Парсинг одной строки CSV с учётом кавычек. */
+function parseCsvLine(line: string): string[] {
+  const out: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      inQuotes = !inQuotes;
+    } else if ((c === ',' && !inQuotes) || (c === '\t' && !inQuotes)) {
+      out.push(cur.trim());
+      cur = '';
+    } else {
+      cur += c;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function normalizeHeader(h: string): string {
+  return h
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[.,]/g, '.')
+    .trim();
+}
+
+/** Найти индекс колонки по возможным названиям. */
+function findCol(headers: string[], names: string[]): number {
+  const normalized = headers.map(normalizeHeader);
+  for (const name of names) {
+    const n = normalizeHeader(name);
+    const i = normalized.findIndex((h) => h === n || h.includes(n) || n.includes(h));
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function parseNumber(s: string): number | undefined {
+  if (s == null || s === '') return undefined;
+  const t = String(s).replace(/,/g, '.').replace(/\s/g, '').toLowerCase();
+  if (t === 'nan' || t === 'n/a' || t === '-') return undefined;
+  const n = parseFloat(t);
+  return isNaN(n) ? undefined : n;
+}
+
+/** Парсинг даты: ISO, DD.MM.YYYY, DD.MM.YYYY HH:mm, DD/MM/YYYY и т.д. */
+function parseDate(s: string): number | undefined {
+  if (s == null || s === '') return undefined;
+  const t = String(s).trim();
+  const iso = /^\d{4}-\d{2}-\d{2}(T|\s)\d{2}:\d{2}/;
+  if (iso.test(t)) {
+    const d = new Date(t.replace(' ', 'T'));
+    return isNaN(d.getTime()) ? undefined : d.getTime();
+  }
+  const dmy = t.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})(\s+(\d{1,2}):(\d{2})(:(\d{2}))?)?/);
+  if (dmy) {
+    const day = parseInt(dmy[1], 10);
+    const month = parseInt(dmy[2], 10) - 1;
+    const year = parseInt(dmy[3], 10) <= 99 ? 2000 + parseInt(dmy[3], 10) : parseInt(dmy[3], 10);
+    const hour = dmy[5] ? parseInt(dmy[5], 10) : 0;
+    const min = dmy[6] ? parseInt(dmy[6], 10) : 0;
+    const sec = dmy[8] ? parseInt(dmy[8], 10) : 0;
+    const d = new Date(year, month, day, hour, min, sec);
+    return isNaN(d.getTime()) ? undefined : d.getTime();
+  }
+  const d = new Date(t);
+  return isNaN(d.getTime()) ? undefined : d.getTime();
+}
+
+export function getWeatherSheetUrl(): string {
+  return getEnv('VITE_WEATHER_SHEET_CSV_URL');
+}
+
+export function getWeatherStationId(): string {
+  return getEnv('VITE_WEATHER_STATION_ID');
+}
+
+/** Первая строка похожа на данные (дата/число), а не на заголовки. */
+function looksLikeDataRow(cells: string[]): boolean {
+  const c0 = cells[0]?.trim() ?? '';
+  const c1 = cells[1]?.trim() ?? '';
+  if (parseDate(c1)) return true;
+  if (parseDate(c0)) return true;
+  if (/^\d{4}-\d{2}-\d{2}/.test(c0) || /^\d{1,2}\.\d{1,2}\.\d{2,4}/.test(c0)) return true;
+  if (/^\d{4}-\d{2}-\d{2}/.test(c1) || /^\d{1,2}\.\d{1,2}\.\d{2,4}/.test(c1)) return true;
+  return false;
+}
+
+/**
+ * Загрузить CSV по URL (Google Таблица: Файл → Открыть доступ → Публикация в интернете → CSV)
+ * и преобразовать в массив WeatherRow.
+ * Поддерживается формат с заголовками и без (например AirStationLog: первая строка — данные, колонки B=дата, E=температура, F=PM2.5, G=PM10, H=давление).
+ */
+export async function fetchWeatherFromSheet(csvUrl: string): Promise<WeatherRow[]> {
+  const res = await fetch(csvUrl, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Ошибка загрузки: ${res.status}`);
+  const text = await res.text();
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 1) return [];
+
+  const firstCells = parseCsvLine(lines[0]);
+  const noHeader = looksLikeDataRow(firstCells);
+
+  let iDate = -1;
+  let iTemp = -1;
+  let iPressure = -1;
+  let iPm1 = -1;
+  let iPm25 = -1;
+  let iPm10 = -1;
+  let iStation = -1;
+  let startRow: number;
+
+  if (noHeader) {
+    // Формат AirStationLog: A=№, B=дата, C=дата2, D=статус, E=температура, F=PM2.5, G=PM10, H/I=давление(nan)
+    iDate = 1; // колонка B (или 2 для C)
+    iTemp = 4;  // E
+    iPressure = 7; // H
+    iPm25 = 5;  // F
+    iPm10 = 6;  // G
+    startRow = 0;
+  } else {
+    const headers = firstCells;
+    iDate = findCol(headers, [
+      'date',
+      'datetime',
+      'timestamp',
+      'time',
+      'дата',
+      'время',
+      'дата и время',
+    ]);
+    iTemp = findCol(headers, ['temp', 'temperature', 't', 'температура', '°c', 'c']);
+    iPressure = findCol(headers, ['pressure', 'p', 'давление', 'hpa', 'мм']);
+    iPm1 = findCol(headers, ['pm1', 'pm 1']);
+    iPm25 = findCol(headers, ['pm2.5', 'pm2,5', 'pm25', 'pm2_5', 'pm 2.5']);
+    iPm10 = findCol(headers, ['pm10', 'pm 10']);
+    iStation = findCol(headers, ['station', 'station_id', 'станция', 'номер', 'id']);
+    startRow = 1;
+  }
+
+  const rows: WeatherRow[] = [];
+  for (let i = startRow; i < lines.length; i++) {
+    const cells = parseCsvLine(lines[i]);
+    let dateRaw = iDate >= 0 ? cells[iDate] : '';
+    if (!dateRaw && iDate === 1 && cells[2]) dateRaw = cells[2]; // fallback на колонку C
+    const ts = parseDate(dateRaw);
+    if (ts == null && iDate >= 0) continue;
+    const date = ts ?? Date.now();
+    const dateLabel = new Date(date).toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    rows.push({
+      date,
+      dateLabel,
+      temperature: iTemp >= 0 ? parseNumber(cells[iTemp]) : undefined,
+      pressure: iPressure >= 0 ? parseNumber(cells[iPressure]) : undefined,
+      pm1: iPm1 >= 0 ? parseNumber(cells[iPm1]) : undefined,
+      pm25: iPm25 >= 0 ? parseNumber(cells[iPm25]) : undefined,
+      pm10: iPm10 >= 0 ? parseNumber(cells[iPm10]) : undefined,
+      station: iStation >= 0 ? cells[iStation]?.trim() || undefined : undefined,
+    });
+  }
+  rows.sort((a, b) => a.date - b.date);
+  return rows;
+}
