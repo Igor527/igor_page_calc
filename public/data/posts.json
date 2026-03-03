@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1772527557863,
+  "exportedAt": 1772528417794,
   "posts": [
     {
       "id": "post_nsq6xhw_mmad506z",
@@ -15,8 +15,11 @@
         "posY": 50,
         "zoom": 1.57
       },
+      "polls": [],
+      "todos": [],
       "createdAt": 1772527551802,
-      "updatedAt": 1772527557863
+      "updatedAt": 1772528417794,
+      "deleted": true
     },
     {
       "id": "post_0a4j2s4_mm9xdgr3",
