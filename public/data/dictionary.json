@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1772554797093,
+  "exportedAt": 1772554851244,
   "entries": [
+    {
+      "id": "e1772554848729-fvn4jk",
+      "source": "Zatvoreno",
+      "translation": "Закрыто",
+      "transcription": "/zætˈvɔːɹənoʊ/",
+      "fromLang": "en",
+      "toLang": "ru",
+      "addedAt": 1772554848729
+    },
     {
       "id": "e1772526821922-3rd56z",
       "source": "Nevreme",
