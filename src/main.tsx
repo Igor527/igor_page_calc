@@ -95,9 +95,22 @@ function App() {
         </div>
       );
     }
-    setLegacyAdminFlag(true);
-    window.location.replace('/');
-    return null;
+    // Без Firebase: legacy-режим только на localhost (для разработки). На проде — не даём админку по прямой ссылке
+    const isLocalhost = typeof window !== 'undefined' && /^localhost$|^127\.0\.0\.1$/.test(window.location.hostname);
+    if (isLocalhost) {
+      setLegacyAdminFlag(true);
+      window.location.replace('/');
+      return null;
+    }
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', maxWidth: 420, margin: '0 auto' }}>
+        <h2 style={{ marginBottom: 16 }}>Вход в режим админа</h2>
+        <p style={{ color: 'var(--pico-muted-color)', marginBottom: 24 }}>
+          На продакшене нужна настройка Firebase (VITE_FIREBASE_* и VITE_ADMIN_EMAIL в секретах сборки). Локально на localhost админка включается автоматически по этой ссылке.
+        </p>
+        <a href="/" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>На главную</a>
+      </div>
+    );
   }
 
   const isAdmin = getIsAdmin(firebaseUser);
