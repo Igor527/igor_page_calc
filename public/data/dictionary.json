@@ -1,24 +1,15 @@
 {
   "version": 1,
-  "exportedAt": 1772568085789,
+  "exportedAt": 1772568146150,
   "entries": [
     {
-      "id": "e1772568083283-o2d7vf",
-      "source": "Можно оплатить алкоголь на кассе самообсуживания",
-      "translation": "Можно оплатить алкоголь на кассе самообслуживания",
-      "transcription": "[ˈmoʐnə ɐpˈlatʲ ɐɫkɐˈɡolʲ nɐ ˈkasʲɪ səmɐpsˈluʐɨvənʲɪjə]",
-      "fromLang": "ru",
-      "toLang": "ru",
-      "addedAt": 1772568083283
-    },
-    {
-      "id": "e1772563516233-3r9cvu",
-      "source": "Можно оплатить алкоголь на кассе самообсуживания",
-      "translation": "Можете са џемом",
-      "transcription": "[ˈmoʐɨnə s‿vɐˈrʲenʲɪm]",
+      "id": "e1772568132688-hktock",
+      "source": "Могу ли оплатить алкоголь на кассе самообсуживания",
+      "translation": "Можете ли платити алкохол на каси самоуслуживања",
+      "transcription": "[ˈmoɡʊ lʲɪ ɐplɐˈtʲitʲ ɐɫkɐˈɡolʲ nɐ‿ˈkaɕːɪ səməʊsˈlʉʐɨvənʲɪɪ̯ə]",
       "fromLang": "ru",
       "toLang": "sr",
-      "addedAt": 1772563516233
+      "addedAt": 1772568132688
     },
     {
       "id": "e1772554848729-fvn4jk",
