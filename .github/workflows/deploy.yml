@@ -28,6 +28,9 @@ jobs:
       VITE_ADMIN_EMAIL: ${{ secrets.VITE_ADMIN_EMAIL }}
       VITE_ADMIN_GITHUB_IDS: ${{ secrets.VITE_ADMIN_GITHUB_IDS }}
       VITE_MISTRAL_API_KEY: ${{ secrets.VITE_MISTRAL_API_KEY }}
+      VITE_GITHUB_SYNC_OWNER: ${{ secrets.VITE_GITHUB_SYNC_OWNER }}
+      VITE_GITHUB_SYNC_REPO: ${{ secrets.VITE_GITHUB_SYNC_REPO }}
+      VITE_GITHUB_SYNC_BRANCH: ${{ secrets.VITE_GITHUB_SYNC_BRANCH }}
 
     steps:
       - name: Checkout

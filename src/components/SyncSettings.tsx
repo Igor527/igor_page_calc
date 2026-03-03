@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getSyncConfig, setSyncConfig, testConnection, type GitHubSyncConfig } from '@/lib/githubSync';
 
+function getEnv(name: string): string {
+  try {
+    return String((import.meta.env as Record<string, unknown>)[name] ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
 const SyncSettings: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [owner, setOwner] = useState('');
@@ -16,6 +24,10 @@ const SyncSettings: React.FC = () => {
       setRepo(c.repo);
       setBranch(c.branch || 'main');
       setToken(c.token ? '••••••••' : '');
+    } else {
+      setOwner(getEnv('VITE_GITHUB_SYNC_OWNER'));
+      setRepo(getEnv('VITE_GITHUB_SYNC_REPO'));
+      setBranch(getEnv('VITE_GITHUB_SYNC_BRANCH') || 'main');
     }
   }, []);
 
