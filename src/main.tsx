@@ -139,12 +139,14 @@ function App() {
   // Загружаем данные: сначала статические файлы сайта, затем при админе и настроенной синхронизации — из репо по API (источник истины при входе в админку)
   const [bundleTick, setBundleTick] = useState(0);
   useEffect(() => {
+    // При настроенной синхронизации словарь грузим только из репо (pullAllFromRepo), иначе статический файл перезатрёт данные из репо после обновления страницы
+    const dictLoad = getSyncConfig() ? Promise.resolve() : loadDictionaryBundle();
     Promise.all([
       loadPublishedBundle(),
       loadBlogBundle(),
       loadNotesBundle(),
       loadLayoutsBundle(),
-      loadDictionaryBundle(),
+      dictLoad,
     ]).then(() => setBundleTick((n) => n + 1));
   }, []);
 
@@ -210,7 +212,7 @@ function App() {
         </div>
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DictionaryPage /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DictionaryPage dataVersion={bundleTick} /></React.Suspense>;
   }
   if (path === '/cv') {
     if (!isAdmin) {

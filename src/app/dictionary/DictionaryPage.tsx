@@ -83,7 +83,7 @@ function langName(code: string): string {
   return LANG_OPTIONS.find(o => o.code === code)?.name ?? code;
 }
 
-const DictionaryPage: React.FC = () => {
+const DictionaryPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [text, setText] = useState('');
   const [fromLang, setFromLang] = useState('ru');
   const [toLang, setToLang] = useState('ru'); // по умолчанию перевод на русский
@@ -150,6 +150,13 @@ const DictionaryPage: React.FC = () => {
   useEffect(() => {
     saveEntries(entries);
   }, [entries]);
+
+  // После pullAllFromRepo в main обновляется localStorage; перечитываем, чтобы доп. слова не пропадали после обновления страницы
+  useEffect(() => {
+    if (dataVersion == null) return;
+    setEntries(loadEntries());
+    setPriorityLangs(loadPriorityLanguages());
+  }, [dataVersion]);
 
   const handleTranslate = useCallback(async () => {
     const trimmed = text.trim();

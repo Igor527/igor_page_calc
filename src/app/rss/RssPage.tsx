@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { fetchRssFeed, type RssEntry } from '@/lib/rssFetch';
+import { fetchRssFeed, parseFeedXml, type RssEntry } from '@/lib/rssFetch';
 import { getRssListsFromRepo, pushRssLists, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-rss-lists';
@@ -60,6 +60,8 @@ const RssPage: React.FC = () => {
   const [pullLoading, setPullLoading] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [pasteXml, setPasteXml] = useState('');
+  const [pasteXmlForUrl, setPasteXmlForUrl] = useState<string | null>(null);
 
   useEffect(() => {
     saveLists(lists);
@@ -305,7 +307,37 @@ const RssPage: React.FC = () => {
                           {expandedFeedUrl === item.url && feedCache[item.url] && (
                             <div style={{ marginTop: 10, padding: '12px 0 0', borderTop: '1px solid var(--pico-border-color)' }}>
                               {feedCache[item.url].error && (
-                                <p style={{ fontSize: 12, color: 'var(--pico-del-color)', marginBottom: 8 }}>{feedCache[item.url].error}</p>
+                                <>
+                                  <p style={{ fontSize: 12, color: 'var(--pico-del-color)', marginBottom: 8 }}>{feedCache[item.url].error}</p>
+                                  <details style={{ marginBottom: 10, fontSize: 12 }}>
+                                    <summary style={{ cursor: 'pointer', color: 'var(--pico-muted-color)' }}>Вставить XML вручную</summary>
+                                    <p style={{ margin: '8px 0 4px', color: 'var(--pico-muted-color)' }}>Откройте ссылку на ленту в новой вкладке, скопируйте весь код (Ctrl+A, Ctrl+C) и вставьте ниже.</p>
+                                    <textarea
+                                      value={pasteXmlForUrl === item.url ? pasteXml : ''}
+                                      onChange={e => { setPasteXmlForUrl(item.url); setPasteXml(e.target.value); }}
+                                      placeholder="Вставьте RSS/Atom XML..."
+                                      rows={6}
+                                      style={{ width: '100%', padding: 8, fontSize: 12, fontFamily: 'monospace', resize: 'vertical' }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="primary"
+                                      style={{ marginTop: 6, fontSize: 12 }}
+                                      onClick={() => {
+                                        try {
+                                          const entries = parseFeedXml(pasteXml);
+                                          setFeedCache(prev => ({ ...prev, [item.url]: { ...prev[item.url], loading: false, error: undefined, entries } }));
+                                          setPasteXml('');
+                                          setPasteXmlForUrl(null);
+                                        } catch (err) {
+                                          setFeedCache(prev => ({ ...prev, [item.url]: { ...prev[item.url], error: err instanceof Error ? err.message : 'Ошибка разбора XML' } }));
+                                        }
+                                      }}
+                                    >
+                                      Применить
+                                    </button>
+                                  </details>
+                                </>
                               )}
                               {feedCache[item.url].entries && (
                                 <button type="button" className="outline" style={{ fontSize: 11, marginBottom: 10 }} onClick={() => loadFeed(item.url)}>Обновить</button>

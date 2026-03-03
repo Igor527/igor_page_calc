@@ -11,7 +11,12 @@ export interface RssEntry {
 
 const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (res: Response) => Promise<string> }[] = [
   {
-    name: 'allorigins',
+    name: 'allorigins-raw',
+    getUrl: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'allorigins-get',
     getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     parse: async (res) => {
       const data = (await res.json()) as { contents?: string };
@@ -20,33 +25,51 @@ const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (
   },
   {
     name: 'corsproxy',
+    getUrl: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'corsproxy-direct',
     getUrl: (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'crossorigin',
+    getUrl: (u) => `https://crossorigin.me/${u}`,
     parse: (res) => res.text(),
   },
 ];
 
 async function fetchText(url: string): Promise<string> {
+  const fetchOpts: RequestInit = { cache: 'no-store', redirect: 'follow' };
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, fetchOpts);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    const text = await res.text();
+    if (text?.trim()) return text;
+    throw new Error('Пустой ответ');
   } catch (e) {
     const isCorsOrNetwork =
       e instanceof TypeError ||
-      (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError')));
+      (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError') || e.message === 'Пустой ответ'));
     if (!isCorsOrNetwork) throw e;
+    const errors: string[] = [];
     for (const proxy of CORS_PROXIES) {
       try {
         const proxyUrl = proxy.getUrl(url);
-        const res = await fetch(proxyUrl, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`${proxy.name}: HTTP ${res.status}`);
+        const res = await fetch(proxyUrl, fetchOpts);
+        if (!res.ok) {
+          errors.push(`${proxy.name}: ${res.status}`);
+          continue;
+        }
         const text = await proxy.parse(res);
         if (text?.trim()) return text;
-      } catch {
-        continue;
+        errors.push(`${proxy.name}: пустой ответ`);
+      } catch (err) {
+        errors.push(`${proxy.name}: ${err instanceof Error ? err.message : 'ошибка'}`);
       }
     }
-    throw new Error('Не удалось загрузить ленту (CORS). Попробуйте позже.');
+    throw new Error('Не удалось загрузить ленту (CORS). Попробуйте вставить XML/ RSS вручную или позже. Прокси: ' + errors.join('; '));
   }
 }
 
@@ -62,8 +85,8 @@ function stripHtml(html: string): string {
   return doc.body?.textContent?.trim().replace(/\s+/g, ' ').slice(0, 400) ?? '';
 }
 
-/** Парсинг RSS 2.0 (channel/item) и Atom (feed/entry). */
-function parseFeedXml(xmlText: string): RssEntry[] {
+/** Парсинг RSS 2.0 (channel/item) и Atom (feed/entry). Можно вызывать для вставленного вручную XML. */
+export function parseFeedXml(xmlText: string): RssEntry[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(xmlText, 'text/xml');
   const entries: RssEntry[] = [];

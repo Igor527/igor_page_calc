@@ -108,8 +108,8 @@ const WeatherPage: React.FC = () => {
         <p style={{ color: 'var(--pico-del-color)', marginBottom: 16, fontSize: 14 }}>{error}</p>
       )}
 
-      {/* Запасной вариант: вставка CSV вручную */}
-      <details style={{ marginBottom: 16, fontSize: 13 }}>
+      {/* Запасной вариант: вставка CSV вручную (при ошибке открыт автоматически) */}
+      <details style={{ marginBottom: 16, fontSize: 13 }} open={!!error}>
         <summary style={{ cursor: 'pointer', color: 'var(--pico-muted-color)' }}>
           Если по ссылке не загружается — вставьте CSV вручную
         </summary>
@@ -163,8 +163,11 @@ const WeatherPage: React.FC = () => {
           <ol style={{ margin: '0 0 0 16px', paddingLeft: 8 }}>
             <li>В Google Таблице: <strong>Файл → Публикация в интернете</strong> (или Share → Publish to web).</li>
             <li>Выберите лист и формат <strong>CSV</strong>, нажмите «Опубликовать».</li>
-            <li>Скопируйте появившуюся ссылку (она будет с <code style={{ background: 'var(--pico-code-background-color)', padding: '1px 4px', borderRadius: 4 }}>/export?format=csv</code>) и вставьте в поле выше или в .env.</li>
+            <li>Скопируйте ссылку (вид: <code style={{ background: 'var(--pico-code-background-color)', padding: '1px 4px', borderRadius: 4 }}>.../pub?gid=0&single=true&output=csv</code> или <code style={{ background: 'var(--pico-code-background-color)', padding: '1px 4px', borderRadius: 4 }}>.../export?format=csv&gid=0</code>) и вставьте в поле выше.</li>
           </ol>
+          <p style={{ marginTop: 10, padding: 8, background: 'var(--pico-card-background-color)', borderRadius: 6, border: '1px solid var(--pico-border-color)', fontSize: 12 }}>
+            <strong>Если по ссылке не грузится (CORS):</strong> откройте эту ссылку в новой вкладке. Если браузер показывает таблицу или скачивает CSV — скопируйте весь текст (Ctrl+A, Ctrl+C) и вставьте в блок «Вставьте CSV вручную» ниже. Так данные загрузятся без прокси.
+          </p>
           <p style={{ marginTop: 8, fontSize: 12 }}>
             Колонки: дата/время, температура, давление, pm1, pm2.5, pm10, станция (или формат AirStationLog без заголовка).
           </p>

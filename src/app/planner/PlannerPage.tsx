@@ -5,10 +5,31 @@ import { Gantt, ViewMode, type Task } from 'gantt-task-react';
 import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-page-planner-tasks';
+const STORAGE_KEY_LABELS = 'igor-page-planner-labels';
+
+/** Задача планировщика: Task + ручной цвет и метки */
+export type PlannerTask = Task & { barColor?: string; labels?: string[] };
 
 const ROW_HEIGHT = 44;
+const ROW_HEIGHT_MOBILE = 36;
 const GANTT_HEADER_HEIGHT = 52;
-const TABLE_WIDTH = 500;
+const GANTT_HEADER_HEIGHT_MOBILE = 44;
+const TABLE_WIDTH = 640;
+
+/** Палитра цветов для полос Ганта (каждая задача — свой цвет) */
+const GANTT_BAR_PALETTE = [
+  '#4a90d9', '#7b68ee', '#50c878', '#e6a23c', '#f56c6c', '#c77eb5', '#20b2aa', '#dda0dd',
+];
+function getBarStyles(index: number, barColor?: string): Task['styles'] {
+  const bg = barColor ?? GANTT_BAR_PALETTE[index % GANTT_BAR_PALETTE.length];
+  const progress = 'rgba(0,0,0,0.25)';
+  return {
+    backgroundColor: bg,
+    backgroundSelectedColor: bg,
+    progressColor: progress,
+    progressSelectedColor: progress,
+  };
+}
 
 /** Ширина колонки календаря по режиму: месяц/неделя требуют больше места для подписей */
 function getColumnWidth(viewMode: ViewMode): number {
@@ -114,7 +135,7 @@ function parsePastedTasks(text: string): ParsedTaskRow[] {
   return result;
 }
 
-function loadStoredTasks(): Task[] {
+function loadStoredTasks(): PlannerTask[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return getDefaultTasks();
@@ -130,6 +151,17 @@ function loadStoredTasks(): Task[] {
   }
 }
 
+function loadStoredLabels(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LABELS);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Подставить задачи из репо в localStorage. Вызывается при глобальном pull и из кнопки «Синхронизировать с репо». */
 export function applyPlannerFromRepoData(tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>): void {
   if (!Array.isArray(tasks) || tasks.length === 0) return;
@@ -138,7 +170,7 @@ export function applyPlannerFromRepoData(tasks: Array<{ id: string; name: string
   } catch {}
 }
 
-function getDefaultTasks(): Task[] {
+function getDefaultTasks(): PlannerTask[] {
   const now = new Date();
   const d = (days: number) => {
     const x = new Date(now);
@@ -154,7 +186,10 @@ function getDefaultTasks(): Task[] {
 }
 
 const PlannerPage: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>(loadStoredTasks);
+  const [tasks, setTasks] = useState<PlannerTask[]>(loadStoredTasks);
+  const [labelsList, setLabelsList] = useState<string[]>(loadStoredLabels);
+  const [labelsPanelOpen, setLabelsPanelOpen] = useState(false);
+  const [newLabelName, setNewLabelName] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Day);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState('');
@@ -162,6 +197,7 @@ const PlannerPage: React.FC = () => {
   const [plannerLoaded, setPlannerLoaded] = useState(false);
   const [pullLoading, setPullLoading] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const ganttScrollRef = useRef<HTMLDivElement>(null);
   const syncFromRef = useRef<'table' | 'gantt' | null>(null);
@@ -175,7 +211,7 @@ const PlannerPage: React.FC = () => {
       .then((data) => {
         const raw = data?.tasks;
         if (!Array.isArray(raw) || raw.length === 0) return;
-        const parsed: Task[] = raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
+        const parsed: PlannerTask[] = raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
           ...t,
           start: new Date(typeof t.start === 'number' ? t.start : t.start),
           end: new Date(typeof t.end === 'number' ? t.end : t.end),
@@ -188,6 +224,13 @@ const PlannerPage: React.FC = () => {
       })
       .catch(() => {});
   }, [plannerLoaded]);
+
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 768px)');
+    const onMatch = () => setIsNarrow(m.matches);
+    m.addEventListener('change', onMatch);
+    return () => m.removeEventListener('change', onMatch);
+  }, []);
 
   useEffect(() => {
     const tableEl = tableScrollRef.current;
@@ -227,6 +270,12 @@ const PlannerPage: React.FC = () => {
     }
   }, [tasks]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(labelsList));
+    } catch {}
+  }, [labelsList]);
+
   const handleDateChange = useCallback((task: Task) => {
     setTasks((prev) =>
       prev.map((t) =>
@@ -243,7 +292,7 @@ const PlannerPage: React.FC = () => {
 
   const handleNameChange = useCallback((id: string, name: string) => {
     setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, name: name.trim() || t.name } : t))
+      prev.map((t) => (t.id === id ? { ...t, name } : t))
     );
   }, []);
 
@@ -267,6 +316,45 @@ const PlannerPage: React.FC = () => {
     const p = Math.min(100, Math.max(0, value));
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, progress: p } : t))
+    );
+  }, []);
+
+  const handleBarColorChange = useCallback((id: string, barColor: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, barColor: barColor || undefined } : t))
+    );
+  }, []);
+
+  const handleTaskAddLabel = useCallback((id: string, label: string) => {
+    if (!label) return;
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const labels = t.labels ?? [];
+        return labels.includes(label) ? t : { ...t, labels: [...labels, label] };
+      })
+    );
+  }, []);
+
+  const handleTaskRemoveLabel = useCallback((id: string, label: string) => {
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id !== id ? t : { ...t, labels: (t.labels ?? []).filter((l) => l !== label) }
+      )
+    );
+  }, []);
+
+  const addLabelToList = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setLabelsList((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed].sort()));
+    setNewLabelName('');
+  }, []);
+
+  const removeLabelFromList = useCallback((label: string) => {
+    setLabelsList((prev) => prev.filter((l) => l !== label));
+    setTasks((prev) =>
+      prev.map((t) => ({ ...t, labels: (t.labels ?? []).filter((l) => l !== label) }))
     );
   }, []);
 
@@ -312,12 +400,13 @@ const PlannerPage: React.FC = () => {
     setPasteOpen(false);
   };
 
-  // Задачи для Ганта: без зависимостей (стрелки не рисуем) и без milestone (жёлтый ромб не показываем)
-  const ganttTasks = tasks.map((t) => ({
+  // Задачи для Ганта: без зависимостей, без milestone, цвет из barColor или по палитре
+  const ganttTasks = tasks.map((t, i) => ({
     ...t,
     progress: t.progress === 0 ? 0.5 : t.progress,
     dependencies: undefined,
     type: 'task' as const,
+    styles: getBarStyles(i, t.barColor),
   }));
 
   const handleReset = () => {
@@ -326,6 +415,10 @@ const PlannerPage: React.FC = () => {
     }
   };
 
+  const rowH = isNarrow ? ROW_HEIGHT_MOBILE : ROW_HEIGHT;
+  const headerH = isNarrow ? GANTT_HEADER_HEIGHT_MOBILE : GANTT_HEADER_HEIGHT;
+  const cellPad = isNarrow ? '0 4px' : '0 8px';
+
   const handlePullFromRepo = useCallback(async () => {
     setPullError(null);
     setPullLoading(true);
@@ -333,7 +426,7 @@ const PlannerPage: React.FC = () => {
       const raw = await getPlannerFromRepo();
       if (raw && raw.length > 0) {
         applyPlannerFromRepoData(raw);
-        const parsed: Task[] = raw.map((t) => ({
+        const parsed: PlannerTask[] = raw.map((t) => ({
           ...t,
           start: new Date(t.start),
           end: new Date(t.end),
@@ -416,10 +509,93 @@ const PlannerPage: React.FC = () => {
           </>
         )}
         {pullError && <span style={{ fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</span>}
+        <button
+          type="button"
+          onClick={() => { setLabelsPanelOpen((o) => !o); }}
+          style={{
+            padding: '4px 10px',
+            borderRadius: 4,
+            border: '1px solid var(--pico-border-color)',
+            background: labelsPanelOpen ? 'var(--pico-primary-background)' : 'var(--pico-background-color)',
+            color: 'var(--pico-color)',
+            cursor: 'pointer',
+            fontSize: 12,
+            height: 28,
+          }}
+          title="Вести список меток (сотрудники, теги) и назначать их задачам"
+        >
+          Метки
+        </button>
         <button type="button" onClick={handleReset} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
           Сбросить к демо
         </button>
       </div>
+
+      {/* Панель списка меток */}
+      {labelsPanelOpen && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid var(--pico-border-color)',
+            background: 'var(--pico-background-color)',
+            flexShrink: 0,
+          }}
+        >
+          <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--pico-muted-color)' }}>
+            Список меток (например, имена сотрудников или теги). Добавьте метки здесь, затем назначайте их задачам в колонке «Метки».
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <input
+              type="text"
+              value={newLabelName}
+              onChange={(e) => setNewLabelName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addLabelToList(newLabelName); } }}
+              placeholder="Новая метка"
+              style={{
+                width: 140,
+                height: 28,
+                padding: '0 8px',
+                borderRadius: 4,
+                border: '1px solid var(--pico-border-color)',
+                background: 'var(--pico-form-element-background-color)',
+                color: 'var(--pico-color)',
+                fontSize: 12,
+                boxSizing: 'border-box',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => addLabelToList(newLabelName)}
+              style={{ padding: '4px 10px', borderRadius: 4, border: 'none', background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)', cursor: 'pointer', fontSize: 12, height: 28 }}
+            >
+              Добавить
+            </button>
+            {labelsList.length > 0 && (
+              <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+                {labelsList.map((l) => (
+                  <span
+                    key={l}
+                    onClick={() => removeLabelFromList(l)}
+                    title="Удалить метку из списка (уберёт и у всех задач)"
+                    style={{
+                      display: 'inline-block',
+                      marginRight: 6,
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      background: 'var(--pico-primary-background)',
+                      color: 'var(--pico-primary)',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                    }}
+                  >
+                    {l} ×
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Панель вставки из буфера */}
       {pasteOpen && (
@@ -509,25 +685,27 @@ const PlannerPage: React.FC = () => {
           <div ref={tableScrollRef} style={{ flex: 1, overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH }}>
               <thead>
-                <tr style={{ height: GANTT_HEADER_HEIGHT, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
-                  <th style={{ textAlign: 'left', padding: '0 8px', fontWeight: 600, width: 200, minWidth: 160, verticalAlign: 'middle' }}>Название</th>
-                  <th style={{ textAlign: 'left', padding: '0 8px', fontWeight: 600, width: 120, minWidth: 100, verticalAlign: 'middle' }}>Начало</th>
-                  <th style={{ textAlign: 'left', padding: '0 8px', fontWeight: 600, width: 120, minWidth: 100, verticalAlign: 'middle' }}>Окончание</th>
-                  <th style={{ textAlign: 'center', padding: '0 8px', fontWeight: 600, width: 56, minWidth: 48, verticalAlign: 'middle' }}>%</th>
-                  <th style={{ width: 44, minWidth: 44, padding: 0, verticalAlign: 'middle' }}></th>
+                <tr style={{ height: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
+                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 160, minWidth: 120, verticalAlign: 'middle' }}>Название</th>
+                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 72, minWidth: 56, verticalAlign: 'middle' }}>Цвет</th>
+                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 80, verticalAlign: 'middle' }}>Метки</th>
+                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 88, verticalAlign: 'middle' }}>Начало</th>
+                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 88, verticalAlign: 'middle' }}>Окончание</th>
+                  <th style={{ textAlign: 'center', padding: cellPad, fontWeight: 600, width: 48, minWidth: 40, verticalAlign: 'middle' }}>%</th>
+                  <th style={{ width: 40, minWidth: 36, padding: 0, verticalAlign: 'middle' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {tasks.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}>
+                    <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}>
                       Нет задач. Нажмите «+ Задача», чтобы добавить.
                     </td>
                   </tr>
                 ) : (
                 tasks.map((t) => (
-                  <tr key={t.id} style={{ height: ROW_HEIGHT, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
-                    <td style={{ padding: '0 8px', verticalAlign: 'middle', height: ROW_HEIGHT, boxSizing: 'border-box', width: 200, minWidth: 160 }}>
+                  <tr key={t.id} style={{ height: rowH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 160, minWidth: 120 }}>
                       <input
                         type="text"
                         value={t.name}
@@ -536,7 +714,77 @@ const PlannerPage: React.FC = () => {
                         placeholder="Название"
                       />
                     </td>
-                    <td style={{ padding: '0 8px', verticalAlign: 'middle', height: ROW_HEIGHT, boxSizing: 'border-box', width: 120, minWidth: 100 }}>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 72, minWidth: 56 }}>
+                      <select
+                        value={t.barColor ?? ''}
+                        onChange={(e) => handleBarColorChange(t.id, e.target.value)}
+                        title="Цвет полосы (например, сотрудник)"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          height: 28,
+                          padding: '0 4px',
+                          borderRadius: 4,
+                          border: '1px solid var(--pico-border-color)',
+                          background: 'var(--pico-background-color)',
+                          color: 'var(--pico-color)',
+                          fontSize: 11,
+                          boxSizing: 'border-box',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <option value="">По умолчанию</option>
+                        {GANTT_BAR_PALETTE.map((c, i) => (
+                          <option key={c} value={c}>Цвет {i + 1}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 100, minWidth: 80 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', minHeight: 26 }}>
+                        {(t.labels ?? []).map((l) => (
+                          <span
+                            key={l}
+                            onClick={() => handleTaskRemoveLabel(t.id, l)}
+                            title="Убрать метку"
+                            style={{
+                              fontSize: 10,
+                              padding: '1px 4px',
+                              borderRadius: 3,
+                              background: 'var(--pico-primary-background)',
+                              color: 'var(--pico-primary)',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {l} ×
+                          </span>
+                        ))}
+                        <select
+                          value=""
+                          onChange={(e) => { const v = e.target.value; if (v) handleTaskAddLabel(t.id, v); e.currentTarget.value = ''; }}
+                          title="Добавить метку"
+                          style={{
+                            minWidth: 0,
+                            height: 24,
+                            padding: '0 2px',
+                            borderRadius: 3,
+                            border: '1px solid var(--pico-border-color)',
+                            background: 'var(--pico-background-color)',
+                            color: 'var(--pico-color)',
+                            fontSize: 10,
+                            flex: '1 1 40px',
+                            maxWidth: 80,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">+</option>
+                          {labelsList.filter((l) => !(t.labels ?? []).includes(l)).map((l) => (
+                            <option key={l} value={l}>{l}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </td>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 100, minWidth: 88 }}>
                       <input
                         type="date"
                         value={toDateInputValue(t.start)}
@@ -544,7 +792,7 @@ const PlannerPage: React.FC = () => {
                         style={{ width: '100%', minWidth: 0, height: 28, padding: '0 6px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', fontSize: 11, boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ padding: '0 8px', verticalAlign: 'middle', height: ROW_HEIGHT, boxSizing: 'border-box', width: 120, minWidth: 100 }}>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 100, minWidth: 88 }}>
                       <input
                         type="date"
                         value={toDateInputValue(t.end)}
@@ -552,7 +800,7 @@ const PlannerPage: React.FC = () => {
                         style={{ width: '100%', minWidth: 0, height: 28, padding: '0 6px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', fontSize: 11, boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ padding: '0 8px', verticalAlign: 'middle', height: ROW_HEIGHT, boxSizing: 'border-box', textAlign: 'center', width: 56, minWidth: 48 }}>
+                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', textAlign: 'center', width: 48, minWidth: 40 }}>
                       <input
                         type="number"
                         min={0}
@@ -562,11 +810,11 @@ const PlannerPage: React.FC = () => {
                         style={{ width: 48, height: 28, padding: '0 4px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', fontSize: 11, textAlign: 'center', boxSizing: 'border-box' }}
                       />
                     </td>
-                    <td style={{ padding: '0 4px', verticalAlign: 'middle', height: ROW_HEIGHT, boxSizing: 'border-box', width: 44 }}>
+                    <td style={{ padding: '0 4px', verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 40 }}>
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm(`Удалить задачу «${t.name}»?`)) {
+                          if (window.confirm(`Удалить задачу «${t.name || '(без названия)'}»?`)) {
                             setTasks((prev) => prev.filter((task) => task.id !== t.id));
                           }
                         }}
@@ -625,8 +873,8 @@ const PlannerPage: React.FC = () => {
                 viewMode={viewMode}
                 listCellWidth=""
                 columnWidth={getColumnWidth(viewMode)}
-                rowHeight={ROW_HEIGHT}
-                headerHeight={GANTT_HEADER_HEIGHT}
+                rowHeight={rowH}
+                headerHeight={headerH}
                 barFill={100}
                 ganttHeight={0}
                 locale="ru-RU"

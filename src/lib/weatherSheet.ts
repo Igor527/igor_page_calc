@@ -114,44 +114,70 @@ function looksLikeDataRow(cells: string[]): boolean {
 
 const CORS_PROXIES: { name: string; getUrl: (target: string) => string; parse: (res: Response) => Promise<string> }[] = [
   {
-    name: 'allorigins',
+    name: 'allorigins-raw',
+    getUrl: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'allorigins-get',
     getUrl: (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     parse: async (res) => {
-      const data = await res.json() as { contents?: string };
+      const data = (await res.json()) as { contents?: string };
       return data?.contents ?? '';
     },
   },
   {
     name: 'corsproxy',
+    getUrl: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'corsproxy-direct',
     getUrl: (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    parse: (res) => res.text(),
+  },
+  {
+    name: 'crossorigin',
+    getUrl: (u) => `https://crossorigin.me/${u}`,
     parse: (res) => res.text(),
   },
 ];
 
-/** Загрузить текст по URL; при CORS (Failed to fetch) — пробуем прокси по очереди. */
+/** Загрузить текст по URL; при CORS — пробуем прокси по очереди. */
 async function fetchText(url: string): Promise<string> {
+  const fetchOpts: RequestInit = { cache: 'no-store', redirect: 'follow' };
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, fetchOpts);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    const text = await res.text();
+    if (text?.trim()) return text;
+    throw new Error('Пустой ответ');
   } catch (e) {
     const isCorsOrNetwork =
       e instanceof TypeError ||
-      (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError')));
+      (e instanceof Error && (e.message === 'Failed to fetch' || e.message.includes('NetworkError') || e.message === 'Пустой ответ'));
     if (!isCorsOrNetwork) throw e;
 
+    const errors: string[] = [];
     for (const proxy of CORS_PROXIES) {
       try {
         const proxyUrl = proxy.getUrl(url);
-        const res = await fetch(proxyUrl, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`${proxy.name}: HTTP ${res.status}`);
+        const res = await fetch(proxyUrl, fetchOpts);
+        if (!res.ok) {
+          errors.push(`${proxy.name}: ${res.status}`);
+          continue;
+        }
         const text = await proxy.parse(res);
-        if (text && text.trim().length > 0) return text;
-      } catch (_) {
-        continue;
+        if (text?.trim()) return text;
+        errors.push(`${proxy.name}: пусто`);
+      } catch (err) {
+        errors.push(`${proxy.name}: ${err instanceof Error ? err.message : 'ошибка'}`);
       }
     }
-    throw new Error('Не удалось загрузить данные (CORS). Попробуйте позже или другой прокси.');
+    throw new Error(
+      'Не удалось загрузить CSV (CORS). Варианты: 1) Откройте ссылку в новой вкладке → скопируйте весь текст → вставьте в блок «Вставьте CSV вручную» ниже. 2) Проверьте URL: нужна именно «Публикация в интернете» (Файл → Публикация в интернете → CSV), не «Настройки доступа». Прокси: ' +
+        errors.join('; ')
+    );
   }
 }
 
