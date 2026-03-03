@@ -55,6 +55,8 @@ npm test                # тесты (vitest)
 
 ## Синхронизация с GitHub (админка и быстрый деплой)
 
+ТЗ по синхронизации между устройствами и ОС: **[docs/SYNC_SPEC.md](docs/SYNC_SPEC.md)**.
+
 Вход в админку: **https://urbanplanner.page/welcome_me** (Google/GitHub/email). Ссылка на сайте не светится — только прямая.
 
 На главной в режиме админа: блок **«Синхронизация с GitHub»** (owner, repo, ветка, Personal Access Token с правами repo). После настройки все изменения автоматически пушатся в репо в папку **public/data/**:

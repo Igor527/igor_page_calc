@@ -85,6 +85,8 @@ export function getDefaults(pageId: string): PageSection[] {
         sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
         sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
         sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
+        sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv', adminOnly: true }),
+        sec('w9', 'link', { linkLabel: 'Метеостанция', linkUrl: '/weather', adminOnly: true }),
       ];
     case 'calculators':
       return [

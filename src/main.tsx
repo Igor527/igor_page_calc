@@ -13,6 +13,7 @@ const PlannerPage = React.lazy(() => import('./app/planner/PlannerPage'));
 const NotesPage = React.lazy(() => import('./app/admin/notes/NotesPage'));
 const DictionaryPage = React.lazy(() => import('./app/dictionary/DictionaryPage'));
 const CvPage = React.lazy(() => import('./app/cv/CvPage'));
+const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
 import { BlogList, BlogPostView, loadBlogBundle } from './app/blog/BlogPage';
 import { loadDictionaryBundle } from './app/dictionary/DictionaryPage';
 import { loadNotesBundle } from './app/admin/notes/NotesPage';
@@ -181,6 +182,18 @@ function App() {
       );
     }
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage /></React.Suspense>;
+  }
+  if (path === '/weather') {
+    if (!isAdmin) {
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <h2>Доступ только для админа</h2>
+          <p style={{ color: 'var(--color-muted-text)' }}>Метеостанция доступна только в режиме админа.</p>
+          {linkToHome}
+        </div>
+      );
+    }
+    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><WeatherPage /></React.Suspense>;
   }
   if (path === '/blog') {
     return <BlogList isAdmin={isAdmin} />;
