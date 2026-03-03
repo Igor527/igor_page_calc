@@ -1,7 +1,17 @@
 {
   "version": 1,
-  "exportedAt": 1772526800393,
-  "entries": [],
+  "exportedAt": 1772526824425,
+  "entries": [
+    {
+      "id": "e1772526821922-3rd56z",
+      "source": "Nevreme",
+      "translation": "Поздно",
+      "transcription": "/nɛvˈɹiːm/",
+      "fromLang": "en",
+      "toLang": "ru",
+      "addedAt": 1772526821922
+    }
+  ],
   "priorityLangs": [
     "en",
     "sr",
