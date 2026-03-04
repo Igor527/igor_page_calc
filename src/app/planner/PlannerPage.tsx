@@ -256,30 +256,6 @@ const PlannerPage: React.FC = () => {
     return () => m.removeEventListener('change', onMatch);
   }, []);
 
-  /** Для подсветки выходных: дата первого столбца (мин. start по задачам), начало дня */
-  const ganttStartDate = useMemo(() => {
-    if (ganttTasks.length === 0) return new Date();
-    const min = new Date(Math.min(...ganttTasks.map((t) => t.start.getTime())));
-    min.setHours(0, 0, 0, 0);
-    return min;
-  }, [ganttTasks]);
-
-  const isDayScaleView =
-    viewMode === ViewMode.Hour ||
-    viewMode === ViewMode.QuarterDay ||
-    viewMode === ViewMode.HalfDay ||
-    viewMode === ViewMode.Day;
-
-  const colW = getColumnWidth(viewMode);
-  const weekendWrapStyle: React.CSSProperties | null =
-    isDayScaleView && ganttTasks.length > 0
-      ? {
-          ['--gantt-weekend-gradient' as string]: `linear-gradient(to right, var(--gantt-weekend) 0%, var(--gantt-weekend) ${100 / 7}%, transparent ${100 / 7}%, transparent ${(100 * 6) / 7}%, var(--gantt-weekend) ${(100 * 6) / 7}%, var(--gantt-weekend) 100%)`,
-          ['--gantt-weekend-size' as string]: `${7 * colW}px`,
-          ['--gantt-weekend-offset' as string]: `${-ganttStartDate.getDay() * colW}px`,
-        }
-      : null;
-
   useEffect(() => {
     const tableEl = tableScrollRef.current;
     const ganttEl = ganttScrollRef.current;
@@ -303,19 +279,6 @@ const PlannerPage: React.FC = () => {
       ganttEl.removeEventListener('scroll', onGanttScroll);
     };
   }, []);
-
-  // Выравнивание высоты контента таблицы под Гант для совпадения прокрутки
-  useLayoutEffect(() => {
-    const ganttEl = ganttScrollRef.current;
-    if (!ganttEl) return;
-    const read = () => {
-      const sh = ganttEl.scrollHeight;
-      if (sh > 0) setTableContentHeight(sh);
-    };
-    read();
-    const t = requestAnimationFrame(read); // после отрисовки Ганта
-    return () => cancelAnimationFrame(t);
-  }, [ganttTasks.length, rowH, headerH, viewMode]);
 
   useEffect(() => {
     try {
@@ -498,6 +461,30 @@ const PlannerPage: React.FC = () => {
     styles: getBarStyles(i, t.barColor, t.labels, labelColors),
   }));
 
+  /** Для подсветки выходных: дата первого столбца (мин. start по задачам), начало дня */
+  const ganttStartDate = useMemo(() => {
+    if (ganttTasks.length === 0) return new Date();
+    const min = new Date(Math.min(...ganttTasks.map((t) => t.start.getTime())));
+    min.setHours(0, 0, 0, 0);
+    return min;
+  }, [ganttTasks]);
+
+  const isDayScaleView =
+    viewMode === ViewMode.Hour ||
+    viewMode === ViewMode.QuarterDay ||
+    viewMode === ViewMode.HalfDay ||
+    viewMode === ViewMode.Day;
+
+  const colW = getColumnWidth(viewMode);
+  const weekendWrapStyle: React.CSSProperties | null =
+    isDayScaleView && ganttTasks.length > 0
+      ? {
+          ['--gantt-weekend-gradient' as string]: `linear-gradient(to right, var(--gantt-weekend) 0%, var(--gantt-weekend) ${100 / 7}%, transparent ${100 / 7}%, transparent ${(100 * 6) / 7}%, var(--gantt-weekend) ${(100 * 6) / 7}%, var(--gantt-weekend) 100%)`,
+          ['--gantt-weekend-size' as string]: `${7 * colW}px`,
+          ['--gantt-weekend-offset' as string]: `${-ganttStartDate.getDay() * colW}px`,
+        }
+      : null;
+
   const handleReset = () => {
     if (window.confirm('Сбросить все задачи к демо-набору?')) {
       setTasks(getDefaultTasks());
@@ -507,6 +494,19 @@ const PlannerPage: React.FC = () => {
   const rowH = isNarrow ? ROW_HEIGHT_MOBILE : ROW_HEIGHT;
   const headerH = isNarrow ? GANTT_HEADER_HEIGHT_MOBILE : GANTT_HEADER_HEIGHT;
   const cellPad = isNarrow ? '0 4px' : '0 8px';
+
+  // Выравнивание высоты контента таблицы под Гант для совпадения прокрутки
+  useLayoutEffect(() => {
+    const ganttEl = ganttScrollRef.current;
+    if (!ganttEl) return;
+    const read = () => {
+      const sh = ganttEl.scrollHeight;
+      if (sh > 0) setTableContentHeight(sh);
+    };
+    read();
+    const t = requestAnimationFrame(read); // после отрисовки Ганта
+    return () => cancelAnimationFrame(t);
+  }, [ganttTasks.length, rowH, headerH, viewMode]);
 
   const handlePullFromRepo = useCallback(async () => {
     setPullError(null);
