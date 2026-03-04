@@ -1,13 +1,13 @@
 {
   "version": 1,
-  "exportedAt": 1772634893337,
+  "exportedAt": 1772645982627,
   "tasks": [
     {
       "id": "1",
       "name": "Строгино360_к1_ПД_1.1-1.2",
       "start": 1772150400000,
       "end": 1772565600000,
-      "progress": 37,
+      "progress": 100,
       "type": "task",
       "labels": [
         "Катя"
