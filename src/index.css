@@ -220,7 +220,7 @@ button.secondary {
   --gantt-milestone-selected: #ca8a04;
   --gantt-arrow: #64748b;
   --gantt-today: rgba(59, 130, 246, 0.15);
-  --gantt-weekend: rgba(0, 0, 0, 0.06);
+  --gantt-weekend: rgba(0, 0, 0, 0.08);
 }
 .dark {
   --gantt-bar-bg: #475569;
@@ -231,7 +231,7 @@ button.secondary {
   --gantt-milestone-selected: #eab308;
   --gantt-arrow: #94a3b8;
   --gantt-today: rgba(96, 165, 250, 0.2);
-  --gantt-weekend: rgba(255, 255, 255, 0.06);
+  --gantt-weekend: rgba(255, 255, 255, 0.08);
 }
 
 /* Область Ганта: фон по теме. Классы библиотеки — хеши (_3eULf и т.д.), поэтому перебиваем все div и svg. */

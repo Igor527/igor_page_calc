@@ -1,6 +1,6 @@
 // Приватный планировщик с диаграммой Ганта (gantt-task-react)
 
-import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
 import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
 
@@ -220,12 +220,6 @@ const PlannerPage: React.FC = () => {
   const [pullLoading, setPullLoading] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const ganttScrollRef = useRef<HTMLDivElement>(null);
-  const syncFromRef = useRef<'table' | 'gantt' | null>(null);
-  /** Высота контента таблицы = scrollHeight Ганта, чтобы прокрутка строк совпадала */
-  const [tableContentHeight, setTableContentHeight] = useState(0);
-
   // Загрузка задач из public/data/planner.json (при первом открытии)
   useEffect(() => {
     if (plannerLoaded) return;
@@ -254,30 +248,6 @@ const PlannerPage: React.FC = () => {
     const onMatch = () => setIsNarrow(m.matches);
     m.addEventListener('change', onMatch);
     return () => m.removeEventListener('change', onMatch);
-  }, []);
-
-  useEffect(() => {
-    const tableEl = tableScrollRef.current;
-    const ganttEl = ganttScrollRef.current;
-    if (!tableEl || !ganttEl) return;
-    const onTableScroll = () => {
-      if (syncFromRef.current === 'gantt') return;
-      syncFromRef.current = 'table';
-      ganttEl.scrollTop = tableEl.scrollTop;
-      requestAnimationFrame(() => { syncFromRef.current = null; });
-    };
-    const onGanttScroll = () => {
-      if (syncFromRef.current === 'table') return;
-      syncFromRef.current = 'gantt';
-      tableEl.scrollTop = ganttEl.scrollTop;
-      requestAnimationFrame(() => { syncFromRef.current = null; });
-    };
-    tableEl.addEventListener('scroll', onTableScroll);
-    ganttEl.addEventListener('scroll', onGanttScroll);
-    return () => {
-      tableEl.removeEventListener('scroll', onTableScroll);
-      ganttEl.removeEventListener('scroll', onGanttScroll);
-    };
   }, []);
 
   useEffect(() => {
@@ -494,19 +464,8 @@ const PlannerPage: React.FC = () => {
   const rowH = isNarrow ? ROW_HEIGHT_MOBILE : ROW_HEIGHT;
   const headerH = isNarrow ? GANTT_HEADER_HEIGHT_MOBILE : GANTT_HEADER_HEIGHT;
   const cellPad = isNarrow ? '0 4px' : '0 8px';
-
-  // Выравнивание высоты контента таблицы под Гант для совпадения прокрутки
-  useLayoutEffect(() => {
-    const ganttEl = ganttScrollRef.current;
-    if (!ganttEl) return;
-    const read = () => {
-      const sh = ganttEl.scrollHeight;
-      if (sh > 0) setTableContentHeight(sh);
-    };
-    read();
-    const t = requestAnimationFrame(read); // после отрисовки Ганта
-    return () => cancelAnimationFrame(t);
-  }, [ganttTasks.length, rowH, headerH, viewMode]);
+  /** Общая высота контента таблицы и Ганта для одного вертикального скролла */
+  const contentHeight = headerH + (displayedTasks.length || 1) * rowH;
 
   const handlePullFromRepo = useCallback(async () => {
     setPullError(null);
@@ -790,29 +749,28 @@ const PlannerPage: React.FC = () => {
         </div>
       )}
 
-      {/* Слева таблица (фиксированная ширина колонок), справа Гант; вертикальный скролл синхронный */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+      {/* Один вертикальный скролл на обе части: таблица слева, Гант справа */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         <div
           style={{
-            width: TABLE_WIDTH,
-            minWidth: TABLE_WIDTH,
-            flexShrink: 0,
+            height: contentHeight,
+            minHeight: contentHeight,
             display: 'flex',
-            flexDirection: 'column',
-            borderRight: '1px solid var(--pico-border-color)',
-            background: 'var(--pico-card-background-color)',
-            overflow: 'hidden',
+            boxSizing: 'border-box',
           }}
         >
-          <div ref={tableScrollRef} style={{ flex: 1, overflowY: 'auto' }}>
-            <div
-              style={{
-                minHeight: tableContentHeight > 0 ? tableContentHeight : undefined,
-                height: tableContentHeight > 0 ? tableContentHeight : undefined,
-                boxSizing: 'border-box',
-              }}
-            >
-              <table style={{ width: '100%', height: tableContentHeight > 0 ? '100%' : undefined, borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH, boxSizing: 'border-box' }}>
+          <div
+            style={{
+              width: TABLE_WIDTH,
+              minWidth: TABLE_WIDTH,
+              flexShrink: 0,
+              borderRight: '1px solid var(--pico-border-color)',
+              background: 'var(--pico-card-background-color)',
+              height: '100%',
+              overflow: 'hidden',
+            }}
+          >
+            <table style={{ width: '100%', height: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH, boxSizing: 'border-box' }}>
               <thead>
                 <tr style={{ height: headerH, minHeight: headerH, maxHeight: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 160, minWidth: 120, verticalAlign: 'middle' }}>Название</th>
@@ -957,31 +915,27 @@ const PlannerPage: React.FC = () => {
                 )}
               </tbody>
             </table>
-            </div>
           </div>
-        </div>
 
-        <div
-          className="planner-gantt-wrap"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            background: 'var(--pico-background-color)',
-            ['--planner-row-h' as string]: `${rowH}px`,
-            ['--planner-header-h' as string]: `${headerH}px`,
-          }}
-        >
-          <div ref={ganttScrollRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', background: 'var(--pico-background-color)' }}>
+          <div
+            className="planner-gantt-wrap"
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: '100%',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              background: 'var(--pico-background-color)',
+              ['--planner-row-h' as string]: `${rowH}px`,
+              ['--planner-header-h' as string]: `${headerH}px`,
+            }}
+          >
             {ganttTasks.length > 0 ? (
               <div
                 className={weekendWrapStyle ? 'planner-weekend-overlay' : ''}
                 style={
                   weekendWrapStyle
-                    ? { display: 'inline-block', position: 'relative', minWidth: '100%', ...weekendWrapStyle }
+                    ? { display: 'inline-block', position: 'relative', minWidth: '100%', minHeight: contentHeight, ...weekendWrapStyle }
                     : undefined
                 }
               >
@@ -993,8 +947,9 @@ const PlannerPage: React.FC = () => {
                   rowHeight={rowH}
                   headerHeight={headerH}
                   barFill={100}
-                  ganttHeight={0}
+                  ganttHeight={contentHeight}
                   locale="ru-RU"
+                  TooltipContent={() => null}
                   barBackgroundColor="var(--gantt-bar-bg)"
                   barBackgroundSelectedColor="var(--gantt-bar-bg-selected)"
                   barProgressColor="var(--gantt-bar-progress)"
