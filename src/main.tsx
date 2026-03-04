@@ -158,7 +158,7 @@ function App() {
     const layouts = await getLayoutsFromRepo();
     if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
     const planner = await getPlannerFromRepo();
-    if (planner && planner.length > 0) applyPlannerFromRepoData(planner);
+    if (planner) applyPlannerFromRepoData(planner);
     const calcJson = await getCalculatorsJsonFromRepo();
     if (calcJson) loadPublishedBundleFromContent(calcJson);
     const rssData = await getRssListsFromRepo();

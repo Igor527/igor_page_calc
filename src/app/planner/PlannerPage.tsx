@@ -180,10 +180,15 @@ function loadStoredLabels(): LabelWithColor[] {
 }
 
 /** Подставить задачи из репо в localStorage. Вызывается при глобальном pull и из кнопки «Синхронизировать с репо». */
-export function applyPlannerFromRepoData(tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>): void {
-  if (!Array.isArray(tasks) || tasks.length === 0) return;
+/** Применить данные планировщика из репо (задачи и метки с цветами). */
+export function applyPlannerFromRepoData(data: { tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>; labels?: Array<{ name: string; color?: string }> }): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tasks));
+    }
+    if (Array.isArray(data.labels) && data.labels.length > 0) {
+      localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(data.labels));
+    }
   } catch {}
 }
 
@@ -281,7 +286,7 @@ const PlannerPage: React.FC = () => {
         end: t.end.getTime(),
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-      schedulePush('planner', () => pushPlanner(tasks));
+      schedulePush('planner', () => pushPlanner(tasks, labelsList));
     } catch (e) {
       console.warn('Planner: не удалось сохранить задачи', e);
     }
@@ -333,12 +338,6 @@ const PlannerPage: React.FC = () => {
     const p = Math.min(100, Math.max(0, value));
     setTasks((prev) =>
       prev.map((t) => (t.id === id ? { ...t, progress: p } : t))
-    );
-  }, []);
-
-  const handleBarColorChange = useCallback((id: string, barColor: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, barColor: barColor || undefined } : t))
     );
   }, []);
 
@@ -475,14 +474,15 @@ const PlannerPage: React.FC = () => {
     setPullLoading(true);
     try {
       const raw = await getPlannerFromRepo();
-      if (raw && raw.length > 0) {
+      if (raw && (raw.tasks?.length > 0 || (raw.labels?.length ?? 0) > 0)) {
         applyPlannerFromRepoData(raw);
-        const parsed: PlannerTask[] = raw.map((t) => ({
+        const parsed: PlannerTask[] = (raw.tasks ?? []).map((t) => ({
           ...t,
           start: new Date(t.start),
           end: new Date(t.end),
         }));
         setTasks(parsed);
+        if (raw.labels?.length) setLabelsList(raw.labels);
       } else {
         setPullError('В репо нет данных планировщика или ошибка загрузки.');
       }
@@ -554,7 +554,7 @@ const PlannerPage: React.FC = () => {
             <button type="button" onClick={handlePullFromRepo} disabled={pullLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pullLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
               {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
             </button>
-            <button type="button" onClick={() => pushPlanner(tasks).catch(() => {})} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
+            <button type="button" onClick={() => pushPlanner(tasks, labelsList).catch(() => {})} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
               Загрузить в репо
             </button>
           </>
@@ -770,7 +770,6 @@ const PlannerPage: React.FC = () => {
               <thead>
                 <tr style={{ height: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 160, minWidth: 120, verticalAlign: 'middle' }}>Название</th>
-                  <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 72, minWidth: 56, verticalAlign: 'middle' }}>Цвет</th>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 80, verticalAlign: 'middle' }}>Метки</th>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 88, verticalAlign: 'middle' }}>Начало</th>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 88, verticalAlign: 'middle' }}>Окончание</th>
@@ -781,7 +780,7 @@ const PlannerPage: React.FC = () => {
               <tbody>
                 {displayedTasks.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}>
+                    <td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}>
                       {filterByLabel ? 'Нет задач у выбранного сотрудника.' : 'Нет задач. Нажмите «+ Задача», чтобы добавить.'}
                     </td>
                   </tr>
@@ -805,7 +804,7 @@ const PlannerPage: React.FC = () => {
                     if (row.type === 'group') {
                       return (
                         <tr key={`group-${row.label}`} style={{ borderBottom: '1px solid var(--pico-border-color)' }}>
-                          <td colSpan={7} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
+                          <td colSpan={6} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
                             {row.label}
                           </td>
                         </tr>
@@ -822,31 +821,6 @@ const PlannerPage: React.FC = () => {
                         style={{ width: '100%', minWidth: 0, height: 28, padding: '0 6px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', fontSize: 12, boxSizing: 'border-box' }}
                         placeholder="Название"
                       />
-                    </td>
-                    <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 72, minWidth: 56 }}>
-                      <select
-                        value={t.barColor ?? ''}
-                        onChange={(e) => handleBarColorChange(t.id, e.target.value)}
-                        title="Цвет полосы (например, сотрудник)"
-                        style={{
-                          width: '100%',
-                          minWidth: 0,
-                          height: 28,
-                          padding: '0 4px',
-                          borderRadius: 4,
-                          border: '1px solid var(--pico-border-color)',
-                          background: 'var(--pico-background-color)',
-                          color: 'var(--pico-color)',
-                          fontSize: 11,
-                          boxSizing: 'border-box',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <option value="">По умолчанию</option>
-                        {GANTT_BAR_PALETTE.map((c, i) => (
-                          <option key={c} value={c}>Цвет {i + 1}</option>
-                        ))}
-                      </select>
                     </td>
                     <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 100, minWidth: 80 }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', minHeight: 26 }}>

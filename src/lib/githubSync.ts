@@ -267,11 +267,20 @@ export async function getLayoutsFromRepo(): Promise<Record<string, unknown[]> | 
   return layouts && typeof layouts === 'object' ? layouts : null;
 }
 
-/** Задачи планировщика из репо (planner.json). */
-export async function getPlannerFromRepo(): Promise<Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> | null> {
-  const data = await getJsonFromRepo(dataPath('planner.json')) as { tasks?: unknown[] } | null;
-  if (!data || !Array.isArray(data.tasks)) return null;
-  return data.tasks as Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>;
+/** Данные планировщика из репо (planner.json): задачи и метки с цветами. */
+export type PlannerRepoData = {
+  tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>;
+  labels?: Array<{ name: string; color?: string }>;
+};
+
+export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
+  const data = await getJsonFromRepo(dataPath('planner.json')) as { tasks?: unknown[]; labels?: unknown[] } | null;
+  if (!data) return null;
+  const tasks = Array.isArray(data.tasks) ? data.tasks as PlannerRepoData['tasks'] : [];
+  const labels = Array.isArray(data.labels)
+    ? (data.labels as Array<{ name?: string; color?: string }>).filter((l) => l && typeof l.name === 'string').map((l) => ({ name: l.name!, color: l.color }))
+    : undefined;
+  return { tasks, labels };
 }
 
 /** Содержимое calculators.json из репо (для подстановки в published bundle). */
@@ -429,12 +438,19 @@ function mergePlanner(
   return [...byId.values()];
 }
 
-/** Авто-пуш планировщика: перед отправкой загружаем репо и мержим по id задачи (локальные поверх). */
-export async function pushPlanner(tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>): Promise<SyncResult> {
+/** Авто-пуш планировщика: задачи и метки (с цветами); мержим задачи по id (локальные поверх). */
+export async function pushPlanner(
+  tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>,
+  labels?: Array<{ name: string; color?: string }>
+): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remote = await getPlannerFromRepo();
-  const serialized = mergePlanner(remote, tasks);
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), tasks: serialized }, null, 2);
+  const serialized = mergePlanner(remote?.tasks ?? null, tasks);
+  const payload = JSON.stringify(
+    { version: 1, exportedAt: Date.now(), tasks: serialized, labels: labels ?? remote?.labels ?? [] },
+    null,
+    2
+  );
   return putFile(dataPath('planner.json'), payload, 'Автосинхронизация: планировщик');
 }
 
