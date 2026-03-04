@@ -1,6 +1,6 @@
 // Приватный планировщик с диаграммой Ганта (gantt-task-react)
 
-import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
 import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
 
