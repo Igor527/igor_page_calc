@@ -768,7 +768,7 @@ const PlannerPage: React.FC = () => {
           <div ref={tableScrollRef} style={{ flex: 1, overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH }}>
               <thead>
-                <tr style={{ height: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
+                <tr style={{ height: headerH, minHeight: headerH, maxHeight: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 160, minWidth: 120, verticalAlign: 'middle' }}>Название</th>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 80, verticalAlign: 'middle' }}>Метки</th>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 100, minWidth: 88, verticalAlign: 'middle' }}>Начало</th>
@@ -786,33 +786,9 @@ const PlannerPage: React.FC = () => {
                   </tr>
                 ) : (
                 (() => {
-                  const rows: Array<{ type: 'group'; label: string } | { type: 'task'; task: PlannerTask }> = [];
-                  if (groupByLabels && labelsList.length > 0) {
-                    let lastLabel = '';
-                    for (const t of displayedTasks) {
-                      const primary = (t.labels ?? [])[0] ?? '';
-                      if (primary !== lastLabel) {
-                        lastLabel = primary;
-                        rows.push({ type: 'group', label: primary || 'Без метки' });
-                      }
-                      rows.push({ type: 'task', task: t });
-                    }
-                  } else {
-                    displayedTasks.forEach((t) => rows.push({ type: 'task', task: t }));
-                  }
-                  return rows.map((row) => {
-                    if (row.type === 'group') {
-                      return (
-                        <tr key={`group-${row.label}`} style={{ borderBottom: '1px solid var(--pico-border-color)' }}>
-                          <td colSpan={6} style={{ padding: '4px 8px', fontSize: 11, fontWeight: 600, background: 'var(--pico-table-row-stripped-background-color)', color: 'var(--pico-muted-color)' }}>
-                            {row.label}
-                          </td>
-                        </tr>
-                      );
-                    }
-                    const t = row.task;
-                    return (
-                  <tr key={t.id} style={{ height: rowH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
+                  // Без отдельных строк-заголовков групп, чтобы число строк таблицы совпадало с Гантом и скролл был синхронным
+                  return displayedTasks.map((t) => (
+                  <tr key={t.id} style={{ height: rowH, minHeight: rowH, maxHeight: rowH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box', lineHeight: 1 }}>
                     <td style={{ padding: cellPad, verticalAlign: 'middle', height: rowH, boxSizing: 'border-box', width: 160, minWidth: 120 }}>
                       <input
                         type="text"
@@ -930,8 +906,7 @@ const PlannerPage: React.FC = () => {
                       </button>
                     </td>
                   </tr>
-                    );
-                  });
+                  ));
                 })()
                 )}
               </tbody>
@@ -949,6 +924,8 @@ const PlannerPage: React.FC = () => {
             display: 'flex',
             flexDirection: 'column',
             background: 'var(--pico-background-color)',
+            ['--planner-row-h' as string]: `${rowH}px`,
+            ['--planner-header-h' as string]: `${headerH}px`,
           }}
         >
           <div ref={ganttScrollRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', background: 'var(--pico-background-color)' }}>

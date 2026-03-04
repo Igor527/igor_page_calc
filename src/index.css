@@ -280,6 +280,20 @@ button.secondary {
   transform: translateY(0.35em);
 }
 
+/* Выравнивание строк Ганта с таблицей планировщика (та же высота строк и заголовка) */
+.planner-gantt-wrap table thead tr,
+.planner-gantt-wrap table tbody tr {
+  height: var(--planner-row-h, 44px) !important;
+  min-height: var(--planner-row-h, 44px) !important;
+  max-height: var(--planner-row-h, 44px) !important;
+  box-sizing: border-box !important;
+}
+.planner-gantt-wrap table thead tr {
+  height: var(--planner-header-h, 52px) !important;
+  min-height: var(--planner-header-h, 52px) !important;
+  max-height: var(--planner-header-h, 52px) !important;
+}
+
 /* Ползунок прокрутки */
 ::-webkit-scrollbar {
   width: 10px;
