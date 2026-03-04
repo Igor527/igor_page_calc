@@ -1,6 +1,6 @@
 // Приватный планировщик с диаграммой Ганта (gantt-task-react)
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
 import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
 
@@ -223,6 +223,8 @@ const PlannerPage: React.FC = () => {
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const ganttScrollRef = useRef<HTMLDivElement>(null);
   const syncFromRef = useRef<'table' | 'gantt' | null>(null);
+  /** Высота контента таблицы = scrollHeight Ганта, чтобы прокрутка строк совпадала */
+  const [tableContentHeight, setTableContentHeight] = useState(0);
 
   // Загрузка задач из public/data/planner.json (при первом открытии)
   useEffect(() => {
@@ -254,6 +256,30 @@ const PlannerPage: React.FC = () => {
     return () => m.removeEventListener('change', onMatch);
   }, []);
 
+  /** Для подсветки выходных: дата первого столбца (мин. start по задачам), начало дня */
+  const ganttStartDate = useMemo(() => {
+    if (ganttTasks.length === 0) return new Date();
+    const min = new Date(Math.min(...ganttTasks.map((t) => t.start.getTime())));
+    min.setHours(0, 0, 0, 0);
+    return min;
+  }, [ganttTasks]);
+
+  const isDayScaleView =
+    viewMode === ViewMode.Hour ||
+    viewMode === ViewMode.QuarterDay ||
+    viewMode === ViewMode.HalfDay ||
+    viewMode === ViewMode.Day;
+
+  const colW = getColumnWidth(viewMode);
+  const weekendWrapStyle: React.CSSProperties | null =
+    isDayScaleView && ganttTasks.length > 0
+      ? {
+          ['--gantt-weekend-gradient' as string]: `linear-gradient(to right, var(--gantt-weekend) 0%, var(--gantt-weekend) ${100 / 7}%, transparent ${100 / 7}%, transparent ${(100 * 6) / 7}%, var(--gantt-weekend) ${(100 * 6) / 7}%, var(--gantt-weekend) 100%)`,
+          ['--gantt-weekend-size' as string]: `${7 * colW}px`,
+          ['--gantt-weekend-offset' as string]: `${-ganttStartDate.getDay() * colW}px`,
+        }
+      : null;
+
   useEffect(() => {
     const tableEl = tableScrollRef.current;
     const ganttEl = ganttScrollRef.current;
@@ -277,6 +303,19 @@ const PlannerPage: React.FC = () => {
       ganttEl.removeEventListener('scroll', onGanttScroll);
     };
   }, []);
+
+  // Выравнивание высоты контента таблицы под Гант для совпадения прокрутки
+  useLayoutEffect(() => {
+    const ganttEl = ganttScrollRef.current;
+    if (!ganttEl) return;
+    const read = () => {
+      const sh = ganttEl.scrollHeight;
+      if (sh > 0) setTableContentHeight(sh);
+    };
+    read();
+    const t = requestAnimationFrame(read); // после отрисовки Ганта
+    return () => cancelAnimationFrame(t);
+  }, [ganttTasks.length, rowH, headerH, viewMode]);
 
   useEffect(() => {
     try {
@@ -766,7 +805,14 @@ const PlannerPage: React.FC = () => {
           }}
         >
           <div ref={tableScrollRef} style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH }}>
+            <div
+              style={{
+                minHeight: tableContentHeight > 0 ? tableContentHeight : undefined,
+                height: tableContentHeight > 0 ? tableContentHeight : undefined,
+                boxSizing: 'border-box',
+              }}
+            >
+              <table style={{ width: '100%', height: tableContentHeight > 0 ? '100%' : undefined, borderCollapse: 'collapse', fontSize: 12, tableLayout: 'fixed', minWidth: TABLE_WIDTH, boxSizing: 'border-box' }}>
               <thead>
                 <tr style={{ height: headerH, minHeight: headerH, maxHeight: headerH, borderBottom: '1px solid var(--pico-border-color)', boxSizing: 'border-box' }}>
                   <th style={{ textAlign: 'left', padding: cellPad, fontWeight: 600, width: 160, minWidth: 120, verticalAlign: 'middle' }}>Название</th>
@@ -911,6 +957,7 @@ const PlannerPage: React.FC = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
 
@@ -930,28 +977,37 @@ const PlannerPage: React.FC = () => {
         >
           <div ref={ganttScrollRef} style={{ flex: 1, minHeight: 0, overflow: 'auto', background: 'var(--pico-background-color)' }}>
             {ganttTasks.length > 0 ? (
-              <Gantt
-                tasks={ganttTasks}
-                viewMode={viewMode}
-                listCellWidth=""
-                columnWidth={getColumnWidth(viewMode)}
-                rowHeight={rowH}
-                headerHeight={headerH}
-                barFill={100}
-                ganttHeight={0}
-                locale="ru-RU"
-                barBackgroundColor="var(--gantt-bar-bg)"
-                barBackgroundSelectedColor="var(--gantt-bar-bg-selected)"
-                barProgressColor="var(--gantt-bar-progress)"
-                barProgressSelectedColor="var(--gantt-bar-progress-selected)"
-                todayColor="var(--gantt-today)"
-                onDateChange={handleDateChange}
-                onProgressChange={(task) => {
-                  const p = task.progress <= 0.5 ? 0 : Math.round(task.progress);
-                  handleProgressChange({ ...task, progress: p });
-                }}
-                onDelete={(task) => setTasks((prev) => prev.filter((t) => t.id !== task.id))}
-              />
+              <div
+                className={weekendWrapStyle ? 'planner-weekend-overlay' : ''}
+                style={
+                  weekendWrapStyle
+                    ? { display: 'inline-block', position: 'relative', minWidth: '100%', ...weekendWrapStyle }
+                    : undefined
+                }
+              >
+                <Gantt
+                  tasks={ganttTasks}
+                  viewMode={viewMode}
+                  listCellWidth=""
+                  columnWidth={getColumnWidth(viewMode)}
+                  rowHeight={rowH}
+                  headerHeight={headerH}
+                  barFill={100}
+                  ganttHeight={0}
+                  locale="ru-RU"
+                  barBackgroundColor="var(--gantt-bar-bg)"
+                  barBackgroundSelectedColor="var(--gantt-bar-bg-selected)"
+                  barProgressColor="var(--gantt-bar-progress)"
+                  barProgressSelectedColor="var(--gantt-bar-progress-selected)"
+                  todayColor="var(--gantt-today)"
+                  onDateChange={handleDateChange}
+                  onProgressChange={(task) => {
+                    const p = task.progress <= 0.5 ? 0 : Math.round(task.progress);
+                    handleProgressChange({ ...task, progress: p });
+                  }}
+                  onDelete={(task) => setTasks((prev) => prev.filter((t) => t.id !== task.id))}
+                />
+              </div>
             ) : (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--pico-muted-color)', fontSize: 14 }}>
                 Нет задач. Нажмите «+ Задача», чтобы добавить.

@@ -220,6 +220,7 @@ button.secondary {
   --gantt-milestone-selected: #ca8a04;
   --gantt-arrow: #64748b;
   --gantt-today: rgba(59, 130, 246, 0.15);
+  --gantt-weekend: rgba(0, 0, 0, 0.06);
 }
 .dark {
   --gantt-bar-bg: #475569;
@@ -230,6 +231,7 @@ button.secondary {
   --gantt-milestone-selected: #eab308;
   --gantt-arrow: #94a3b8;
   --gantt-today: rgba(96, 165, 250, 0.2);
+  --gantt-weekend: rgba(255, 255, 255, 0.06);
 }
 
 /* Область Ганта: фон по теме. Классы библиотеки — хеши (_3eULf и т.д.), поэтому перебиваем все div и svg. */
@@ -292,6 +294,15 @@ button.secondary {
   height: var(--planner-header-h, 52px) !important;
   min-height: var(--planner-header-h, 52px) !important;
   max-height: var(--planner-header-h, 52px) !important;
+}
+
+/* Обёртка выходных: повторяющийся фон (Сб/Вс), не перебиваем общим фоном */
+.planner-weekend-overlay {
+  background-color: transparent !important;
+  background-image: var(--gantt-weekend-gradient) !important;
+  background-repeat: repeat-x !important;
+  background-size: var(--gantt-weekend-size, 504px) 100% !important;
+  background-position: var(--gantt-weekend-offset, 0) 0 !important;
 }
 
 /* Ползунок прокрутки */
