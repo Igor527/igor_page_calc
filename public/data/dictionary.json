@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1772632030329,
+  "exportedAt": 1772634862273,
   "entries": [
+    {
+      "id": "e1772632036893-002fhd",
+      "source": "weak",
+      "translation": "слабый",
+      "transcription": "/wiːk/",
+      "fromLang": "en",
+      "toLang": "ru",
+      "addedAt": 1772632036893
+    },
     {
       "id": "e1772569140463-xubnzc",
       "source": "Zahtev",
