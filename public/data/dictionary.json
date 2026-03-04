@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1772653504171,
+  "exportedAt": 1772653556786,
   "entries": [
+    {
+      "id": "e1772653553918-w2g92u",
+      "source": "Curriculum Vitae",
+      "translation": "Жизненный путь",
+      "transcription": "[kʊˈrɪkʊlʊm ˈviːtaɪ]",
+      "fromLang": "la",
+      "toLang": "ru",
+      "addedAt": 1772653553918
+    },
     {
       "id": "e1772632036893-002fhd",
       "source": "weak",
