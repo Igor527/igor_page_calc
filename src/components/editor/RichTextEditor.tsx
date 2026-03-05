@@ -70,6 +70,8 @@ interface RichTextEditorProps {
   minHeight?: number;
   /** Режим CV: панель картинки с обводкой, поворотом, ч/б */
   cvMode?: boolean;
+  /** Панель инструментов липкая при прокрутке (для длинного текста, например CV) */
+  stickyToolbar?: boolean;
 }
 
 const btnStyle: React.CSSProperties = {
@@ -240,7 +242,7 @@ const ImageFocusBubbleMenu: React.FC<{
   );
 };
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, minHeight = 200, cvMode = false }) => {
+const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, minHeight = 200, cvMode = false, stickyToolbar = false }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const suppressUpdate = useRef(false);
@@ -429,8 +431,24 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     <button type="button" onClick={cmd} style={active ? btnActive : btnStyle} title={title || icon}>{icon}</button>
   );
 
+  const wrapStyle: React.CSSProperties = {
+    border: '1px solid var(--pico-border-color)',
+    borderRadius: 8,
+    overflow: 'hidden',
+    background: 'var(--pico-form-element-background-color)',
+    position: 'relative',
+    ...(stickyToolbar ? { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 } : {}),
+  };
+  const toolbarWrapStyle: React.CSSProperties = stickyToolbar
+    ? { position: 'sticky', top: 0, zIndex: 10, flexShrink: 0, background: 'var(--pico-card-background-color)' }
+    : {};
+  const contentWrapStyle: React.CSSProperties = stickyToolbar
+    ? { flex: 1, minHeight: 0, overflow: 'auto' }
+    : {};
+
   return (
-    <div ref={wrapRef} style={{ border: '1px solid var(--pico-border-color)', borderRadius: 8, overflow: 'hidden', background: 'var(--pico-form-element-background-color)', position: 'relative' }}>
+    <div ref={wrapRef} style={wrapStyle}>
+      <div style={toolbarWrapStyle}>
       {/* Toolbar row 1: text formatting */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '6px 8px', borderBottom: '1px solid var(--pico-border-color)', background: 'var(--pico-card-background-color)', alignItems: 'center' }}>
         <TB cmd={() => editor.chain().focus().toggleBold().run()} icon="B" active={editor.isActive('bold')} title="Жирный" />
@@ -473,6 +491,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         <TB cmd={() => editor.chain().focus().undo().run()} icon="↩" title="Отмена" />
         <TB cmd={() => editor.chain().focus().redo().run()} icon="↪" title="Повтор" />
       </div>
+      </div>
 
       {/* Emoji picker dropdown */}
       {showEmoji && (
@@ -493,7 +512,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         <ImageFocusBubbleMenu editor={editor} onClose={() => editor.commands.focus()} cvMode={cvMode} />
       </BubbleMenu>
 
-      <EditorContent editor={editor} style={{ minHeight, padding: '8px 12px', fontSize: 15, lineHeight: 1.7, color: 'var(--pico-color)' }} />
+      <div style={contentWrapStyle}>
+        <EditorContent editor={editor} style={{ minHeight, padding: '8px 12px', fontSize: 15, lineHeight: 1.7, color: 'var(--pico-color)' }} />
+      </div>
     </div>
   );
 };

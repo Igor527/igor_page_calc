@@ -289,6 +289,20 @@ export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
   return file ? file.content : null;
 }
 
+/** CV (резюме) из репо: public/data/cv.json с полем html. */
+export async function getCvFromRepo(): Promise<string | null> {
+  const data = await getJsonFromRepo(dataPath('cv.json')) as { html?: string } | null;
+  if (!data || typeof data.html !== 'string') return null;
+  return data.html;
+}
+
+/** Авто-пуш CV в репо (public/data/cv.json). */
+export async function pushCv(html: string): Promise<SyncResult> {
+  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), html }, null, 2);
+  return putFile(dataPath('cv.json'), payload, 'Автосинхронизация: CV');
+}
+
 /** Объединить посты с репо и локальные: по каждому id берётся версия с большим updatedAt (удаление не теряется). */
 export function mergePosts(
   remote: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,

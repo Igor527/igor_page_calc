@@ -8,6 +8,7 @@ import { sanitizeHtml } from '@/lib/security';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { mistralChat } from '@/lib/dictionaryApi';
+import { getSyncConfig, getCvFromRepo, pushCv, schedulePush } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-cv-html';
 
@@ -122,15 +123,32 @@ const MistralPanel: React.FC = () => {
   );
 };
 
-/** Публичный вид: готовая страница CV без редактора. */
-const CvView: React.FC<{ content: string }> = ({ content }) => {
+/** Публичный вид: готовая страница CV без редактора. Загружает cv.json из статики, если есть. */
+const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content, initialized }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [fetchedHtml, setFetchedHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('./data/cv.json')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { html?: string } | null) => {
+        if (!cancelled && data && typeof data.html === 'string') setFetchedHtml(data.html);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     applyImageFocusStyles(containerRef.current);
-  }, [content]);
+  }, [content, fetchedHtml]);
 
-  const safeHtml = sanitizeHtml(content || '');
+  const displayHtml = (fetchedHtml != null ? fetchedHtml : content) || '';
+  const safeHtml = sanitizeHtml(displayHtml);
+
+  if (!initialized) {
+    return <div style={{ padding: 24, textAlign: 'center' }}>Загрузка…</div>;
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
@@ -158,37 +176,80 @@ interface CvPageProps {
 const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   const [content, setContent] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    setContent(loadCvContent());
-    setInitialized(true);
+    let cancelled = false;
+    const init = async () => {
+      const local = loadCvContent();
+      if (getSyncConfig()) {
+        try {
+          const fromRepo = await getCvFromRepo();
+          if (!cancelled && typeof fromRepo === 'string' && fromRepo) {
+            setContent(fromRepo);
+            saveCvContent(fromRepo);
+            setInitialized(true);
+            return;
+          }
+        } catch {
+          /* use local */
+        }
+      }
+      if (!cancelled) {
+        setContent(local);
+      }
+      setInitialized(true);
+    };
+    void init();
+    return () => { cancelled = true; };
   }, []);
 
   const handleChange = useCallback((html: string) => {
     setContent(html);
     saveCvContent(html);
+    if (getSyncConfig()) {
+      schedulePush('cv', () => pushCv(html));
+    }
   }, []);
 
+  const handlePushToRepo = useCallback(async () => {
+    if (!getSyncConfig()) {
+      setPushStatus('Настройте синхронизацию с GitHub');
+      return;
+    }
+    setPushStatus('Отправка…');
+    const r = await pushCv(content);
+    setPushStatus(r.ok ? 'Выгружено в репо' : (r.error || 'Ошибка'));
+  }, [content]);
+
   if (!isAdmin) {
-    if (!initialized) return <div style={{ padding: 24, textAlign: 'center' }}>Загрузка…</div>;
-    return <CvView content={content} />;
+    return <CvView content={content} initialized={initialized} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <header style={{ flexShrink: 0, padding: '12px 20px', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', alignItems: 'center', gap: 16 }}>
+      <header style={{ flexShrink: 0, padding: '12px 20px', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>← Главная</a>
         <span style={{ fontWeight: 600 }}>CV — режим редактирования</span>
+        {getSyncConfig() && (
+          <button type="button" onClick={handlePushToRepo} className="secondary" style={{ marginLeft: 'auto', fontSize: 13, padding: '6px 12px' }}>
+            Выгрузить в репо
+          </button>
+        )}
+        {pushStatus != null && <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>{pushStatus}</span>}
       </header>
       <div style={{ flex: 1, display: 'flex', minHeight: 0, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 400px', minWidth: 0, overflow: 'auto', padding: 16 }}>
-          <RichTextEditor
-            value={initialized ? content : ''}
-            onChange={handleChange}
-            placeholder="Введите резюме. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б."
-            minHeight={360}
-            cvMode
-          />
+        <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 16 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <RichTextEditor
+              value={initialized ? content : ''}
+              onChange={handleChange}
+              placeholder="Введите резюме. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б."
+              minHeight={360}
+              cvMode
+              stickyToolbar
+            />
+          </div>
         </div>
         <div style={{ width: 360, maxWidth: '100%', flexShrink: 0, padding: 16, borderLeft: '1px solid var(--pico-border-color)' }}>
           <MistralPanel />
