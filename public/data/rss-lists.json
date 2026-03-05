@@ -1,11 +1,17 @@
 {
   "version": 1,
-  "exportedAt": 1772753295277,
+  "exportedAt": 1772753304458,
   "lists": [
     {
       "id": "mme3jf18-fupvor",
       "title": "1",
-      "items": []
+      "items": [
+        {
+          "id": "mme3jm4c-sd9nii",
+          "title": "Вит",
+          "url": "https://vitalybogdanov.ru/blog/rss/"
+        }
+      ]
     }
   ]
 }
