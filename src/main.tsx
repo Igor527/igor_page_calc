@@ -215,16 +215,7 @@ function App() {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DictionaryPage dataVersion={bundleTick} /></React.Suspense>;
   }
   if (path === '/cv') {
-    if (!isAdmin) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>CV доступно только в режиме админа.</p>
-          {linkToHome}
-        </div>
-      );
-    }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage /></React.Suspense>;
+    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage isAdmin={isAdmin} /></React.Suspense>;
   }
   if (path === '/weather') {
     if (!isAdmin && !isLimitedGuest) {

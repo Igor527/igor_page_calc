@@ -68,6 +68,8 @@ interface RichTextEditorProps {
   onChange: (html: string) => void;
   placeholder?: string;
   minHeight?: number;
+  /** Режим CV: панель картинки с обводкой, поворотом, ч/б */
+  cvMode?: boolean;
 }
 
 const btnStyle: React.CSSProperties = {
@@ -87,17 +89,24 @@ const FONT_SIZES = [
   { label: 'Огромный', value: '28px' },
 ];
 
-/* Panel for image position/zoom when image is selected (like cover editor) */
-const ImageFocusBubbleMenu: React.FC<{ editor: ReturnType<typeof useEditor> extends React.MutableRefObject<infer T> ? T : { chain: () => unknown; getAttributes: (name: string) => Record<string, unknown> }; onClose: () => void }> = ({ editor, onClose }) => {
+/* Panel for image position/zoom when image is selected (like cover editor). cvMode adds float, rotate, grayscale. */
+const ImageFocusBubbleMenu: React.FC<{
+  editor: ReturnType<typeof useEditor> extends React.MutableRefObject<infer T> ? T : { chain: () => unknown; getAttributes: (name: string) => Record<string, unknown> };
+  onClose: () => void;
+  cvMode?: boolean;
+}> = ({ editor, onClose, cvMode }) => {
   const attrs = editor?.getAttributes?.('imageResize') ?? {};
   const posX = Number(attrs['data-pos-x']) || 50;
   const posY = Number(attrs['data-pos-y']) || 50;
   const zoom = Number(attrs['data-zoom']) || 1;
+  const float = (attrs['data-float'] as string) || '';
+  const rotate = Number(attrs['data-rotate']) || 0;
+  const grayscale = !!(attrs['data-grayscale'] != null && attrs['data-grayscale'] !== '0' && attrs['data-grayscale'] !== false);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
 
   const update = useCallback(
-    (updates: Record<string, number>) => {
+    (updates: Record<string, number | string | null>) => {
       editor?.chain().focus().updateAttributes('imageResize', updates).run();
     },
     [editor]
@@ -187,11 +196,51 @@ const ImageFocusBubbleMenu: React.FC<{ editor: ReturnType<typeof useEditor> exte
           Сброс
         </button>
       </div>
+      {cvMode && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 8, marginBottom: 6 }}>Обтекание и стиль</div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+            <span style={{ fontSize: 12 }}>Обтекание:</span>
+            {(['', 'left', 'right'] as const).map((v) => (
+              <button
+                key={v || 'none'}
+                type="button"
+                onClick={() => update({ 'data-float': v || null })}
+                style={float === v ? btnActive : btnStyle}
+              >
+                {v === '' ? 'Нет' : v === 'left' ? 'Слева' : 'Справа'}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              Поворот °
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                value={rotate}
+                onChange={(e) => update({ 'data-rotate': Number(e.target.value) })}
+                style={{ width: 80 }}
+              />
+              <span style={{ minWidth: 32 }}>{rotate}°</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={grayscale}
+                onChange={(e) => update({ 'data-grayscale': e.target.checked ? '1' : null })}
+              />
+              Ч/б
+            </label>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, minHeight = 200 }) => {
+const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, minHeight = 200, cvMode = false }) => {
   const fileRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const suppressUpdate = useRef(false);
@@ -441,7 +490,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         editor={editor}
         shouldShow={({ editor: e }) => e.isActive('imageResize')}
       >
-        <ImageFocusBubbleMenu editor={editor} onClose={() => editor.commands.focus()} />
+        <ImageFocusBubbleMenu editor={editor} onClose={() => editor.commands.focus()} cvMode={cvMode} />
       </BubbleMenu>
 
       <EditorContent editor={editor} style={{ minHeight, padding: '8px 12px', fontSize: 15, lineHeight: 1.7, color: 'var(--pico-color)' }} />

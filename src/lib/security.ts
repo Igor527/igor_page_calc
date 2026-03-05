@@ -14,10 +14,11 @@ const PURIFY_CFG = {
     'href', 'target', 'rel', 'src', 'alt', 'width', 'height',
     'class', 'title', 'style',
     'data-token', 'data-width', 'data-pos-x', 'data-pos-y', 'data-zoom',
+    'data-float', 'data-rotate', 'data-grayscale',
     'colspan', 'rowspan', 'open',
   ],
   ALLOW_DATA_ATTR: false,
-  ADD_ATTR: ['data-token', 'data-width', 'data-pos-x', 'data-pos-y', 'data-zoom'],
+  ADD_ATTR: ['data-token', 'data-width', 'data-pos-x', 'data-pos-y', 'data-zoom', 'data-float', 'data-rotate', 'data-grayscale'],
 };
 
 /** Удаляет теги, оставляет только безопасные (fallback при отсутствии DOMPurify/window). */

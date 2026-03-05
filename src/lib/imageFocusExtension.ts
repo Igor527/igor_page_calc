@@ -30,6 +30,24 @@ export const ImageResizeWithFocus = ImageResize.extend({
         renderHTML: (attrs: Record<string, unknown>) =>
           attrs['data-zoom'] != null && attrs['data-zoom'] !== DEFAULT_ZOOM ? { 'data-zoom': String(attrs['data-zoom']) } : {},
       },
+      'data-float': {
+        default: null,
+        parseHTML: (el: Element) => (el as HTMLElement).getAttribute('data-float') || null,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs['data-float'] ? { 'data-float': String(attrs['data-float']) } : {},
+      },
+      'data-rotate': {
+        default: 0,
+        parseHTML: (el: Element) => Number((el as HTMLElement).getAttribute('data-rotate')) || 0,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs['data-rotate'] != null && Number(attrs['data-rotate']) !== 0 ? { 'data-rotate': String(attrs['data-rotate']) } : {},
+      },
+      'data-grayscale': {
+        default: null,
+        parseHTML: (el: Element) => (el as HTMLElement).getAttribute('data-grayscale') != null,
+        renderHTML: (attrs: Record<string, unknown>) =>
+          attrs['data-grayscale'] ? { 'data-grayscale': '1' } : {},
+      },
     };
   },
 });

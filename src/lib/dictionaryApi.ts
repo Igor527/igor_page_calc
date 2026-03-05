@@ -187,6 +187,56 @@ export async function testMistralAccess(): Promise<MistralTestResult> {
   }
 }
 
+/** Результат запроса к Mistral (простой запрос–ответ для CV и др.). */
+export type MistralChatResult = { ok: true; text: string } | { ok: false; message: string };
+
+/**
+ * Один запрос – один ответ через Mistral Chat. Для CV: проверка текста, правки и т.п.
+ */
+export async function mistralChat(userMessage: string): Promise<MistralChatResult> {
+  const trimmed = userMessage?.trim();
+  if (!trimmed) return { ok: false, message: 'Введите запрос.' };
+
+  const useProxy = useMistralProxy();
+  const key = getMistralApiKey();
+  if (!useProxy && !key) return { ok: false, message: 'Добавьте VITE_MISTRAL_API_KEY в .env.' };
+  if (useProxy && !key) return { ok: false, message: 'Добавьте VITE_MISTRAL_API_KEY в .env и перезапустите dev.' };
+
+  const url = getMistralApiUrl();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (!useProxy && key) headers['Authorization'] = `Bearer ${key}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: MISTRAL_MODELS[0],
+        messages: [{ role: 'user', content: trimmed }],
+        max_tokens: 2048,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      if (res.status === 401) return { ok: false, message: 'Неверный ключ Mistral.' };
+      if (res.status === 429) return { ok: false, message: 'Лимит запросов. Подождите.' };
+      return { ok: false, message: `${res.status} — ${body || res.statusText}` };
+    }
+
+    const data = await res.json();
+    const content = extractMistralContent(data.choices?.[0]?.message?.content);
+    if (content) return { ok: true, text: content };
+    return { ok: false, message: 'Пустой ответ от модели.' };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      return { ok: false, message: 'Нет доступа к API (сеть или CORS).' };
+    }
+    return { ok: false, message: msg };
+  }
+}
+
 /**
  * Перевод через Mistral AI Chat Completions.
  */
