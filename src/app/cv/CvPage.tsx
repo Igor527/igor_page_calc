@@ -177,6 +177,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   const [content, setContent] = useState('');
   const [initialized, setInitialized] = useState(false);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,6 +213,15 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
     }
   }, []);
 
+  const handleSave = useCallback(() => {
+    saveCvContent(content);
+    if (getSyncConfig()) {
+      schedulePush('cv', () => pushCv(content));
+    }
+    setSaveMessage('Сохранено');
+    setTimeout(() => setSaveMessage(null), 2000);
+  }, [content]);
+
   const handlePushToRepo = useCallback(async () => {
     if (!getSyncConfig()) {
       setPushStatus('Настройте синхронизацию с GitHub');
@@ -222,15 +232,62 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
     setPushStatus(r.ok ? 'Выгружено в репо' : (r.error || 'Ошибка'));
   }, [content]);
 
+  // Ctrl+S — явное сохранение
+  useEffect(() => {
+    if (!isAdmin) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isAdmin, handleSave]);
+
   if (!isAdmin) {
     return <CvView content={content} initialized={initialized} />;
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <header style={{ flexShrink: 0, padding: '12px 20px', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+      <header
+        style={{
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          padding: '12px 20px',
+          borderBottom: '1px solid var(--pico-border-color)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          flexWrap: 'wrap',
+          background: 'var(--pico-background-color)',
+        }}
+      >
         <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>← Главная</a>
         <span style={{ fontWeight: 600 }}>CV — режим редактирования</span>
+        <button
+          type="button"
+          onClick={handleSave}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 32,
+            padding: '0 12px',
+            background: 'var(--color-success-bg)',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 4,
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          Сохранить (Ctrl+S)
+        </button>
+        {saveMessage != null && <span style={{ fontSize: 12, color: 'var(--pico-primary)' }}>{saveMessage}</span>}
         {getSyncConfig() && (
           <button type="button" onClick={handlePushToRepo} className="secondary" style={{ marginLeft: 'auto', fontSize: 13, padding: '6px 12px' }}>
             Выгрузить в репо
@@ -238,9 +295,19 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
         )}
         {pushStatus != null && <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>{pushStatus}</span>}
       </header>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, flexWrap: 'wrap' }}>
-        <div style={{ flex: '1 1 400px', minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0, padding: 16 }}>
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+        <div
+          style={{
+            flex: '1 1 400px',
+            minWidth: 0,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: 16,
+            overflow: 'auto',
+          }}
+        >
+          <div style={{ minHeight: 'min-content' }}>
             <RichTextEditor
               value={initialized ? content : ''}
               onChange={handleChange}
@@ -251,7 +318,21 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
             />
           </div>
         </div>
-        <div style={{ width: 360, maxWidth: '100%', flexShrink: 0, padding: 16, borderLeft: '1px solid var(--pico-border-color)' }}>
+        <div
+          style={{
+            width: 360,
+            minWidth: 280,
+            maxWidth: '100%',
+            flexShrink: 0,
+            padding: 16,
+            borderLeft: '1px solid var(--pico-border-color)',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+            overflow: 'hidden',
+            background: 'var(--pico-background-color)',
+          }}
+        >
           <MistralPanel />
         </div>
       </div>

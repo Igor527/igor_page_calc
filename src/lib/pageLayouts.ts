@@ -98,7 +98,7 @@ export function getDefaults(pageId: string): PageSection[] {
         sec('w6rss', 'link', { linkLabel: 'RSS подписки', linkUrl: '/rss', adminOnly: true }),
         sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
         sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
-        sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv', adminOnly: true }),
+        sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv' }),
         sec('w9', 'link', { linkLabel: 'Метеостанция', linkUrl: '/weather', adminOnly: true, showForGuest: true }),
       ];
     case 'calculators':
