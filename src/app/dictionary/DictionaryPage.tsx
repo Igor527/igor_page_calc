@@ -118,7 +118,7 @@ const DictionaryPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => 
     savePriorityLanguages(priorityLangs);
   }, [priorityLangs]);
   useEffect(() => {
-    schedulePush('dictionary', () => pushDictionary(entries, priorityLangs));
+    if (getSyncConfig()) schedulePush('dictionary', () => pushDictionary(entries, priorityLangs));
   }, [entries, priorityLangs]);
 
   const entriesByLang = useMemo(() => {

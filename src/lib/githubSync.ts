@@ -435,33 +435,26 @@ export async function pushLayouts(layouts: Record<string, unknown[]>): Promise<S
   return putFile(dataPath('layouts.json'), payload, 'Автосинхронизация: порядок окон');
 }
 
-/** Объединить задачи планировщика: по id задачи локальная версия перекрывает удалённую. */
-function mergePlanner(
-  remote: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> | null,
-  local: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>
+/** Сериализация задач планировщика для пуша (Date → number). */
+function serializePlannerTasks(
+  tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>
 ): Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }> {
-  const byId = new Map<string, { id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>();
-  for (const t of remote ?? []) {
-    if (t.id) byId.set(t.id, { ...t, start: t.start, end: t.end });
-  }
-  for (const t of local) {
-    const start = t.start instanceof Date ? t.start.getTime() : (t.start as number);
-    const end = t.end instanceof Date ? t.end.getTime() : (t.end as number);
-    if (t.id) byId.set(t.id, { ...t, start, end });
-  }
-  return [...byId.values()];
+  return tasks.map((t) => ({
+    ...t,
+    start: t.start instanceof Date ? t.start.getTime() : (t.start as number),
+    end: t.end instanceof Date ? t.end.getTime() : (t.end as number),
+  }));
 }
 
-/** Авто-пуш планировщика: задачи и метки (с цветами); мержим задачи по id (локальные поверх). */
+/** Авто-пуш планировщика: в репо уходит текущее локальное состояние (задачи и метки). Удаления и любые правки отражаются в репо. */
 export async function pushPlanner(
   tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>,
   labels?: Array<{ name: string; color?: string }>
 ): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const remote = await getPlannerFromRepo();
-  const serialized = mergePlanner(remote?.tasks ?? null, tasks);
+  const serialized = serializePlannerTasks(tasks);
   const payload = JSON.stringify(
-    { version: 1, exportedAt: Date.now(), tasks: serialized, labels: labels ?? remote?.labels ?? [] },
+    { version: 1, exportedAt: Date.now(), tasks: serialized, labels: labels ?? [] },
     null,
     2
   );

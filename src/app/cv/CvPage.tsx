@@ -213,13 +213,15 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
     }
   }, []);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     saveCvContent(content);
     if (getSyncConfig()) {
-      schedulePush('cv', () => pushCv(content));
+      const r = await pushCv(content);
+      setSaveMessage(r.ok ? 'Сохранено и выгружено в репо' : (r.error || 'Ошибка выгрузки'));
+    } else {
+      setSaveMessage('Сохранено');
     }
-    setSaveMessage('Сохранено');
-    setTimeout(() => setSaveMessage(null), 2000);
+    setTimeout(() => setSaveMessage(null), 3000);
   }, [content]);
 
   const handlePushToRepo = useCallback(async () => {

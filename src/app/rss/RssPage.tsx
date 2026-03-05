@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { fetchRssFeed, parseFeedXml, type RssEntry } from '@/lib/rssFetch';
-import { getRssListsFromRepo, pushRssLists, getSyncConfig } from '@/lib/githubSync';
+import { getRssListsFromRepo, pushRssLists, getSyncConfig, schedulePush } from '@/lib/githubSync';
 
 const STORAGE_KEY = 'igor-rss-lists';
 
@@ -63,8 +63,57 @@ const RssPage: React.FC = () => {
   const [pasteXml, setPasteXml] = useState('');
   const [pasteXmlForUrl, setPasteXmlForUrl] = useState<string | null>(null);
 
+  /** Объединённая лента: все записи всех подписок с подписью источника, сортировка по дате */
+  type CombinedEntry = { entry: RssEntry; listTitle: string; feedTitle: string };
+  const [combinedEntries, setCombinedEntries] = useState<CombinedEntry[]>([]);
+  const [combinedLoading, setCombinedLoading] = useState(false);
+  const [combinedError, setCombinedError] = useState<string | null>(null);
+
+  const loadAllFeeds = useCallback(async () => {
+    const items: { listTitle: string; feedTitle: string; url: string }[] = [];
+    lists.forEach((list) => {
+      list.items.forEach((item) => {
+        items.push({ listTitle: list.title, feedTitle: item.title, url: item.url });
+      });
+    });
+    if (items.length === 0) {
+      setCombinedEntries([]);
+      setCombinedError('Нет ни одной подписки. Добавьте RSS-ленты в списки выше.');
+      return;
+    }
+    setCombinedLoading(true);
+    setCombinedError(null);
+    try {
+      const results = await Promise.allSettled(
+        items.map(async ({ listTitle, feedTitle, url }) => {
+          const entries = await fetchRssFeed(url);
+          return entries.map((entry) => ({ entry, listTitle, feedTitle }));
+        })
+      );
+      const combined: CombinedEntry[] = [];
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') combined.push(...r.value);
+      });
+      combined.sort((a, b) => {
+        const dateA = a.entry.pubDate ? new Date(a.entry.pubDate).getTime() : 0;
+        const dateB = b.entry.pubDate ? new Date(b.entry.pubDate).getTime() : 0;
+        return dateB - dateA;
+      });
+      setCombinedEntries(combined);
+    } catch (e) {
+      setCombinedError(e instanceof Error ? e.message : 'Ошибка загрузки');
+      setCombinedEntries([]);
+    } finally {
+      setCombinedLoading(false);
+    }
+  }, [lists]);
+
   useEffect(() => {
     saveLists(lists);
+  }, [lists]);
+
+  useEffect(() => {
+    if (getSyncConfig()) schedulePush('rss', () => pushRssLists(lists));
   }, [lists]);
 
   const addList = useCallback(() => {
@@ -199,6 +248,61 @@ const RssPage: React.FC = () => {
             </button>
             {syncError && <span style={{ fontSize: 12, color: 'var(--pico-del-color)' }}>{syncError}</span>}
           </div>
+        )}
+      </section>
+
+      {/* Объединённая лента: все записи всех подписок по дате */}
+      <section style={{ marginBottom: 32, padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)' }}>
+        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Все записи по дате</h2>
+        <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', marginBottom: 12 }}>
+          Одна лента из всех сохранённых RSS: записи всех подписок в одном списке, сортировка по дате. Под каждой записью — подпись, чья это лента (список и название подписки).
+        </p>
+        <button
+          type="button"
+          className="primary"
+          style={{ fontSize: 13, padding: '8px 14px' }}
+          onClick={loadAllFeeds}
+          disabled={combinedLoading || lists.every((l) => l.items.length === 0)}
+        >
+          {combinedLoading ? 'Загрузка…' : combinedEntries.length ? 'Обновить ленту' : 'Показать все записи'}
+        </button>
+        {combinedError && (
+          <p style={{ fontSize: 12, color: 'var(--pico-del-color)', marginTop: 8 }}>{combinedError}</p>
+        )}
+        {combinedEntries.length > 0 && (
+          <ul style={{ listStyle: 'none', padding: 0, margin: '16px 0 0', borderTop: '1px solid var(--pico-border-color)', paddingTop: 12 }}>
+            {combinedEntries.map(({ entry, listTitle, feedTitle }, idx) => (
+              <li
+                key={`${entry.link}-${idx}`}
+                style={{
+                  padding: '12px 0',
+                  borderBottom: '1px solid var(--pico-border-color)',
+                }}
+              >
+                <a
+                  href={entry.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 4 }}
+                >
+                  {entry.title}
+                </a>
+                <span style={{ fontSize: 11, color: 'var(--pico-muted-color)' }} title={`Список: ${listTitle}, подписка: ${feedTitle}`}>
+                  {feedTitle} ← {listTitle}
+                </span>
+                {entry.description && (
+                  <p style={{ fontSize: 12, color: 'var(--pico-muted-color)', margin: '6px 0 0', lineHeight: 1.4 }}>
+                    {entry.description}
+                  </p>
+                )}
+                {entry.pubDate && (
+                  <time style={{ fontSize: 11, color: 'var(--pico-muted-color)', display: 'block', marginTop: 4 }}>
+                    {new Date(entry.pubDate).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}
+                  </time>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

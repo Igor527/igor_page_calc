@@ -29,6 +29,7 @@ import {
   getCalculatorsJsonFromRepo,
   getRssListsFromRepo,
   getSyncConfig,
+  cancelScheduledPush,
 } from './lib/githubSync';
 import { setRssListsFromBundle } from './app/rss/RssPage';
 import {
@@ -163,6 +164,7 @@ function App() {
     if (calcJson) loadPublishedBundleFromContent(calcJson);
     const rssData = await getRssListsFromRepo();
     if (rssData) setRssListsFromBundle(rssData);
+    ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
     setBundleTick((n) => n + 1);
   }, []);
 

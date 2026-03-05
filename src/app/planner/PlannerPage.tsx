@@ -258,7 +258,6 @@ const PlannerPage: React.FC = () => {
         end: t.end.getTime(),
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-      schedulePush('planner', () => pushPlanner(tasks, labelsList));
     } catch (e) {
       console.warn('Planner: не удалось сохранить задачи', e);
     }
@@ -269,6 +268,12 @@ const PlannerPage: React.FC = () => {
       localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(labelsList));
     } catch {}
   }, [labelsList]);
+
+  // Любые изменения задач или меток — пушим в репо (удаление, метки, цвета, количество и т.д.)
+  useEffect(() => {
+    if (!getSyncConfig()) return;
+    schedulePush('planner', () => pushPlanner(tasks, labelsList));
+  }, [tasks, labelsList]);
 
   const handleDateChange = useCallback((task: Task) => {
     setTasks((prev) =>

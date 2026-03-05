@@ -690,7 +690,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   useEffect(() => { save(FOLDERS_KEY, folders); }, [folders]);
 
   useEffect(() => {
-    schedulePush('notes', () => pushNotes(notes, folders));
+    if (getSyncConfig()) schedulePush('notes', () => pushNotes(notes, folders));
   }, [notes, folders]);
 
   // При первом открытии подгрузить data/notes.json из репо
