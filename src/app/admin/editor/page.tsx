@@ -12,7 +12,7 @@ import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
-import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent } from '@/lib/calculatorStorage';
+import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent, updateCalculatorStatus } from '@/lib/calculatorStorage';
 import { pushCalculators, getCalculatorsJsonFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
@@ -140,6 +140,21 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     localStorage.setItem('igor-page-calc-report-html', calc.reportHtml ?? '');
     setCalculatorsOpen(false);
     setSelectedId(null);
+  };
+
+  /** Снять калькулятор с публикации (он исчезнет из списка на сайте после «Загрузить в репо»). */
+  const handleUnpublish = (id: string, title: string) => {
+    if (!window.confirm(`Снять «${title}» с публикации? Он исчезнет из списка калькуляторов на сайте после нажатия «Загрузить в репо».`)) return;
+    const result = updateCalculatorStatus(id, 'draft');
+    if (result.success) {
+      setListKey((k) => k + 1);
+      setCalculatorsOpen(false);
+      setSaveMessage('Снято с публикации. Нажмите «Загрузить в репо», чтобы обновить список на сайте.');
+      setTimeout(() => setSaveMessage(null), 5000);
+    } else {
+      setSaveMessage(result.error || 'Ошибка');
+      setTimeout(() => setSaveMessage(null), 3000);
+    }
   };
 
   const handleApplyPasteJson = () => {
@@ -295,15 +310,52 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                     <div style={{ padding: 16, fontSize: 13, color: 'var(--pico-muted-color)' }}>Нет сохранённых</div>
                   ) : (
                     calculatorList.map((c) => (
-                      <button
+                      <div
                         key={c.id}
-                        type="button"
-                        onClick={() => handleLoadCalculator(c.id)}
-                        style={{ display: 'block', width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid var(--pico-border-color)' }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '10px 12px',
+                          borderBottom: '1px solid var(--pico-border-color)',
+                        }}
                       >
-                        <div style={{ fontWeight: 500 }}>{c.title}</div>
-                        <div style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>{c.status === 'published' ? 'Опубликован' : 'Черновик'} · {new Date(c.updatedAt).toLocaleString('ru-RU')}</div>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleLoadCalculator(c.id)}
+                          style={{
+                            flex: 1,
+                            padding: 0,
+                            textAlign: 'left',
+                            border: 'none',
+                            background: 'none',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                          }}
+                        >
+                          <div style={{ fontWeight: 500 }}>{c.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>{c.status === 'published' ? 'Опубликован' : 'Черновик'} · {new Date(c.updatedAt).toLocaleString('ru-RU')}</div>
+                        </button>
+                        {c.status === 'published' && (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); handleUnpublish(c.id, c.title); }}
+                            title="Снять с публикации (исчезнет со списка на сайте после «Загрузить в репо»)"
+                            style={{
+                              flexShrink: 0,
+                              fontSize: 11,
+                              padding: '4px 8px',
+                              border: '1px solid var(--pico-border-color)',
+                              borderRadius: 4,
+                              background: 'var(--pico-background-color)',
+                              color: 'var(--pico-muted-color)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Снять с публикации
+                          </button>
+                        )}
+                      </div>
                     ))
                   )}
                 </div>
