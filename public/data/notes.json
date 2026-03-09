@@ -1,7 +1,18 @@
 {
   "version": 1,
-  "exportedAt": 1772810874386,
+  "exportedAt": 1773093324446,
   "notes": [
+    {
+      "id": "2026-03-10_00-55-21",
+      "title": "",
+      "content": "",
+      "folderId": "f_v3872i",
+      "createdAt": 1773093321872,
+      "updatedAt": 1773093321872,
+      "tags": [],
+      "color": "none",
+      "todos": []
+    },
     {
       "id": "2026-03-06_02-14-03",
       "title": "CV",
@@ -78,5 +89,11 @@
       "todos": []
     }
   ],
-  "folders": []
+  "folders": [
+    {
+      "id": "f_v3872i",
+      "name": "Job",
+      "parentId": null
+    }
+  ]
 }
