@@ -1,0 +1,2690 @@
+{
+  "version": 1,
+  "exportedAt": 1773092216115,
+  "calculators": [
+    {
+      "id": "calc_sl62c3f1b_mmjpbpyh",
+      "title": "РНГП_г.Москва_тест",
+      "slug": "rgpn-test",
+      "blocks": [
+        {
+          "id": "objName",
+          "type": "input",
+          "label": "Наименование объекта",
+          "description": "Наименование объекта",
+          "inputType": "text",
+          "defaultValue": "ЖК 'Уникальный объект'"
+        },
+        {
+          "id": "objAddress",
+          "type": "input",
+          "label": "Адрес",
+          "description": "Адрес объекта",
+          "inputType": "text",
+          "defaultValue": "ул. Некрасова, 24"
+        },
+        {
+          "id": "inputMetroDistance",
+          "type": "input",
+          "label": "Метро, м",
+          "description": "Удаленность от метро, м",
+          "inputType": "number",
+          "defaultValue": 2300
+        },
+        {
+          "id": "inputAreaFlats",
+          "type": "input",
+          "label": "Площадь квартир, кв.м",
+          "description": "Площадь квартир, кв.м",
+          "inputType": "number",
+          "defaultValue": 50000.3
+        },
+        {
+          "id": "inputAreaNNP",
+          "type": "input",
+          "label": "Нежилая наземная площадь, кв.м",
+          "description": "Нежилая наземная площадь, кв.м",
+          "inputType": "number",
+          "defaultValue": 3000
+        },
+        {
+          "id": "inputSqmPerPlace",
+          "type": "input",
+          "label": "Кв.м/м.м",
+          "description": "Норма кв.м на машино-место",
+          "inputType": "number",
+          "defaultValue": 32
+        },
+        {
+          "id": "inputFactZuMo",
+          "type": "input",
+          "label": "Факт ЗУ: места остановки",
+          "description": "Факт ЗУ: места остановки",
+          "inputType": "number",
+          "defaultValue": 12
+        },
+        {
+          "id": "inputFactZuGuestMgn",
+          "type": "input",
+          "label": "Факт ЗУ: гостевые МГН",
+          "description": "Факт ЗУ: гостевые МГН",
+          "inputType": "number",
+          "defaultValue": 8
+        },
+        {
+          "id": "inputFactZuPriobMgn",
+          "type": "input",
+          "label": "Факт ЗУ: приобъектные МГН",
+          "description": "Факт ЗУ: приобъектные МГН",
+          "inputType": "number",
+          "defaultValue": 5
+        },
+        {
+          "id": "inputFactUdsMo",
+          "type": "input",
+          "label": "Факт УДС: места остановки",
+          "description": "Факт УДС: места остановки",
+          "inputType": "number",
+          "defaultValue": 3
+        },
+        {
+          "id": "inputFactUdsGuest",
+          "type": "input",
+          "label": "Факт УДС: гостевые",
+          "description": "Факт УДС: гостевые",
+          "inputType": "number",
+          "defaultValue": 2
+        },
+        {
+          "id": "inputFactUdsGuestMgn",
+          "type": "input",
+          "label": "Факт УДС: гостевые МГН",
+          "description": "Факт УДС: гостевые МГН",
+          "inputType": "number",
+          "defaultValue": 4
+        },
+        {
+          "id": "inputFactUdsPriob",
+          "type": "input",
+          "label": "Факт УДС: приобъектные",
+          "description": "Факт УДС: приобъектные",
+          "inputType": "number",
+          "defaultValue": 6
+        },
+        {
+          "id": "inputFactUdsPriobMgn",
+          "type": "input",
+          "label": "Факт УДС: приобъектные МГН",
+          "description": "Факт УДС: приобъектные МГН",
+          "inputType": "number",
+          "defaultValue": 9
+        },
+        {
+          "id": "selectDistrict",
+          "type": "select_from_table",
+          "label": "Район",
+          "description": "Район города",
+          "dataSource": "districtFactors",
+          "column": "Район",
+          "defaultValue": "Академический"
+        },
+        {
+          "id": "selectTtk",
+          "type": "select_from_table",
+          "label": "ТТК",
+          "description": "Расположение относительно ТТК",
+          "dataSource": "ttkPositionsTable",
+          "column": "value",
+          "defaultValue": "outside"
+        },
+        {
+          "id": "selectRnsYear",
+          "type": "select_from_table",
+          "label": "Год РНС",
+          "description": "Год РНС",
+          "dataSource": "evShareTable",
+          "column": "year",
+          "defaultValue": 2026
+        },
+        {
+          "id": "metroRanges",
+          "type": "data_table",
+          "name": "Метро",
+          "rows": [
+            [
+              "min",
+              "max",
+              "label",
+              "value"
+            ],
+            [
+              0,
+              1200,
+              "Менее 1200 м (15 мин. пешком)",
+              0.75
+            ],
+            [
+              1200,
+              2200,
+              "1200–2200 м (до 30 мин. пешком)",
+              0.9
+            ],
+            [
+              2200,
+              999999,
+              "Более 2200 м (более 30 мин. пешком)",
+              1
+            ]
+          ]
+        },
+        {
+          "id": "districtFactors",
+          "type": "data_table",
+          "name": "Районы",
+          "rows": [
+            [
+              "Район",
+              "inside",
+              "outside"
+            ],
+            [
+              "Академический",
+              0.7,
+              0.7
+            ],
+            [
+              "Алексеевский",
+              0.5,
+              0.5
+            ],
+            [
+              "Алтуфьевский",
+              0.9,
+              0.9
+            ],
+            [
+              "Арбат",
+              0.2,
+              0.2
+            ],
+            [
+              "Аэропорт",
+              0.5,
+              0.5
+            ],
+            [
+              "Бабушкинский",
+              0.9,
+              0.9
+            ],
+            [
+              "Басманный",
+              0.2,
+              0.5
+            ],
+            [
+              "Беговой",
+              0.2,
+              0.5
+            ],
+            [
+              "Бекасово",
+              0.9,
+              0.9
+            ],
+            [
+              "Бескудниковский",
+              0.9,
+              0.9
+            ],
+            [
+              "Бибирево",
+              0.9,
+              0.9
+            ],
+            [
+              "Бирюлёво Восточное",
+              0.9,
+              0.9
+            ],
+            [
+              "Бирюлёво Западное",
+              0.9,
+              0.9
+            ],
+            [
+              "Богородское",
+              0.9,
+              0.9
+            ],
+            [
+              "Братеево",
+              0.9,
+              0.9
+            ],
+            [
+              "Бутово Северное",
+              0.9,
+              0.9
+            ],
+            [
+              "Бутово Южное",
+              0.9,
+              0.9
+            ],
+            [
+              "Бутырский",
+              0.5,
+              0.5
+            ],
+            [
+              "Вешняки",
+              0.9,
+              0.9
+            ],
+            [
+              "Внуково",
+              0.7,
+              0.7
+            ],
+            [
+              "Войковский",
+              0.5,
+              0.5
+            ],
+            [
+              "Вороново",
+              0.9,
+              0.9
+            ],
+            [
+              "Восточное Дегунино",
+              0.9,
+              0.9
+            ],
+            [
+              "Восточное Измайлово",
+              0.9,
+              0.9
+            ],
+            [
+              "Восточный",
+              0.9,
+              0.9
+            ],
+            [
+              "Выхино-Жулебино",
+              0.9,
+              0.9
+            ],
+            [
+              "Гагаринский",
+              0.5,
+              0.5
+            ],
+            [
+              "Головинский",
+              0.7,
+              0.7
+            ],
+            [
+              "Гольяново",
+              0.9,
+              0.9
+            ],
+            [
+              "Даниловский",
+              0.2,
+              0.5
+            ],
+            [
+              "Дмитровский",
+              0.9,
+              0.9
+            ],
+            [
+              "Донской",
+              0.2,
+              0.5
+            ],
+            [
+              "Дорогомилово",
+              0.2,
+              0.5
+            ],
+            [
+              "Замоскворечье",
+              0.2,
+              0.2
+            ],
+            [
+              "Западное Дегунино",
+              0.9,
+              0.9
+            ],
+            [
+              "Зюзино",
+              0.9,
+              0.9
+            ],
+            [
+              "Зябликово",
+              0.9,
+              0.9
+            ],
+            [
+              "Ивановское",
+              0.9,
+              0.9
+            ],
+            [
+              "Измайлово",
+              0.9,
+              0.9
+            ],
+            [
+              "Капотня",
+              0.9,
+              0.9
+            ],
+            [
+              "Коммунарка",
+              0.7,
+              0.7
+            ],
+            [
+              "Коньково",
+              0.7,
+              0.7
+            ],
+            [
+              "Коптево",
+              0.9,
+              0.9
+            ],
+            [
+              "Косино-Ухтомский",
+              0.9,
+              0.9
+            ],
+            [
+              "Котловка",
+              0.9,
+              0.9
+            ],
+            [
+              "Краснопахорский",
+              0.9,
+              0.9
+            ],
+            [
+              "Красносельский",
+              0.2,
+              0.5
+            ],
+            [
+              "Крылатское",
+              0.7,
+              0.7
+            ],
+            [
+              "Крюково",
+              0.9,
+              0.9
+            ],
+            [
+              "Кузьминки",
+              0.9,
+              0.9
+            ],
+            [
+              "Кунцево",
+              0.7,
+              0.7
+            ],
+            [
+              "Куркино",
+              0.9,
+              0.9
+            ],
+            [
+              "Левобережный",
+              0.9,
+              0.9
+            ],
+            [
+              "Лефортово",
+              0.2,
+              0.5
+            ],
+            [
+              "Лианозово",
+              0.9,
+              0.9
+            ],
+            [
+              "Ломоносовский",
+              0.9,
+              0.9
+            ],
+            [
+              "Лосиноостровский",
+              0.9,
+              0.9
+            ],
+            [
+              "Люблино",
+              0.9,
+              0.9
+            ],
+            [
+              "Марфино",
+              0.9,
+              0.9
+            ],
+            [
+              "Марьина Роща",
+              0.2,
+              0.5
+            ],
+            [
+              "Марьино",
+              0.9,
+              0.9
+            ],
+            [
+              "Матушкино",
+              0.7,
+              0.7
+            ],
+            [
+              "Метрогородок",
+              0.7,
+              0.7
+            ],
+            [
+              "Мещанский",
+              0.2,
+              0.5
+            ],
+            [
+              "Митино",
+              0.9,
+              0.9
+            ],
+            [
+              "Можайский",
+              0.7,
+              0.7
+            ],
+            [
+              "Молжаниновский",
+              0.9,
+              0.9
+            ],
+            [
+              "Москворечье-Сабурово",
+              0.7,
+              0.7
+            ],
+            [
+              "Нагатино-Садовники",
+              0.5,
+              0.5
+            ],
+            [
+              "Нагатинский Затон",
+              0.9,
+              0.9
+            ],
+            [
+              "Нагорный",
+              0.7,
+              0.7
+            ],
+            [
+              "Некрасовка",
+              0.9,
+              0.9
+            ],
+            [
+              "Нижегородский",
+              0.7,
+              0.7
+            ],
+            [
+              "Новогиреево",
+              0.9,
+              0.9
+            ],
+            [
+              "Новокосино",
+              0.9,
+              0.9
+            ],
+            [
+              "Ново-Переделкино",
+              0.9,
+              0.9
+            ],
+            [
+              "Обручевский",
+              0.7,
+              0.7
+            ],
+            [
+              "Орехово-Борисово Северное",
+              0.9,
+              0.9
+            ],
+            [
+              "Орехово-Борисово Южное",
+              0.9,
+              0.9
+            ],
+            [
+              "Останкинский",
+              0.5,
+              0.5
+            ],
+            [
+              "Отрадное",
+              0.9,
+              0.9
+            ],
+            [
+              "Очаково-Матвеевское",
+              0.7,
+              0.7
+            ],
+            [
+              "Перово",
+              0.7,
+              0.7
+            ],
+            [
+              "Печатники",
+              0.7,
+              0.7
+            ],
+            [
+              "Покровское-Стрешнево",
+              0.7,
+              0.7
+            ],
+            [
+              "Преображенское",
+              0.5,
+              0.5
+            ],
+            [
+              "Пресненский",
+              0.2,
+              0.5
+            ],
+            [
+              "Проспект Вернадского",
+              0.7,
+              0.7
+            ],
+            [
+              "Раменки",
+              0.7,
+              0.7
+            ],
+            [
+              "Ростокино",
+              0.7,
+              0.7
+            ],
+            [
+              "Рязанский",
+              0.9,
+              0.9
+            ],
+            [
+              "Савёлки",
+              0.9,
+              0.9
+            ],
+            [
+              "Савёловский",
+              0.5,
+              0.5
+            ],
+            [
+              "Свиблово",
+              0.7,
+              0.7
+            ],
+            [
+              "Северное Измайлово",
+              0.9,
+              0.9
+            ],
+            [
+              "Северное Медведково",
+              0.9,
+              0.9
+            ],
+            [
+              "Северное Тушино",
+              0.9,
+              0.9
+            ],
+            [
+              "Северный",
+              0.9,
+              0.9
+            ],
+            [
+              "Силино",
+              0.7,
+              0.7
+            ],
+            [
+              "Сокол",
+              0.5,
+              0.5
+            ],
+            [
+              "Соколиная Гора",
+              0.5,
+              0.5
+            ],
+            [
+              "Сокольники",
+              0.5,
+              0.5
+            ],
+            [
+              "Солнцево",
+              0.9,
+              0.9
+            ],
+            [
+              "Старое Крюково",
+              0.7,
+              0.7
+            ],
+            [
+              "Строгино",
+              0.9,
+              0.9
+            ],
+            [
+              "Таганский",
+              0.2,
+              0.2
+            ],
+            [
+              "Тверской",
+              0.2,
+              0.2
+            ],
+            [
+              "Текстильщики",
+              0.9,
+              0.9
+            ],
+            [
+              "Тёплый Стан",
+              0.9,
+              0.9
+            ],
+            [
+              "Тимирязевский",
+              0.7,
+              0.7
+            ],
+            [
+              "Троицк",
+              0.7,
+              0.7
+            ],
+            [
+              "Тропарёво-Никулино",
+              0.7,
+              0.7
+            ],
+            [
+              "Филёвский Парк",
+              0.7,
+              0.7
+            ],
+            [
+              "Фили-Давыдково",
+              0.9,
+              0.9
+            ],
+            [
+              "Филимонковский",
+              0.9,
+              0.9
+            ],
+            [
+              "Хамовники",
+              0.2,
+              0.5
+            ],
+            [
+              "Ховрино",
+              0.9,
+              0.9
+            ],
+            [
+              "Хорошёво-Мневники",
+              0.9,
+              0.9
+            ],
+            [
+              "Хорошёвский",
+              0.5,
+              0.5
+            ],
+            [
+              "Царицыно",
+              0.9,
+              0.9
+            ],
+            [
+              "Черемушки",
+              0.7,
+              0.7
+            ],
+            [
+              "Чертаново Северное",
+              0.9,
+              0.9
+            ],
+            [
+              "Чертаново Центральное",
+              0.9,
+              0.9
+            ],
+            [
+              "Чертаново Южное",
+              0.9,
+              0.9
+            ],
+            [
+              "Щербинка",
+              0.7,
+              0.7
+            ],
+            [
+              "Щукино",
+              0.7,
+              0.7
+            ],
+            [
+              "Южное Медведково",
+              0.9,
+              0.9
+            ],
+            [
+              "Южное Тушино",
+              0.9,
+              0.9
+            ],
+            [
+              "Южнопортовый",
+              0.7,
+              0.7
+            ],
+            [
+              "Якиманка",
+              0.2,
+              0.2
+            ],
+            [
+              "Ярославский",
+              0.9,
+              0.9
+            ],
+            [
+              "Ясенево",
+              0.9,
+              0.9
+            ]
+          ]
+        },
+        {
+          "id": "evShareTable",
+          "type": "data_table",
+          "name": "Электромобили",
+          "rows": [
+            [
+              "year",
+              "share"
+            ],
+            [
+              2025,
+              0.05
+            ],
+            [
+              2026,
+              0.1
+            ],
+            [
+              2027,
+              0.15
+            ],
+            [
+              2028,
+              0.15
+            ]
+          ]
+        },
+        {
+          "id": "ttkPositionsTable",
+          "type": "data_table",
+          "name": "ТТК",
+          "rows": [
+            [
+              "value",
+              "label"
+            ],
+            [
+              "inside",
+              "Внутри ТТК"
+            ],
+            [
+              "outside",
+              "Снаружи ТТК"
+            ]
+          ]
+        },
+        {
+          "id": "moRatesTable",
+          "type": "data_table",
+          "name": "Нормы остановок",
+          "rows": [
+            [
+              "type",
+              "s1",
+              "unit",
+              "label"
+            ],
+            [
+              "living",
+              22100,
+              "кв.м",
+              "Жилое назначение"
+            ],
+            [
+              "commercial",
+              450,
+              "кв.м",
+              "Коммерция (1 этаж)"
+            ],
+            [
+              "kindergarten",
+              30,
+              "чел.",
+              "Детские сады"
+            ],
+            [
+              "school",
+              300,
+              "чел.",
+              "Школы"
+            ],
+            [
+              "health",
+              11250,
+              "кв.м",
+              "Здравоохранение"
+            ],
+            [
+              "social",
+              8550,
+              "кв.м",
+              "Соц. обслуживание"
+            ]
+          ]
+        },
+        {
+          "id": "livingNormsTable",
+          "type": "data_table",
+          "name": "Нормы жилья",
+          "rows": [
+            [
+              "type",
+              "s1",
+              "label"
+            ],
+            [
+              "mkd",
+              33,
+              "МКД"
+            ],
+            [
+              "block",
+              50,
+              "Блок"
+            ],
+            [
+              "individual",
+              50,
+              "ИЖС"
+            ]
+          ]
+        },
+        {
+          "id": "livingNormMkd",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "livingNormsTable",
+          "key_col": "type",
+          "target_col": "s1",
+          "selected_key": "mkd"
+        },
+        {
+          "id": "k1Range",
+          "type": "table_range",
+          "dataSource": "metroRanges",
+          "inputId": "inputMetroDistance",
+          "minColumn": "min",
+          "maxColumn": "max",
+          "valueColumn": "value",
+          "fallbackValue": 1
+        },
+        {
+          "id": "k1LabelRange",
+          "type": "table_range",
+          "dataSource": "metroRanges",
+          "inputId": "inputMetroDistance",
+          "minColumn": "min",
+          "maxColumn": "max",
+          "valueColumn": "label",
+          "fallbackValue": ""
+        },
+        {
+          "id": "k2Lookup",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "districtFactors",
+          "key_col": "Район",
+          "target_col": "selectTtk",
+          "selected_key": "selectDistrict"
+        },
+        {
+          "id": "k2Display",
+          "type": "output",
+          "label": "K2 (коэф. деловой активности)",
+          "sourceId": "k2Lookup"
+        },
+        {
+          "id": "evShareLookup",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "evShareTable",
+          "key_col": "year",
+          "target_col": "share",
+          "selected_key": "selectRnsYear"
+        },
+        {
+          "id": "ttkLabelLookup",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "ttkPositionsTable",
+          "key_col": "value",
+          "target_col": "label",
+          "selected_key": "selectTtk"
+        },
+        {
+          "id": "moRateLiving",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "moRatesTable",
+          "key_col": "type",
+          "target_col": "s1",
+          "selected_key": "living"
+        },
+        {
+          "id": "moRateCommercial",
+          "type": "table_lookup",
+          "data": [],
+          "dataSource": "moRatesTable",
+          "key_col": "type",
+          "target_col": "s1",
+          "selected_key": "commercial"
+        },
+        {
+          "id": "formulaNp",
+          "type": "formula",
+          "formula": "ceil((inputAreaFlats / livingNormMkd) * 0.257 * k1Range)",
+          "dependencies": [
+            "inputAreaFlats",
+            "livingNormMkd",
+            "k1Range"
+          ]
+        },
+        {
+          "id": "formulaNpMinus",
+          "type": "formula",
+          "formula": "ceil(formulaNp * 0.9)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNpPlus",
+          "type": "formula",
+          "formula": "floor(formulaNp * 1.1)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNv",
+          "type": "formula",
+          "formula": "ceil((inputAreaNNP / 90) * k1Range * k2Lookup)",
+          "dependencies": [
+            "inputAreaNNP",
+            "k1Range",
+            "k2Lookup"
+          ]
+        },
+        {
+          "id": "formulaNvMinus",
+          "type": "formula",
+          "formula": "ceil(formulaNv * 0.7)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNvPlus",
+          "type": "formula",
+          "formula": "floor(formulaNv * 1.3)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNkResidential",
+          "type": "formula",
+          "formula": "ceil(inputAreaFlats / moRateLiving)",
+          "dependencies": [
+            "inputAreaFlats",
+            "moRateLiving"
+          ]
+        },
+        {
+          "id": "formulaNkCommercial",
+          "type": "formula",
+          "formula": "min(4, ceil(inputAreaNNP / moRateCommercial))",
+          "dependencies": [
+            "inputAreaNNP",
+            "moRateCommercial"
+          ]
+        },
+        {
+          "id": "formulaNkTotal",
+          "type": "formula",
+          "formula": "formulaNkResidential + formulaNkCommercial",
+          "dependencies": [
+            "formulaNkResidential",
+            "formulaNkCommercial"
+          ]
+        },
+        {
+          "id": "formulaNg",
+          "type": "formula",
+          "formula": "ceil(formulaNp * 0.1)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNgMinus",
+          "type": "formula",
+          "formula": "ceil(formulaNg * 0.9)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNgPlus",
+          "type": "formula",
+          "formula": "floor(formulaNg * 1.1)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaTotal",
+          "type": "formula",
+          "formula": "formulaNp + formulaNg + formulaNv + formulaNkTotal",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaEvPlaces",
+          "type": "formula",
+          "formula": "ceil(formulaNp * evShareLookup) + ceil(formulaNg * evShareLookup) + ceil(formulaNv * evShareLookup)",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaParkingArea",
+          "type": "formula",
+          "formula": "ceil(formulaTotal * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaTotal",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaParkingArea2",
+          "type": "formula",
+          "formula": "ceil(formulaParkingArea / 2)",
+          "dependencies": [
+            "formulaParkingArea"
+          ]
+        },
+        {
+          "id": "formulaEvSharePercent",
+          "type": "formula",
+          "formula": "evShareLookup * 100",
+          "dependencies": [
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNRequired",
+          "type": "formula",
+          "formula": "formulaTotal",
+          "dependencies": [
+            "formulaTotal"
+          ]
+        },
+        {
+          "id": "formulaNMin",
+          "type": "formula",
+          "formula": "max(0, formulaNpMinus + formulaNgMinus + formulaNvMinus + formulaNkTotal)",
+          "dependencies": [
+            "formulaNpMinus",
+            "formulaNgMinus",
+            "formulaNvMinus",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaNMax",
+          "type": "formula",
+          "formula": "formulaNpPlus + formulaNgPlus + formulaNvPlus + formulaNkTotal",
+          "dependencies": [
+            "formulaNpPlus",
+            "formulaNgPlus",
+            "formulaNvPlus",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaEvMin",
+          "type": "formula",
+          "formula": "ceil(formulaNpMinus * evShareLookup) + ceil(formulaNgMinus * evShareLookup) + ceil(formulaNvMinus * evShareLookup)",
+          "dependencies": [
+            "formulaNpMinus",
+            "formulaNgMinus",
+            "formulaNvMinus",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaEvMax",
+          "type": "formula",
+          "formula": "ceil(formulaNpPlus * evShareLookup) + ceil(formulaNgPlus * evShareLookup) + ceil(formulaNvPlus * evShareLookup)",
+          "dependencies": [
+            "formulaNpPlus",
+            "formulaNgPlus",
+            "formulaNvPlus",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaParkingAreaMin",
+          "type": "formula",
+          "formula": "ceil(formulaNMin * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaNMin",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaParkingAreaMax",
+          "type": "formula",
+          "formula": "ceil(formulaNMax * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaNMax",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaFActual",
+          "type": "formula",
+          "formula": "inputFactZuMo + inputFactZuGuestMgn + inputFactZuPriobMgn + inputFactUdsMo + inputFactUdsGuest + inputFactUdsGuestMgn + inputFactUdsPriob + inputFactUdsPriobMgn",
+          "dependencies": [
+            "inputFactZuMo",
+            "inputFactZuGuestMgn",
+            "inputFactZuPriobMgn",
+            "inputFactUdsMo",
+            "inputFactUdsGuest",
+            "inputFactUdsGuestMgn",
+            "inputFactUdsPriob",
+            "inputFactUdsPriobMgn"
+          ]
+        },
+        {
+          "id": "formulaNpEm",
+          "type": "formula",
+          "formula": "ceil(formulaNp * evShareLookup)",
+          "dependencies": [
+            "formulaNp",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNpRegular",
+          "type": "formula",
+          "formula": "formulaNp - formulaNpEm",
+          "dependencies": [
+            "formulaNp",
+            "formulaNpEm"
+          ]
+        },
+        {
+          "id": "formulaNgMgnSimple",
+          "type": "formula",
+          "formula": "ceil(formulaNg * 0.1)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNgMgnSimpleEnlarged",
+          "type": "formula",
+          "formula": "mgnEnlarged(formulaNg)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNvMgnSimple",
+          "type": "formula",
+          "formula": "ceil(formulaNv * 0.1)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNvMgnSimpleEnlarged",
+          "type": "formula",
+          "formula": "mgnEnlarged(formulaNv)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNgMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNg * 0.1)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNvMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNv * 0.1)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNgRegular",
+          "type": "formula",
+          "formula": "formulaNg - formulaNgMgnTotal",
+          "dependencies": [
+            "formulaNg",
+            "formulaNgMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNgEm",
+          "type": "formula",
+          "formula": "ceil(formulaNgRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNgRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNvRegular",
+          "type": "formula",
+          "formula": "formulaNv - formulaNvMgnTotal",
+          "dependencies": [
+            "formulaNv",
+            "formulaNvMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNvEm",
+          "type": "formula",
+          "formula": "ceil(formulaNvRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNvRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNpMinusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNpMinus * evShareLookup)",
+          "dependencies": [
+            "formulaNpMinus",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNpMinusRegular",
+          "type": "formula",
+          "formula": "formulaNpMinus - formulaNpMinusEm",
+          "dependencies": [
+            "formulaNpMinus",
+            "formulaNpMinusEm"
+          ]
+        },
+        {
+          "id": "formulaNgMinusMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNgMinus * 0.1)",
+          "dependencies": [
+            "formulaNgMinus"
+          ]
+        },
+        {
+          "id": "formulaNgMinusRegular",
+          "type": "formula",
+          "formula": "formulaNgMinus - formulaNgMinusMgnTotal",
+          "dependencies": [
+            "formulaNgMinus",
+            "formulaNgMinusMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNgMinusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNgMinusRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNgMinusRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNvMinusMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNvMinus * 0.1)",
+          "dependencies": [
+            "formulaNvMinus"
+          ]
+        },
+        {
+          "id": "formulaNvMinusRegular",
+          "type": "formula",
+          "formula": "formulaNvMinus - formulaNvMinusMgnTotal",
+          "dependencies": [
+            "formulaNvMinus",
+            "formulaNvMinusMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNvMinusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNvMinusRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNvMinusRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNpPlusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNpPlus * evShareLookup)",
+          "dependencies": [
+            "formulaNpPlus",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNpPlusRegular",
+          "type": "formula",
+          "formula": "formulaNpPlus - formulaNpPlusEm",
+          "dependencies": [
+            "formulaNpPlus",
+            "formulaNpPlusEm"
+          ]
+        },
+        {
+          "id": "formulaNgPlusMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNgPlus * 0.1)",
+          "dependencies": [
+            "formulaNgPlus"
+          ]
+        },
+        {
+          "id": "formulaNgPlusRegular",
+          "type": "formula",
+          "formula": "formulaNgPlus - formulaNgPlusMgnTotal",
+          "dependencies": [
+            "formulaNgPlus",
+            "formulaNgPlusMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNgPlusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNgPlusRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNgPlusRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaNvPlusMgnTotal",
+          "type": "formula",
+          "formula": "ceil(formulaNvPlus * 0.1)",
+          "dependencies": [
+            "formulaNvPlus"
+          ]
+        },
+        {
+          "id": "formulaNvPlusRegular",
+          "type": "formula",
+          "formula": "formulaNvPlus - formulaNvPlusMgnTotal",
+          "dependencies": [
+            "formulaNvPlus",
+            "formulaNvPlusMgnTotal"
+          ]
+        },
+        {
+          "id": "formulaNvPlusEm",
+          "type": "formula",
+          "formula": "ceil(formulaNvPlusRegular * evShareLookup)",
+          "dependencies": [
+            "formulaNvPlusRegular",
+            "evShareLookup"
+          ]
+        },
+        {
+          "id": "formulaBreakP1",
+          "type": "formula",
+          "formula": "max(0, formulaNpRegular)",
+          "dependencies": [
+            "formulaNpRegular"
+          ]
+        },
+        {
+          "id": "formulaBreakP2",
+          "type": "formula",
+          "formula": "formulaNpEm",
+          "dependencies": [
+            "formulaNpEm"
+          ]
+        },
+        {
+          "id": "formulaBreakG1",
+          "type": "formula",
+          "formula": "max(0, formulaNgRegular - inputFactUdsGuest)",
+          "dependencies": [
+            "formulaNgRegular",
+            "inputFactUdsGuest"
+          ]
+        },
+        {
+          "id": "formulaBreakG2",
+          "type": "formula",
+          "formula": "formulaNgEm",
+          "dependencies": [
+            "formulaNgEm"
+          ]
+        },
+        {
+          "id": "formulaBreakG3",
+          "type": "formula",
+          "formula": "max(0, formulaNgMgnTotal - inputFactUdsGuestMgn - inputFactZuGuestMgn)",
+          "dependencies": [
+            "formulaNgMgnTotal",
+            "inputFactUdsGuestMgn",
+            "inputFactZuGuestMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakV1",
+          "type": "formula",
+          "formula": "max(0, round(formulaNvRegular - inputFactUdsPriob))",
+          "dependencies": [
+            "formulaNvRegular",
+            "inputFactUdsPriob"
+          ]
+        },
+        {
+          "id": "formulaBreakV2",
+          "type": "formula",
+          "formula": "formulaNvEm",
+          "dependencies": [
+            "formulaNvEm"
+          ]
+        },
+        {
+          "id": "formulaBreakV3",
+          "type": "formula",
+          "formula": "max(0, formulaNvMgnTotal - inputFactUdsPriobMgn - inputFactZuPriobMgn)",
+          "dependencies": [
+            "formulaNvMgnTotal",
+            "inputFactUdsPriobMgn",
+            "inputFactZuPriobMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakMO",
+          "type": "formula",
+          "formula": "max(0, formulaNkTotal - inputFactUdsMo - inputFactZuMo)",
+          "dependencies": [
+            "formulaNkTotal",
+            "inputFactUdsMo",
+            "inputFactZuMo"
+          ]
+        },
+        {
+          "id": "formulaBreakTotal",
+          "type": "formula",
+          "formula": "formulaNRequired - formulaFActual",
+          "dependencies": [
+            "formulaNRequired",
+            "formulaFActual"
+          ]
+        },
+        {
+          "id": "formulaBreakMinP1",
+          "type": "formula",
+          "formula": "max(0, formulaNpMinusRegular)",
+          "dependencies": [
+            "formulaNpMinusRegular"
+          ]
+        },
+        {
+          "id": "formulaBreakMinP2",
+          "type": "formula",
+          "formula": "formulaNpMinusEm",
+          "dependencies": [
+            "formulaNpMinusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMinG1",
+          "type": "formula",
+          "formula": "max(0, formulaNgMinusRegular - inputFactUdsGuest)",
+          "dependencies": [
+            "formulaNgMinusRegular",
+            "inputFactUdsGuest"
+          ]
+        },
+        {
+          "id": "formulaBreakMinG2",
+          "type": "formula",
+          "formula": "formulaNgMinusEm",
+          "dependencies": [
+            "formulaNgMinusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMinG3",
+          "type": "formula",
+          "formula": "max(0, formulaNgMinusMgnTotal - inputFactUdsGuestMgn - inputFactZuGuestMgn)",
+          "dependencies": [
+            "formulaNgMinusMgnTotal",
+            "inputFactUdsGuestMgn",
+            "inputFactZuGuestMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakMinV1",
+          "type": "formula",
+          "formula": "max(0, round(formulaNvMinusRegular - inputFactUdsPriob))",
+          "dependencies": [
+            "formulaNvMinusRegular",
+            "inputFactUdsPriob"
+          ]
+        },
+        {
+          "id": "formulaBreakMinV2",
+          "type": "formula",
+          "formula": "formulaNvMinusEm",
+          "dependencies": [
+            "formulaNvMinusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMinV3",
+          "type": "formula",
+          "formula": "max(0, formulaNvMinusMgnTotal - inputFactUdsPriobMgn - inputFactZuPriobMgn)",
+          "dependencies": [
+            "formulaNvMinusMgnTotal",
+            "inputFactUdsPriobMgn",
+            "inputFactZuPriobMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakMinMO",
+          "type": "formula",
+          "formula": "max(0, formulaNkTotal - inputFactUdsMo - inputFactZuMo)",
+          "dependencies": [
+            "formulaNkTotal",
+            "inputFactUdsMo",
+            "inputFactZuMo"
+          ]
+        },
+        {
+          "id": "formulaBreakMinTotal",
+          "type": "formula",
+          "formula": "formulaNMin - formulaFActual",
+          "dependencies": [
+            "formulaNMin",
+            "formulaFActual"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxP1",
+          "type": "formula",
+          "formula": "max(0, formulaNpPlusRegular)",
+          "dependencies": [
+            "formulaNpPlusRegular"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxP2",
+          "type": "formula",
+          "formula": "formulaNpPlusEm",
+          "dependencies": [
+            "formulaNpPlusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxG1",
+          "type": "formula",
+          "formula": "max(0, formulaNgPlusRegular - inputFactUdsGuest)",
+          "dependencies": [
+            "formulaNgPlusRegular",
+            "inputFactUdsGuest"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxG2",
+          "type": "formula",
+          "formula": "formulaNgPlusEm",
+          "dependencies": [
+            "formulaNgPlusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxG3",
+          "type": "formula",
+          "formula": "max(0, formulaNgPlusMgnTotal - inputFactUdsGuestMgn - inputFactZuGuestMgn)",
+          "dependencies": [
+            "formulaNgPlusMgnTotal",
+            "inputFactUdsGuestMgn",
+            "inputFactZuGuestMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxV1",
+          "type": "formula",
+          "formula": "max(0, round(formulaNvPlusRegular - inputFactUdsPriob))",
+          "dependencies": [
+            "formulaNvPlusRegular",
+            "inputFactUdsPriob"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxV2",
+          "type": "formula",
+          "formula": "formulaNvPlusEm",
+          "dependencies": [
+            "formulaNvPlusEm"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxV3",
+          "type": "formula",
+          "formula": "max(0, formulaNvPlusMgnTotal - inputFactUdsPriobMgn - inputFactZuPriobMgn)",
+          "dependencies": [
+            "formulaNvPlusMgnTotal",
+            "inputFactUdsPriobMgn",
+            "inputFactZuPriobMgn"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxMO",
+          "type": "formula",
+          "formula": "max(0, formulaNkTotal - inputFactUdsMo - inputFactZuMo)",
+          "dependencies": [
+            "formulaNkTotal",
+            "inputFactUdsMo",
+            "inputFactZuMo"
+          ]
+        },
+        {
+          "id": "formulaBreakMaxTotal",
+          "type": "formula",
+          "formula": "formulaNMax - formulaFActual",
+          "dependencies": [
+            "formulaNMax",
+            "formulaFActual"
+          ]
+        }
+      ],
+      "values": {
+        "objName": "ЖК 'Уникальный объект'",
+        "objAddress": "ул. Некрасова, 24",
+        "inputMetroDistance": 2300,
+        "inputAreaFlats": 50000.3,
+        "inputAreaNNP": 3000,
+        "inputSqmPerPlace": 32,
+        "inputFactZuMo": 12,
+        "inputFactZuGuestMgn": 8,
+        "inputFactZuPriobMgn": 5,
+        "inputFactUdsMo": 3,
+        "inputFactUdsGuest": 2,
+        "inputFactUdsGuestMgn": 4,
+        "inputFactUdsPriob": 6,
+        "inputFactUdsPriobMgn": 9,
+        "selectDistrict": "Академический",
+        "selectTtk": "outside",
+        "selectRnsYear": 2026,
+        "livingNormMkd": 33,
+        "k2Lookup": 0.7,
+        "evShareLookup": 0.1,
+        "ttkLabelLookup": "Снаружи ТТК",
+        "moRateLiving": 22100,
+        "moRateCommercial": 450,
+        "k1Range": 1,
+        "k1LabelRange": "Более 2200 м (более 30 мин. пешком)",
+        "metroRanges": [
+          {
+            "min": 0,
+            "max": 1200,
+            "label": "Менее 1200 м (15 мин. пешком)",
+            "value": 0.75
+          },
+          {
+            "min": 1200,
+            "max": 2200,
+            "label": "1200–2200 м (до 30 мин. пешком)",
+            "value": 0.9
+          },
+          {
+            "min": 2200,
+            "max": 999999,
+            "label": "Более 2200 м (более 30 мин. пешком)",
+            "value": 1
+          }
+        ],
+        "districtFactors": [
+          {
+            "Район": "Академический",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Алексеевский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Алтуфьевский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Арбат",
+            "inside": 0.2,
+            "outside": 0.2
+          },
+          {
+            "Район": "Аэропорт",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Бабушкинский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Басманный",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Беговой",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Бекасово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бескудниковский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бибирево",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бирюлёво Восточное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бирюлёво Западное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Богородское",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Братеево",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бутово Северное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бутово Южное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Бутырский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Вешняки",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Внуково",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Войковский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Вороново",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Восточное Дегунино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Восточное Измайлово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Восточный",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Выхино-Жулебино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Гагаринский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Головинский",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Гольяново",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Даниловский",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Дмитровский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Донской",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Дорогомилово",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Замоскворечье",
+            "inside": 0.2,
+            "outside": 0.2
+          },
+          {
+            "Район": "Западное Дегунино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Зюзино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Зябликово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Ивановское",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Измайлово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Капотня",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Коммунарка",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Коньково",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Коптево",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Косино-Ухтомский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Котловка",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Краснопахорский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Красносельский",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Крылатское",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Крюково",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Кузьминки",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Кунцево",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Куркино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Левобережный",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Лефортово",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Лианозово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Ломоносовский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Лосиноостровский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Люблино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Марфино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Марьина Роща",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Марьино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Матушкино",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Метрогородок",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Мещанский",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Митино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Можайский",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Молжаниновский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Москворечье-Сабурово",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Нагатино-Садовники",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Нагатинский Затон",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Нагорный",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Некрасовка",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Нижегородский",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Новогиреево",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Новокосино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Ново-Переделкино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Обручевский",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Орехово-Борисово Северное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Орехово-Борисово Южное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Останкинский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Отрадное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Очаково-Матвеевское",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Перово",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Печатники",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Покровское-Стрешнево",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Преображенское",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Пресненский",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Проспект Вернадского",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Раменки",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Ростокино",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Рязанский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Савёлки",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Савёловский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Свиблово",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Северное Измайлово",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Северное Медведково",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Северное Тушино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Северный",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Силино",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Сокол",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Соколиная Гора",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Сокольники",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Солнцево",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Старое Крюково",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Строгино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Таганский",
+            "inside": 0.2,
+            "outside": 0.2
+          },
+          {
+            "Район": "Тверской",
+            "inside": 0.2,
+            "outside": 0.2
+          },
+          {
+            "Район": "Текстильщики",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Тёплый Стан",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Тимирязевский",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Троицк",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Тропарёво-Никулино",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Филёвский Парк",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Фили-Давыдково",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Филимонковский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Хамовники",
+            "inside": 0.2,
+            "outside": 0.5
+          },
+          {
+            "Район": "Ховрино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Хорошёво-Мневники",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Хорошёвский",
+            "inside": 0.5,
+            "outside": 0.5
+          },
+          {
+            "Район": "Царицыно",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Черемушки",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Чертаново Северное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Чертаново Центральное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Чертаново Южное",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Щербинка",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Щукино",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Южное Медведково",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Южное Тушино",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Южнопортовый",
+            "inside": 0.7,
+            "outside": 0.7
+          },
+          {
+            "Район": "Якиманка",
+            "inside": 0.2,
+            "outside": 0.2
+          },
+          {
+            "Район": "Ярославский",
+            "inside": 0.9,
+            "outside": 0.9
+          },
+          {
+            "Район": "Ясенево",
+            "inside": 0.9,
+            "outside": 0.9
+          }
+        ],
+        "evShareTable": [
+          {
+            "year": 2025,
+            "share": 0.05
+          },
+          {
+            "year": 2026,
+            "share": 0.1
+          },
+          {
+            "year": 2027,
+            "share": 0.15
+          },
+          {
+            "year": 2028,
+            "share": 0.15
+          }
+        ],
+        "ttkPositionsTable": [
+          {
+            "value": "inside",
+            "label": "Внутри ТТК"
+          },
+          {
+            "value": "outside",
+            "label": "Снаружи ТТК"
+          }
+        ],
+        "moRatesTable": [
+          {
+            "type": "living",
+            "s1": 22100,
+            "unit": "кв.м",
+            "label": "Жилое назначение"
+          },
+          {
+            "type": "commercial",
+            "s1": 450,
+            "unit": "кв.м",
+            "label": "Коммерция (1 этаж)"
+          },
+          {
+            "type": "kindergarten",
+            "s1": 30,
+            "unit": "чел.",
+            "label": "Детские сады"
+          },
+          {
+            "type": "school",
+            "s1": 300,
+            "unit": "чел.",
+            "label": "Школы"
+          },
+          {
+            "type": "health",
+            "s1": 11250,
+            "unit": "кв.м",
+            "label": "Здравоохранение"
+          },
+          {
+            "type": "social",
+            "s1": 8550,
+            "unit": "кв.м",
+            "label": "Соц. обслуживание"
+          }
+        ],
+        "livingNormsTable": [
+          {
+            "type": "mkd",
+            "s1": 33,
+            "label": "МКД"
+          },
+          {
+            "type": "block",
+            "s1": 50,
+            "label": "Блок"
+          },
+          {
+            "type": "individual",
+            "s1": 50,
+            "label": "ИЖС"
+          }
+        ],
+        "formulaNp": 390,
+        "formulaNpMinus": 351,
+        "formulaNpPlus": 429,
+        "formulaNv": 24,
+        "formulaNvMinus": 17,
+        "formulaNvPlus": 31,
+        "formulaNkResidential": 3,
+        "formulaNkCommercial": 4,
+        "formulaNkTotal": 7,
+        "formulaNg": 39,
+        "formulaNgMinus": 36,
+        "formulaNgPlus": 42,
+        "formulaTotal": 460,
+        "formulaEvPlaces": 46,
+        "formulaParkingArea": 14720,
+        "formulaParkingArea2": 7360,
+        "formulaEvSharePercent": 10,
+        "formulaNRequired": 460,
+        "formulaNMin": 411,
+        "formulaNMax": 509,
+        "formulaEvMin": 42,
+        "formulaEvMax": 52,
+        "formulaParkingAreaMin": 13152,
+        "formulaParkingAreaMax": 16288,
+        "formulaFActual": 49,
+        "formulaNpEm": 39,
+        "formulaNpRegular": 351,
+        "formulaNgMgnSimple": 4,
+        "formulaNgMgnSimpleEnlarged": 2,
+        "formulaNvMgnSimple": 3,
+        "formulaNvMgnSimpleEnlarged": 2,
+        "formulaNgMgnTotal": 4,
+        "formulaNvMgnTotal": 3,
+        "formulaNgRegular": 35,
+        "formulaNgEm": 4,
+        "formulaNvRegular": 21,
+        "formulaNvEm": 3,
+        "formulaNpMinusEm": 36,
+        "formulaNpMinusRegular": 315,
+        "formulaNgMinusMgnTotal": 4,
+        "formulaNgMinusRegular": 32,
+        "formulaNgMinusEm": 4,
+        "formulaNvMinusMgnTotal": 2,
+        "formulaNvMinusRegular": 15,
+        "formulaNvMinusEm": 2,
+        "formulaNpPlusEm": 43,
+        "formulaNpPlusRegular": 386,
+        "formulaNgPlusMgnTotal": 5,
+        "formulaNgPlusRegular": 37,
+        "formulaNgPlusEm": 4,
+        "formulaNvPlusMgnTotal": 4,
+        "formulaNvPlusRegular": 27,
+        "formulaNvPlusEm": 3,
+        "formulaBreakP1": 351,
+        "formulaBreakP2": 39,
+        "formulaBreakG1": 33,
+        "formulaBreakG2": 4,
+        "formulaBreakG3": 0,
+        "formulaBreakV1": 15,
+        "formulaBreakV2": 3,
+        "formulaBreakV3": 0,
+        "formulaBreakMO": 0,
+        "formulaBreakTotal": 411,
+        "formulaBreakMinP1": 315,
+        "formulaBreakMinP2": 36,
+        "formulaBreakMinG1": 30,
+        "formulaBreakMinG2": 4,
+        "formulaBreakMinG3": 0,
+        "formulaBreakMinV1": 9,
+        "formulaBreakMinV2": 2,
+        "formulaBreakMinV3": 0,
+        "formulaBreakMinMO": 0,
+        "formulaBreakMinTotal": 362,
+        "formulaBreakMaxP1": 386,
+        "formulaBreakMaxP2": 43,
+        "formulaBreakMaxG1": 35,
+        "formulaBreakMaxG2": 4,
+        "formulaBreakMaxG3": 0,
+        "formulaBreakMaxV1": 21,
+        "formulaBreakMaxV2": 3,
+        "formulaBreakMaxV3": 0,
+        "formulaBreakMaxMO": 0,
+        "formulaBreakMaxTotal": 460,
+        "k2Display": 0.7
+      },
+      "reportHtml": "<h3>Расчёт стоянок по №945-ПП от 23.12.2015 с изменениями на 17 ноября 2025 года</h3>\n<table>\n  <tbody><tr><th>Наименование показателя</th><th>Обозначение</th><th>Значение</th></tr>\n  <tr><td>Тип объекта</td><td>-</td><td>Многоквартирный дом (2.1.1, 2.5, 2.6)</td></tr>\n  <tr><td>Год РНС</td><td>г.</td><td><span data-token=\"selectRnsYear\" class=\"report-token\" title=\"Год РНС\">2026</span></td></tr>\n  <tr><td>Объект</td><td>-</td><td><span data-token=\"objName\" class=\"report-token\" title=\"Наименование объекта\">ЖК 'Уникальный объект'</span></td></tr>\n  <tr><td>Адрес</td><td>-</td><td><span data-token=\"objAddress\" class=\"report-token\" title=\"Адрес объекта\">ул. Некрасова, 24</span></td></tr>\n  <tr><td>Район города Москвы</td><td>-</td><td><span data-token=\"selectDistrict\" class=\"report-token\" title=\"Район города\">Академический</span></td></tr>\n  <tr><td>Место площадки относительно ТТК г.Москва</td><td>-</td><td><span data-token=\"ttkLabelLookup\" class=\"report-token\" title=\"Снаружи ТТК\">Снаружи ТТК</span></td></tr>\n  <tr><td>Доступность рельсового каркаса</td><td>-</td><td><span data-token=\"inputMetroDistance\" class=\"report-token\" title=\"Удаленность от метро, м\">2300</span> м (<span data-token=\"k1LabelRange\" class=\"report-token\" title=\"Более 2200 м (более 30 мин. пешком)\">Более 2200 м (более 30 мин. пешком)</span>)</td></tr>\n  <tr><td>Коэффициент пешей доступности рельсового каркаса по табл. Приложения 5</td><td>K1</td><td><span data-token=\"k1Range\" class=\"report-token\" title=\"1\">1</span></td></tr>\n  <tr><td>Уточняющий коэффициент деловой активности территории города Москвы для расчета числа мест приобъектной парковки по табл. Приложения 6</td><td>K2</td><td><span data-token=\"k2Lookup\" class=\"report-token\" title=\"0.7\">0.7</span></td></tr>\n</tbody></table>\n\n<h4>Расчёт числа мест постоянного размещения транспортных средств жителей</h4>\n<table>\n  <tbody><tr><th>Наименование показателя</th><th>Обозначение</th><th>Значение</th></tr>\n  <tr><td>Показатели расчета населения по типам жилой застройки</td><td>S1</td><td><span data-token=\"livingNormMkd\" class=\"report-token\" title=\"33\">33</span></td></tr>\n  <tr><td>Целевой показатель уровня автомобилизации города Москвы — 257 транспортных средств на 1 000 жителей</td><td>A</td><td>0.257</td></tr>\n  <tr><td>Nп = (S/S1) × A × K1  = <span data-token=\"formulaNp.stepsCalculations\" class=\"report-token\" title=\"@formulaNp = ceil((50000.3 / 33) * 0.257 * 1)\n390 = ceil((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">(50000.3 / 33) * 0.257 * 1</span></td><td>Nп</td><td><span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = ceil((50000.3 / 33) * 0.257 * 1)\n390 = ceil((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">390</span></td></tr>\n  <tr><td>Nп-10% = Nп × 90%  = <span data-token=\"formulaNpMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNpMinus = ceil(390 * 0.9)\n351 = ceil(@formulaNp * 0.9)\">390 * 0.9</span></td><td>-</td><td><span data-token=\"formulaNpMinus\" class=\"report-token\" title=\"@formulaNpMinus = ceil(390 * 0.9)\n351 = ceil(@formulaNp * 0.9)\">351</span></td></tr>\n  <tr><td>Nп+10% = Nп × 110%  = <span data-token=\"formulaNpPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNpPlus = floor(390 * 1.1)\n429 = floor(@formulaNp * 1.1)\">390 * 1.1</span></td><td>-</td><td><span data-token=\"formulaNpPlus\" class=\"report-token\" title=\"@formulaNpPlus = floor(390 * 1.1)\n429 = floor(@formulaNp * 1.1)\">429</span></td></tr>\n</tbody></table>\n\n<h4>Расчёт числа мест гостевой парковки (допустимо отклонение 10%)</h4>\n<table>\n  <tbody><tr><th>Наименование показателя</th><th>Обозначение</th><th>Значение</th></tr>\n  <tr><td>Nг = Nп × 10%  = <span data-token=\"formulaNg.stepsCalculations\" class=\"report-token\" title=\"@formulaNg = ceil(390 * 0.1)\n39 = ceil(@formulaNp * 0.1)\">390 * 0.1</span></td><td>Nг</td><td><span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = ceil(390 * 0.1)\n39 = ceil(@formulaNp * 0.1)\">39</span></td></tr>\n  <tr><td>Nг-10% = Nг × 90%  = <span data-token=\"formulaNgMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNgMinus = ceil(39 * 0.9)\n36 = ceil(@formulaNg * 0.9)\">39 * 0.9</span></td><td>-</td><td><span data-token=\"formulaNgMinus\" class=\"report-token\" title=\"@formulaNgMinus = ceil(39 * 0.9)\n36 = ceil(@formulaNg * 0.9)\">36</span></td></tr>\n  <tr><td>Nг+10% = Nг × 110%  = <span data-token=\"formulaNgPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNgPlus = floor(39 * 1.1)\n42 = floor(@formulaNg * 1.1)\">39 * 1.1</span></td><td>-</td><td><span data-token=\"formulaNgPlus\" class=\"report-token\" title=\"@formulaNgPlus = floor(39 * 1.1)\n42 = floor(@formulaNg * 1.1)\">42</span></td></tr>\n  <tr><td>Из них для МГН: Nг(МГН) = Nг × 10%</td><td>-</td><td><span data-token=\"formulaNgMgnSimple\" class=\"report-token\" title=\"@formulaNgMgnSimple = ceil(39 * 0.1)\n4 = ceil(@formulaNg * 0.1)\">4</span> (шт.), в т.ч. увеличенных размеров: <span data-token=\"formulaNgMgnSimpleEnlarged\" class=\"report-token\" title=\"@formulaNgMgnSimpleEnlarged = mgnEnlarged(39)\n2 = mgnEnlarged(@formulaNg)\">2</span> (шт.)</td></tr>\n</tbody></table>\n\n<h4>Расчёт числа мест приобъектной парковки встроенно-пристроенных коммерческих помещений (допустимо отклонение ±30%)</h4>\n<table>\n  <tbody><tr><th>Наименование показателя</th><th>Обозначение</th><th>Значение</th></tr>\n  <tr><td>Расчетный показатель на одно парковочное место и машино-место, кв.м</td><td>X2</td><td>90</td></tr>\n  <tr><td>Nв = X / X2 × K1 × K2  = <span data-token=\"formulaNv.stepsCalculations\" class=\"report-token\" title=\"@formulaNv = ceil((3000 / 90) * 1 * 0.7)\n24 = ceil((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">(3000 / 90) * 1 * 0.7</span></td><td>Nв</td><td><span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = ceil((3000 / 90) * 1 * 0.7)\n24 = ceil((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">24</span></td></tr>\n  <tr><td>Nв-30% = Nв × 70%  = <span data-token=\"formulaNvMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNvMinus = ceil(24 * 0.7)\n17 = ceil(@formulaNv * 0.7)\">24 * 0.7</span></td><td>-</td><td><span data-token=\"formulaNvMinus\" class=\"report-token\" title=\"@formulaNvMinus = ceil(24 * 0.7)\n17 = ceil(@formulaNv * 0.7)\">17</span></td></tr>\n  <tr><td>Nв+30% = Nв × 130%  = <span data-token=\"formulaNvPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNvPlus = floor(24 * 1.3)\n31 = floor(@formulaNv * 1.3)\">24 * 1.3</span></td><td>-</td><td><span data-token=\"formulaNvPlus\" class=\"report-token\" title=\"@formulaNvPlus = floor(24 * 1.3)\n31 = floor(@formulaNv * 1.3)\">31</span></td></tr>\n  <tr><td>Из них для МГН: Nв(МГН) = Nв × 10%</td><td>-</td><td><span data-token=\"formulaNvMgnSimple\" class=\"report-token\" title=\"@formulaNvMgnSimple = ceil(24 * 0.1)\n3 = ceil(@formulaNv * 0.1)\">3</span> (шт.), в т.ч. увеличенных размеров: <span data-token=\"formulaNvMgnSimpleEnlarged\" class=\"report-token\" title=\"@formulaNvMgnSimpleEnlarged = mgnEnlarged(24)\n2 = mgnEnlarged(@formulaNv)\">2</span> (шт.)</td></tr>\n</tbody></table>\n\n<h4>Расчёт числа мест остановки</h4>\n<table>\n  <tbody><tr><th>Функциональное назначение объекта</th><th>Показатель S1</th><th>Значение S1</th><th>Количество мест</th></tr>\n  <tr><td>Жилое назначение  = <span data-token=\"formulaNkResidential.stepsCalculations\" class=\"report-token\" title=\"@formulaNkResidential = ceil(50000.3 / 22100)\n3 = ceil(@inputAreaFlats / @moRateLiving)\">50000.3 / 22100</span></td><td>кв.м на одно место остановки</td><td>22100</td><td><span data-token=\"formulaNkResidential\" class=\"report-token\" title=\"@formulaNkResidential = ceil(50000.3 / 22100)\n3 = ceil(@inputAreaFlats / @moRateLiving)\">3</span></td></tr>\n  <tr><td>Коммерция (1 этаж)  = <span data-token=\"formulaNkCommercial.stepsCalculations\" class=\"report-token\" title=\"@formulaNkCommercial = min(4, ceil(3000 / 450))\n4 = min(4, ceil(@inputAreaNNP / @moRateCommercial))\">min(4, ceil(3000 / 450))</span></td><td>кв.м на одно место остановки</td><td>450</td><td><span data-token=\"formulaNkCommercial\" class=\"report-token\" title=\"@formulaNkCommercial = min(4, ceil(3000 / 450))\n4 = min(4, ceil(@inputAreaNNP / @moRateCommercial))\">4</span></td></tr>\n  <tr><td colspan=\"3\">Всего требуется: Nк = (Nк(ж) + Nк(к))  = <span data-token=\"formulaNkTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaNkTotal = 3 + 4\n7 = @formulaNkResidential + @formulaNkCommercial\">3 + 4</span></td><td><strong><span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 3 + 4\n7 = @formulaNkResidential + @formulaNkCommercial\">7</span></strong></td></tr>\n</tbody></table>\n\n<h4>Итого, по расчёту</h4>\n<table>\n  <tbody><tr><th>№</th><th>Наименование показателя</th><th>Обозначение</th><th>Значение</th></tr>\n  <tr><td>1.</td><td>% электромобилей (по году РНС)  = <span data-token=\"formulaEvSharePercent.stepsCalculations\" class=\"report-token\" title=\"@formulaEvSharePercent = 0.1 * 100\n10 = @evShareLookup * 100\">0.1 * 100</span></td><td>%</td><td><span data-token=\"formulaEvSharePercent\" class=\"report-token\" title=\"@formulaEvSharePercent = 0.1 * 100\n10 = @evShareLookup * 100\">10</span></td></tr>\n  <tr><td>2.</td><td>Всего требуется разместить стоянок и остановок  = <span data-token=\"formulaNRequired.stepsCalculations\" class=\"report-token\" title=\"@formulaNRequired = 460\n460 = @formulaTotal\">460</span>  <span data-token=\"formulaEvPlaces.stepsCalculations\" class=\"report-token\" title=\"@formulaEvPlaces = ceil(390 * 0.1) + ceil(39 * 0.1) + ceil(24 * 0.1)\n46 = ceil(@formulaNp * @evShareLookup) + ceil(@formulaNg * @evShareLookup) + ceil(@formulaNv * @evShareLookup)\">390 * 0.1</span></td><td>N</td><td><span data-token=\"formulaNRequired\" class=\"report-token\" title=\"@formulaNRequired = 460\n460 = @formulaTotal\">460</span> (всего), <span data-token=\"formulaEvPlaces\" class=\"report-token\" title=\"@formulaEvPlaces = ceil(390 * 0.1) + ceil(39 * 0.1) + ceil(24 * 0.1)\n46 = ceil(@formulaNp * @evShareLookup) + ceil(@formulaNg * @evShareLookup) + ceil(@formulaNv * @evShareLookup)\">46</span> (электромобили)</td></tr>\n  <tr><td>3.</td><td>Всего требуется разместить стоянок и остановок (допустимое отклонение в меньшую сторону)  = <span data-token=\"formulaNMin.stepsCalculations\" class=\"report-token\" title=\"@formulaNMin = max(0, 351 + 36 + 17 + 7)\n411 = max(0, @formulaNpMinus + @formulaNgMinus + @formulaNvMinus + @formulaNkTotal)\">max(0, 351 + 36 + 17 + 7)</span>  <span data-token=\"formulaEvMin.stepsCalculations\" class=\"report-token\" title=\"@formulaEvMin = ceil(351 * 0.1) + ceil(36 * 0.1) + ceil(17 * 0.1)\n42 = ceil(@formulaNpMinus * @evShareLookup) + ceil(@formulaNgMinus * @evShareLookup) + ceil(@formulaNvMinus * @evShareLookup)\">351 * 0.1</span></td><td>N мин</td><td><span data-token=\"formulaNMin\" class=\"report-token\" title=\"@formulaNMin = max(0, 351 + 36 + 17 + 7)\n411 = max(0, @formulaNpMinus + @formulaNgMinus + @formulaNvMinus + @formulaNkTotal)\">411</span> (всего), <span data-token=\"formulaEvMin\" class=\"report-token\" title=\"@formulaEvMin = ceil(351 * 0.1) + ceil(36 * 0.1) + ceil(17 * 0.1)\n42 = ceil(@formulaNpMinus * @evShareLookup) + ceil(@formulaNgMinus * @evShareLookup) + ceil(@formulaNvMinus * @evShareLookup)\">42</span> (электромобили)</td></tr>\n  <tr><td>4.</td><td>Всего требуется разместить стоянок и остановок (допустимое отклонение в большую сторону)  = <span data-token=\"formulaNMax.stepsCalculations\" class=\"report-token\" title=\"@formulaNMax = 429 + 42 + 31 + 7\n509 = @formulaNpPlus + @formulaNgPlus + @formulaNvPlus + @formulaNkTotal\">429 + 42 + 31 + 7</span>  <span data-token=\"formulaEvMax.stepsCalculations\" class=\"report-token\" title=\"@formulaEvMax = ceil(429 * 0.1) + ceil(42 * 0.1) + ceil(31 * 0.1)\n52 = ceil(@formulaNpPlus * @evShareLookup) + ceil(@formulaNgPlus * @evShareLookup) + ceil(@formulaNvPlus * @evShareLookup)\">429 * 0.1</span></td><td>N макс</td><td><span data-token=\"formulaNMax\" class=\"report-token\" title=\"@formulaNMax = 429 + 42 + 31 + 7\n509 = @formulaNpPlus + @formulaNgPlus + @formulaNvPlus + @formulaNkTotal\">509</span> (всего), <span data-token=\"formulaEvMax\" class=\"report-token\" title=\"@formulaEvMax = ceil(429 * 0.1) + ceil(42 * 0.1) + ceil(31 * 0.1)\n52 = ceil(@formulaNpPlus * @evShareLookup) + ceil(@formulaNgPlus * @evShareLookup) + ceil(@formulaNvPlus * @evShareLookup)\">52</span> (электромобили)</td></tr>\n  <tr><td>5.</td><td>Площадь подземной автостоянки при обеспеченности <span data-token=\"inputSqmPerPlace\" class=\"report-token\" title=\"Норма кв.м на машино-место\">32</span> кв.м/м.м  = <span data-token=\"formulaParkingArea.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingArea = ceil(460 * 32)\n14720 = ceil(@formulaTotal * @inputSqmPerPlace)\">460 * 32</span></td><td>S_стоянки</td><td><span data-token=\"formulaParkingArea\" class=\"report-token\" title=\"@formulaParkingArea = ceil(460 * 32)\n14720 = ceil(@formulaTotal * @inputSqmPerPlace)\">14720</span></td></tr>\n  <tr><td>6.</td><td>То же, в два уровня  = <span data-token=\"formulaParkingArea2.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingArea2 = ceil(14720 / 2)\n7360 = ceil(@formulaParkingArea / 2)\">14720 / 2</span></td><td>S_стоянки_2ур.</td><td><span data-token=\"formulaParkingArea2\" class=\"report-token\" title=\"@formulaParkingArea2 = ceil(14720 / 2)\n7360 = ceil(@formulaParkingArea / 2)\">7360</span></td></tr>\n  <tr><td>7.</td><td>Площадь автостоянки (минимум / максимум)  = <span data-token=\"formulaParkingAreaMin.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingAreaMin = ceil(411 * 32)\n13152 = ceil(@formulaNMin * @inputSqmPerPlace)\">411 * 32</span>  <span data-token=\"formulaParkingAreaMax.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingAreaMax = ceil(509 * 32)\n16288 = ceil(@formulaNMax * @inputSqmPerPlace)\">509 * 32</span></td><td>S_стоянки</td><td><span data-token=\"formulaParkingAreaMin\" class=\"report-token\" title=\"@formulaParkingAreaMin = ceil(411 * 32)\n13152 = ceil(@formulaNMin * @inputSqmPerPlace)\">13152</span> / <span data-token=\"formulaParkingAreaMax\" class=\"report-token\" title=\"@formulaParkingAreaMax = ceil(509 * 32)\n16288 = ceil(@formulaNMax * @inputSqmPerPlace)\">16288</span></td></tr>\n</tbody></table>\n\n<h4>Фактическое расположение на участке и УДС м/м</h4>\n<table>\n  <tbody><tr><th>Наименование</th><th>Обозначение</th><th>Количество, шт.</th></tr>\n  <tr><td>На территории ЗУ - места остановки</td><td>Fз(о)</td><td><span data-token=\"inputFactZuMo\" class=\"report-token\" title=\"Факт ЗУ: места остановки\">12</span></td></tr>\n  <tr><td>На территории ЗУ - гостевые МГН</td><td>Fз(г,мгн)</td><td><span data-token=\"inputFactZuGuestMgn\" class=\"report-token\" title=\"Факт ЗУ: гостевые МГН\">8</span></td></tr>\n  <tr><td>На территории ЗУ - приобъектные МГН</td><td>Fз(в,мгн)</td><td><span data-token=\"inputFactZuPriobMgn\" class=\"report-token\" title=\"Факт ЗУ: приобъектные МГН\">5</span></td></tr>\n  <tr><td>На территории УДС - места остановки</td><td>Fу(о)</td><td><span data-token=\"inputFactUdsMo\" class=\"report-token\" title=\"Факт УДС: места остановки\">3</span></td></tr>\n  <tr><td>На территории УДС - гостевые</td><td>Fу(г)</td><td><span data-token=\"inputFactUdsGuest\" class=\"report-token\" title=\"Факт УДС: гостевые\">2</span></td></tr>\n  <tr><td>На территории УДС - гостевые МГН</td><td>Fу(г,мгн)</td><td><span data-token=\"inputFactUdsGuestMgn\" class=\"report-token\" title=\"Факт УДС: гостевые МГН\">4</span></td></tr>\n  <tr><td>На территории УДС - приобъектные</td><td>Fу(в)</td><td><span data-token=\"inputFactUdsPriob\" class=\"report-token\" title=\"Факт УДС: приобъектные\">6</span></td></tr>\n  <tr><td>На территории УДС - приобъектные МГН</td><td>Fу(в,мгн)</td><td><span data-token=\"inputFactUdsPriobMgn\" class=\"report-token\" title=\"Факт УДС: приобъектные МГН\">9</span></td></tr>\n  <tr><td><strong>Всего фактически размещено (F)  = <span data-token=\"formulaFActual.stepsCalculations\" class=\"report-token\" title=\"@formulaFActual = 12 + 8 + 5 + 3 + 2 + 4 + 6 + 9\n49 = @inputFactZuMo + @inputFactZuGuestMgn + @inputFactZuPriobMgn + @inputFactUdsMo + @inputFactUdsGuest + @inputFactUdsGuestMgn + @inputFactUdsPriob + @inputFactUdsPriobMgn\">12 + 8 + 5 + 3 + 2 + 4 + 6 + 9</span></strong></td><td></td><td><strong><span data-token=\"formulaFActual\" class=\"report-token\" title=\"@formulaFActual = 12 + 8 + 5 + 3 + 2 + 4 + 6 + 9\n49 = @inputFactZuMo + @inputFactZuGuestMgn + @inputFactZuPriobMgn + @inputFactUdsMo + @inputFactUdsGuest + @inputFactUdsGuestMgn + @inputFactUdsPriob + @inputFactUdsPriobMgn\">49</span></strong></td></tr>\n</tbody></table>\n\n<h4>8. Требуется разместить в подземной автостоянке: N = Nп + Nг + Nв - Nо - F</h4>\n<table>\n  <tbody><tr><th>Позиция</th><th>Описание</th><th>Количество, шт.</th></tr>\n  <tr><td>П1</td><td>Постоянные (без учёта электромобилей)  = <span data-token=\"formulaBreakP1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakP1 = max(0, 351)\n351 = max(0, @formulaNpRegular)\">max(0, 351)</span></td><td><span data-token=\"formulaBreakP1\" class=\"report-token\" title=\"@formulaBreakP1 = max(0, 351)\n351 = max(0, @formulaNpRegular)\">351</span></td></tr>\n  <tr><td>П2</td><td>Постоянные (электромобили)  = <span data-token=\"formulaBreakP2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakP2 = 39\n39 = @formulaNpEm\">39</span></td><td><span data-token=\"formulaBreakP2\" class=\"report-token\" title=\"@formulaBreakP2 = 39\n39 = @formulaNpEm\">39</span></td></tr>\n  <tr><td>Г1</td><td>Гостевые (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakG1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakG1 = max(0, 35 - 2)\n33 = max(0, @formulaNgRegular - @inputFactUdsGuest)\">max(0, 35 - 2)</span></td><td><span data-token=\"formulaBreakG1\" class=\"report-token\" title=\"@formulaBreakG1 = max(0, 35 - 2)\n33 = max(0, @formulaNgRegular - @inputFactUdsGuest)\">33</span></td></tr>\n  <tr><td>Г2</td><td>Гостевые (электромобили)  = <span data-token=\"formulaBreakG2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakG2 = 4\n4 = @formulaNgEm\">4</span></td><td><span data-token=\"formulaBreakG2\" class=\"report-token\" title=\"@formulaBreakG2 = 4\n4 = @formulaNgEm\">4</span></td></tr>\n  <tr><td>Г3</td><td>Гостевые (МГН)  = <span data-token=\"formulaBreakG3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakG3 = max(0, 4 - 4 - 8)\n0 = max(0, @formulaNgMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">max(0, 4 - 4 - 8)</span></td><td><span data-token=\"formulaBreakG3\" class=\"report-token\" title=\"@formulaBreakG3 = max(0, 4 - 4 - 8)\n0 = max(0, @formulaNgMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">0</span></td></tr>\n  <tr><td>В1</td><td>Приобъектные (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakV1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV1 = max(0, round(21 - 6))\n15 = max(0, round(@formulaNvRegular - @inputFactUdsPriob))\">max(0, round(21 - 6))</span></td><td><span data-token=\"formulaBreakV1\" class=\"report-token\" title=\"@formulaBreakV1 = max(0, round(21 - 6))\n15 = max(0, round(@formulaNvRegular - @inputFactUdsPriob))\">15</span></td></tr>\n  <tr><td>В2</td><td>Приобъектные (электромобили)  = <span data-token=\"formulaBreakV2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV2 = 3\n3 = @formulaNvEm\">3</span></td><td><span data-token=\"formulaBreakV2\" class=\"report-token\" title=\"@formulaBreakV2 = 3\n3 = @formulaNvEm\">3</span></td></tr>\n  <tr><td>В3</td><td>Приобъектные (МГН)  = <span data-token=\"formulaBreakV3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV3 = max(0, 3 - 9 - 5)\n0 = max(0, @formulaNvMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">max(0, 3 - 9 - 5)</span></td><td><span data-token=\"formulaBreakV3\" class=\"report-token\" title=\"@formulaBreakV3 = max(0, 3 - 9 - 5)\n0 = max(0, @formulaNvMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">0</span></td></tr>\n  <tr><td>МО</td><td>Места остановок  = <span data-token=\"formulaBreakMO.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">max(0, 7 - 3 - 12)</span></td><td><span data-token=\"formulaBreakMO\" class=\"report-token\" title=\"@formulaBreakMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">0</span></td></tr>\n  <tr><td><strong>Итого запроектировано  = <span data-token=\"formulaBreakTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakTotal = 460 - 49\n411 = @formulaNRequired - @formulaFActual\">460 - 49</span></strong></td><td></td><td><strong><span data-token=\"formulaBreakTotal\" class=\"report-token\" title=\"@formulaBreakTotal = 460 - 49\n411 = @formulaNRequired - @formulaFActual\">411</span></strong></td></tr>\n</tbody></table>\n\n<h4>9. Допустимо разместить в подземной автостоянке (отклонение в меньшую сторону)</h4>\n<table>\n  <tbody><tr><th>Позиция</th><th>Описание</th><th>Количество, шт.</th></tr>\n  <tr><td>П1</td><td>Постоянные (без учёта электромобилей)  = <span data-token=\"formulaBreakMinP1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinP1 = max(0, 315)\n315 = max(0, @formulaNpMinusRegular)\">max(0, 315)</span></td><td><span data-token=\"formulaBreakMinP1\" class=\"report-token\" title=\"@formulaBreakMinP1 = max(0, 315)\n315 = max(0, @formulaNpMinusRegular)\">315</span></td></tr>\n  <tr><td>П2</td><td>Постоянные (электромобили)  = <span data-token=\"formulaBreakMinP2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinP2 = 36\n36 = @formulaNpMinusEm\">36</span></td><td><span data-token=\"formulaBreakMinP2\" class=\"report-token\" title=\"@formulaBreakMinP2 = 36\n36 = @formulaNpMinusEm\">36</span></td></tr>\n  <tr><td>Г1</td><td>Гостевые (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakMinG1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinG1 = max(0, 32 - 2)\n30 = max(0, @formulaNgMinusRegular - @inputFactUdsGuest)\">max(0, 32 - 2)</span></td><td><span data-token=\"formulaBreakMinG1\" class=\"report-token\" title=\"@formulaBreakMinG1 = max(0, 32 - 2)\n30 = max(0, @formulaNgMinusRegular - @inputFactUdsGuest)\">30</span></td></tr>\n  <tr><td>Г2</td><td>Гостевые (электромобили)  = <span data-token=\"formulaBreakMinG2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinG2 = 4\n4 = @formulaNgMinusEm\">4</span></td><td><span data-token=\"formulaBreakMinG2\" class=\"report-token\" title=\"@formulaBreakMinG2 = 4\n4 = @formulaNgMinusEm\">4</span></td></tr>\n  <tr><td>Г3</td><td>Гостевые (МГН)  = <span data-token=\"formulaBreakMinG3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinG3 = max(0, 4 - 4 - 8)\n0 = max(0, @formulaNgMinusMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">max(0, 4 - 4 - 8)</span></td><td><span data-token=\"formulaBreakMinG3\" class=\"report-token\" title=\"@formulaBreakMinG3 = max(0, 4 - 4 - 8)\n0 = max(0, @formulaNgMinusMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">0</span></td></tr>\n  <tr><td>В1</td><td>Приобъектные (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakMinV1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinV1 = max(0, round(15 - 6))\n9 = max(0, round(@formulaNvMinusRegular - @inputFactUdsPriob))\">max(0, round(15 - 6))</span></td><td><span data-token=\"formulaBreakMinV1\" class=\"report-token\" title=\"@formulaBreakMinV1 = max(0, round(15 - 6))\n9 = max(0, round(@formulaNvMinusRegular - @inputFactUdsPriob))\">9</span></td></tr>\n  <tr><td>В2</td><td>Приобъектные (электромобили)  = <span data-token=\"formulaBreakMinV2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinV2 = 2\n2 = @formulaNvMinusEm\">2</span></td><td><span data-token=\"formulaBreakMinV2\" class=\"report-token\" title=\"@formulaBreakMinV2 = 2\n2 = @formulaNvMinusEm\">2</span></td></tr>\n  <tr><td>В3</td><td>Приобъектные (МГН)  = <span data-token=\"formulaBreakMinV3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinV3 = max(0, 2 - 9 - 5)\n0 = max(0, @formulaNvMinusMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">max(0, 2 - 9 - 5)</span></td><td><span data-token=\"formulaBreakMinV3\" class=\"report-token\" title=\"@formulaBreakMinV3 = max(0, 2 - 9 - 5)\n0 = max(0, @formulaNvMinusMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">0</span></td></tr>\n  <tr><td>МО</td><td>Места остановок  = <span data-token=\"formulaBreakMinMO.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">max(0, 7 - 3 - 12)</span></td><td><span data-token=\"formulaBreakMinMO\" class=\"report-token\" title=\"@formulaBreakMinMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">0</span></td></tr>\n  <tr><td><strong>Итого запроектировано  = <span data-token=\"formulaBreakMinTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMinTotal = 411 - 49\n362 = @formulaNMin - @formulaFActual\">411 - 49</span></strong></td><td></td><td><strong><span data-token=\"formulaBreakMinTotal\" class=\"report-token\" title=\"@formulaBreakMinTotal = 411 - 49\n362 = @formulaNMin - @formulaFActual\">362</span></strong></td></tr>\n</tbody></table>\n\n<h4>10. Допустимо разместить в подземной автостоянке (отклонение в большую сторону)</h4>\n<table>\n  <tbody><tr><th>Позиция</th><th>Описание</th><th>Количество, шт.</th></tr>\n  <tr><td>П1</td><td>Постоянные (без учёта электромобилей)  = <span data-token=\"formulaBreakMaxP1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxP1 = max(0, 386)\n386 = max(0, @formulaNpPlusRegular)\">max(0, 386)</span></td><td><span data-token=\"formulaBreakMaxP1\" class=\"report-token\" title=\"@formulaBreakMaxP1 = max(0, 386)\n386 = max(0, @formulaNpPlusRegular)\">386</span></td></tr>\n  <tr><td>П2</td><td>Постоянные (электромобили)  = <span data-token=\"formulaBreakMaxP2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxP2 = 43\n43 = @formulaNpPlusEm\">43</span></td><td><span data-token=\"formulaBreakMaxP2\" class=\"report-token\" title=\"@formulaBreakMaxP2 = 43\n43 = @formulaNpPlusEm\">43</span></td></tr>\n  <tr><td>Г1</td><td>Гостевые (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakMaxG1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxG1 = max(0, 37 - 2)\n35 = max(0, @formulaNgPlusRegular - @inputFactUdsGuest)\">max(0, 37 - 2)</span></td><td><span data-token=\"formulaBreakMaxG1\" class=\"report-token\" title=\"@formulaBreakMaxG1 = max(0, 37 - 2)\n35 = max(0, @formulaNgPlusRegular - @inputFactUdsGuest)\">35</span></td></tr>\n  <tr><td>Г2</td><td>Гостевые (электромобили)  = <span data-token=\"formulaBreakMaxG2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxG2 = 4\n4 = @formulaNgPlusEm\">4</span></td><td><span data-token=\"formulaBreakMaxG2\" class=\"report-token\" title=\"@formulaBreakMaxG2 = 4\n4 = @formulaNgPlusEm\">4</span></td></tr>\n  <tr><td>Г3</td><td>Гостевые (МГН)  = <span data-token=\"formulaBreakMaxG3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxG3 = max(0, 5 - 4 - 8)\n0 = max(0, @formulaNgPlusMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">max(0, 5 - 4 - 8)</span></td><td><span data-token=\"formulaBreakMaxG3\" class=\"report-token\" title=\"@formulaBreakMaxG3 = max(0, 5 - 4 - 8)\n0 = max(0, @formulaNgPlusMgnTotal - @inputFactUdsGuestMgn - @inputFactZuGuestMgn)\">0</span></td></tr>\n  <tr><td>В1</td><td>Приобъектные (без учёта МГН и электромобилей)  = <span data-token=\"formulaBreakMaxV1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxV1 = max(0, round(27 - 6))\n21 = max(0, round(@formulaNvPlusRegular - @inputFactUdsPriob))\">max(0, round(27 - 6))</span></td><td><span data-token=\"formulaBreakMaxV1\" class=\"report-token\" title=\"@formulaBreakMaxV1 = max(0, round(27 - 6))\n21 = max(0, round(@formulaNvPlusRegular - @inputFactUdsPriob))\">21</span></td></tr>\n  <tr><td>В2</td><td>Приобъектные (электромобили)  = <span data-token=\"formulaBreakMaxV2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxV2 = 3\n3 = @formulaNvPlusEm\">3</span></td><td><span data-token=\"formulaBreakMaxV2\" class=\"report-token\" title=\"@formulaBreakMaxV2 = 3\n3 = @formulaNvPlusEm\">3</span></td></tr>\n  <tr><td>В3</td><td>Приобъектные (МГН)  = <span data-token=\"formulaBreakMaxV3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxV3 = max(0, 4 - 9 - 5)\n0 = max(0, @formulaNvPlusMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">max(0, 4 - 9 - 5)</span></td><td><span data-token=\"formulaBreakMaxV3\" class=\"report-token\" title=\"@formulaBreakMaxV3 = max(0, 4 - 9 - 5)\n0 = max(0, @formulaNvPlusMgnTotal - @inputFactUdsPriobMgn - @inputFactZuPriobMgn)\">0</span></td></tr>\n  <tr><td>МО</td><td>Места остановок  = <span data-token=\"formulaBreakMaxMO.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">max(0, 7 - 3 - 12)</span></td><td><span data-token=\"formulaBreakMaxMO\" class=\"report-token\" title=\"@formulaBreakMaxMO = max(0, 7 - 3 - 12)\n0 = max(0, @formulaNkTotal - @inputFactUdsMo - @inputFactZuMo)\">0</span></td></tr>\n  <tr><td><strong>Итого запроектировано  = <span data-token=\"formulaBreakMaxTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMaxTotal = 509 - 49\n460 = @formulaNMax - @formulaFActual\">509 - 49</span></strong></td><td></td><td><strong><span data-token=\"formulaBreakMaxTotal\" class=\"report-token\" title=\"@formulaBreakMaxTotal = 509 - 49\n460 = @formulaNMax - @formulaFActual\">460</span></strong></td></tr>\n</tbody></table>",
+      "status": "published",
+      "comments": [],
+      "history": [
+        {
+          "id": "hist_1773092216110_psu1724",
+          "action": "created",
+          "author": "user",
+          "timestamp": 1773092216110
+        }
+      ],
+      "createdAt": 1773092216110,
+      "updatedAt": 1773092216110
+    }
+  ]
+}
