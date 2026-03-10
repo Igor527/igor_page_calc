@@ -31,14 +31,40 @@ function parseNum(val) {
   return isNaN(n) ? undefined : n;
 }
 
+/**
+ * Дата в мс. Поддержка DD.MM.YYYY [HH:mm[:ss]] — как в первой строке листа:
+ * 26.01.2026 14:55:27 | 26.01.2026 14:55:27 | Searching... | ... | 16 | 22 | 22 | nan | nan
+ */
 function parseDate(val) {
   if (val === null || val === undefined || val === '') return undefined;
   if (typeof val === 'number' && !isNaN(val)) {
     if (val > 1000000000000) return val;
     return new Date((val - 25569) * 86400 * 1000).getTime();
   }
-  var d = new Date(val);
-  return isNaN(d.getTime()) ? undefined : d.getTime();
+  var s = String(val).trim();
+  // DD.MM.YYYY HH:mm:ss или DD.MM.YYYY HH:mm
+  var dmy = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (dmy) {
+    var day = parseInt(dmy[1], 10);
+    var month = parseInt(dmy[2], 10) - 1;
+    var year = parseInt(dmy[3], 10);
+    var hh = dmy[4] != null ? parseInt(dmy[4], 10) : 0;
+    var mm = dmy[5] != null ? parseInt(dmy[5], 10) : 0;
+    var ss = dmy[6] != null ? parseInt(dmy[6], 10) : 0;
+    var d = new Date(year, month, day, hh, mm, ss);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+  var d2 = new Date(val);
+  return isNaN(d2.getTime()) ? undefined : d2.getTime();
+}
+
+function isInvalidPmReadings(pm1, pm25, pm10) {
+  var list = [pm1, pm25, pm10].filter(function(v) { return v != null; });
+  if (list.length === 0) return false;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] > 500) return true;
+  }
+  return list.length === 3 && list[0] === 0 && list[1] === 0 && list[2] === 0;
 }
 
 function findCol(headers, names) {
@@ -57,20 +83,45 @@ function rowToObject(cells, iDate, iTemp, iPressure, iPm1, iPm25, iPm10, iStatio
   var ts = parseDate(dateRaw);
   if (ts == null && iDate >= 0) return null;
   var date = ts || new Date().getTime();
+  var pm1 = iPm1 >= 0 ? parseNum(cells[iPm1]) : undefined;
+  var pm25 = iPm25 >= 0 ? parseNum(cells[iPm25]) : undefined;
+  var pm10 = iPm10 >= 0 ? parseNum(cells[iPm10]) : undefined;
+  if (isInvalidPmReadings(pm1, pm25, pm10)) return null;
   var row = {
     date: date,
     temperature: iTemp >= 0 ? parseNum(cells[iTemp]) : undefined,
     pressure: iPressure >= 0 ? parseNum(cells[iPressure]) : undefined,
-    pm1: iPm1 >= 0 ? parseNum(cells[iPm1]) : undefined,
-    pm25: iPm25 >= 0 ? parseNum(cells[iPm25]) : undefined,
-    pm10: iPm10 >= 0 ? parseNum(cells[iPm10]) : undefined,
+    pm1: pm1,
+    pm25: pm25,
+    pm10: pm10,
     station: iStation >= 0 ? (cells[iStation] ? String(cells[iStation]).trim() : undefined) : undefined
   };
   return row;
 }
 
+/**
+ * Формат листа без шапки (первая строка — данные):
+ * A,B дата/время (дубликат), C статус (Searching...), D пусто, E,F,G три показателя, далее nan до появления GPS/темп/влажность.
+ * Температура/давление пока не маппим (iTemp/iPressure = -1).
+ * В логе ESP порядок PM: колонки по индексу (0-based) PM1:6, PM25:7, PM10:9 → Firebase pm1, pm25, pm10.
+ */
+function isStationLogRowFormat(cells) {
+  if (!cells || cells.length < 10) return false;
+  var ts = parseDate(cells[0]) || parseDate(cells[1]);
+  if (!ts) return false;
+  var c2 = String(cells[2] != null ? cells[2] : '').trim();
+  if (!c2) return false;
+  return true;
+}
+
 function getColumnIndices(headers, firstRowLooksLikeData) {
   if (firstRowLooksLikeData) {
+    // Новый формат: дата в A (и дубликат в B), метрики в E,F,G — без темпы/давления до появления колонок
+    if (isStationLogRowFormat(headers)) {
+      // ESP лог: PM1→индекс 6, PM2.5→7, PM10→9 (между 7 и 9 может быть другая колонка)
+      return { iDate: 0, iTemp: -1, iPressure: -1, iPm1: 6, iPm25: 7, iPm10: 9, iStation: -1, startRow: 0 };
+    }
+    // Старый AirStationLog: дата в B, E=темп, F/G=PM2.5/PM10
     return { iDate: 1, iTemp: 4, iPressure: 7, iPm1: -1, iPm25: 5, iPm10: 6, iStation: -1, startRow: 0 };
   }
   var iDate = findCol(headers, ['date', 'datetime', 'дата', 'время', 'time']);
@@ -127,10 +178,10 @@ function setLastProcessedRow(row) {
 }
 
 /**
- * Синхронизировать новые строки листа с Firebase (только строки после последней обработанной).
+ * Синхронизировать новые строки с Firebase. sheet — лист Raw (если null, активный лист).
  */
-function syncWeatherToFirebase() {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+function syncWeatherToFirebaseFromSheet(sheet) {
+  if (!sheet) sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var data = sheet.getDataRange().getValues();
   if (!data || data.length === 0) return { pushed: 0, message: 'Нет данных' };
 
@@ -153,11 +204,28 @@ function syncWeatherToFirebase() {
   return { pushed: pushed, total: rowsToSend.length, message: 'Отправлено ' + pushed + ' из ' + rowsToSend.length };
 }
 
+/** То же, активный лист — для ручного запуска, когда открыт Raw. */
+function syncWeatherToFirebase() {
+  return syncWeatherToFirebaseFromSheet(null);
+}
+
+/**
+ * Дописать в Firebase новые строки с листа Raw по имени (свойство RAW_SHEET_NAME или первый лист).
+ * Вызывать после пайплайна Last24h/Hourly — новые точки с Raw уйдут в базу без смены активного листа.
+ */
+function syncWeatherToFirebaseFromRawSheet() {
+  var name = PropertiesService.getScriptProperties().getProperty('RAW_SHEET_NAME');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = name ? ss.getSheetByName(name) : null;
+  if (!sheet) sheet = ss.getSheets()[0];
+  return syncWeatherToFirebaseFromSheet(sheet);
+}
+
 /**
  * Отправить все строки листа в Firebase (при первом запуске или после сброса).
  * Сброс последней строки: в консоли выполнить setLastProcessedRow(0) или удалить свойство WEATHER_LAST_ROW.
  */
 function syncWeatherToFirebaseFull() {
   PropertiesService.getScriptProperties().deleteProperty('WEATHER_LAST_ROW');
-  return syncWeatherToFirebase();
+  return syncWeatherToFirebaseFromRawSheet();
 }

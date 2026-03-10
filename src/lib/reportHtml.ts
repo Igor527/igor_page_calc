@@ -8,6 +8,8 @@ import type { Block } from '@/types/blocks';
 
 /** Имена функций, которые убираем при отображении формулы в отчёте (floor, ceil, round и т.п.). */
 const ROUNDING_DISPLAY_STRIP = ['round', 'floor', 'ceil'];
+/** Функции, текст которых не должен торчать в режиме значений. */
+const HIDDEN_FUNCTION_TEXT = ['round', 'floor', 'ceil', 'max', 'min', 'roundup', 'rounddown', 'mgnEnlarged'];
 
 /**
  * Убирает внешние round/floor/ceil(...) из формулы только для отображения (расчёт не меняется).
@@ -84,6 +86,15 @@ export function getStepsCalculations(
     return formatValue(values[block.id]);
   }
   return buildFormulaWithValues(block, values, formatValue, true, true);
+}
+
+/**
+ * Проверяет, содержит ли выражение имена функций.
+ * Если да, в режиме значений лучше показать итоговое число, а не текст вида max/min/ceil.
+ */
+export function containsFormulaFunctionText(expression: string): boolean {
+  const text = String(expression || '');
+  return HIDDEN_FUNCTION_TEXT.some((name) => new RegExp(`\\b${name}\\s*\\(`, 'i').test(text));
 }
 
 /** Парсит токен "id", "id:suffix" или "id.stepsCalculations" в { id, suffix }. */

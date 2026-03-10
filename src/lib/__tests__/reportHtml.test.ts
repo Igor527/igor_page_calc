@@ -9,6 +9,7 @@ import {
   applyTableSizing,
   buildFormulaWithValues,
   getStepsCalculations,
+  containsFormulaFunctionText,
 } from '../reportHtml';
 import type { Block } from '@/types/blocks';
 
@@ -109,6 +110,12 @@ describe('buildFormulaWithValues / getStepsCalculations', () => {
   it('getStepsCalculations для formula возвращает выражение с числами', () => {
     const s = getStepsCalculations(formulaBlock, values, formatValue);
     expect(s).toMatch(/3\s*\*\s*4/);
+  });
+
+  it('containsFormulaFunctionText находит max/min/ceil и похожие функции', () => {
+    expect(containsFormulaFunctionText('max(3, 4)')).toBe(true);
+    expect(containsFormulaFunctionText('ceil(10 / 3)')).toBe(true);
+    expect(containsFormulaFunctionText('3 * 4')).toBe(false);
   });
 
   it('getStepsCalculations для не-формулы возвращает formatValue', () => {

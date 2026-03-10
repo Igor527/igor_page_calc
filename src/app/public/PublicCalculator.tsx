@@ -6,7 +6,7 @@ import { recalculateValues } from '@/lib/engine';
 import ChartRenderer from '@/components/editor/ChartRenderer';
 import { sanitizeText, sanitizeUrl, sanitizeHtml } from '@/lib/security';
 import { normalizeTableData } from '@/lib/tableData';
-import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations } from '@/lib/reportHtml';
+import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations, containsFormulaFunctionText } from '@/lib/reportHtml';
 import type { Block, GroupBlock, InputBlock, SelectFromTableBlock, DataTableBlock, ImageBlock, ChartBlock } from '@/types/blocks';
 
 interface PublicCalculatorProps {
@@ -479,7 +479,11 @@ const PublicCalculator: React.FC<PublicCalculatorProps> = ({ calculatorId, block
       }
       if (suffix === 'exprOnly' || suffix === 'stepsCalculations') {
         if (block) {
-          return { text: getStepsCalculations(block, values, formatValueForDisplay), title: '' };
+          const text = getStepsCalculations(block, values, formatValueForDisplay);
+          return {
+            text: containsFormulaFunctionText(text) ? formatValueForDisplay(values[id]) : text,
+            title: '',
+          };
         }
       }
       // В ячейке значения — только число

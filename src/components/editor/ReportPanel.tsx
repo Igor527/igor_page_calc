@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { useCalcStore } from '@/lib/store';
 import { sanitizeHtml, escapeHtml } from '@/lib/security';
-import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations } from '@/lib/reportHtml';
+import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations, containsFormulaFunctionText } from '@/lib/reportHtml';
 import { isErrorValue, extractErrorMessage } from '@/lib/errors';
 import { recalculateValues } from '@/lib/engine';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
@@ -235,10 +235,15 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
       const text = buildFormulaWithValues(block, values, (v) => formatValue(v), false, true);
       return { text, title };
     }
-    // Токен @id:exprOnly или @id.stepsCalculations — шаги вычислений (выражение с числами, без round)
+    // Токен @id:exprOnly или @id.stepsCalculations
     if ((suffix === 'exprOnly' || suffix === 'stepsCalculations') && block) {
+      if (viewMode === 'formulas' && block.type === 'formula') {
+        const text = formatFormulaTokens(block);
+        return { text, title };
+      }
       const text = getStepsCalculations(block, values, (v) => formatValue(v));
-      return { text, title };
+      // В режиме значений не показываем служебные имена функций вроде max/min/ceil.
+      return { text: containsFormulaFunctionText(text) ? formatValue(value) : text, title };
     }
     if (viewMode === 'formulas') {
       const tokenText = suffix ? (suffix === 'stepsCalculations' ? `@${id}.${suffix}` : `@${id}:${suffix}`) : `@${id}`;
