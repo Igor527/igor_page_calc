@@ -7,12 +7,14 @@ import {
   normalizeSlug,
   getNextCalculatorNumber,
   getCalculatorList,
+  getEditorCalculatorList,
   getCalculatorBySlug,
   getPublishedCalculators,
   saveCalculator,
   loadCalculator,
   updateCalculatorStatus,
   getPublicUrl,
+  loadPublishedBundleFromContent,
   type CalculatorStatus,
 } from '../calculatorStorage';
 
@@ -159,6 +161,41 @@ describe('getPublishedCalculators', () => {
     expect(pub).toHaveLength(1);
     expect(pub[0].id).toBe('c1');
     expect(pub[0].slug).toBe('a');
+  });
+});
+
+describe('published bundle loading for editor', () => {
+  beforeEach(() => {
+    setupLocalStorage();
+  });
+
+  it('добавляет опубликованные калькуляторы из репо в список редактора и сохраняет reportHtml при загрузке', () => {
+    loadPublishedBundleFromContent(JSON.stringify({
+      version: 1,
+      exportedAt: 100,
+      calculators: [
+        {
+          id: 'pub1',
+          title: 'Published One',
+          slug: 'published-one',
+          blocks: minimalBlocks,
+          reportHtml: '<h3>Report</h3><p>@c</p>',
+          status: 'published',
+          comments: [],
+          history: [],
+          createdAt: 1,
+          updatedAt: 10,
+        },
+      ],
+    }));
+
+    const list = getEditorCalculatorList();
+    expect(list.some((item) => item.id === 'pub1')).toBe(true);
+
+    const loaded = loadCalculator('pub1');
+    expect(loaded).not.toBeNull();
+    expect(loaded!.reportHtml).toContain('<h3>Report</h3>');
+    expect(loaded!.blocks).toHaveLength(3);
   });
 });
 

@@ -255,6 +255,31 @@ export function getCalculatorList(): Array<{ id: string; title: string; status: 
 }
 
 /**
+ * Список для редактора: локальные калькуляторы + опубликованные из бандла репо.
+ * Нужен, чтобы в окне редактора всегда можно было открыть ранее опубликованные схемы и их reportHtml.
+ */
+export function getEditorCalculatorList(): Array<{ id: string; title: string; status: CalculatorStatus; updatedAt: number; slug?: string }> {
+  const byId = new Map<string, { id: string; title: string; status: CalculatorStatus; updatedAt: number; slug?: string }>();
+  getCalculatorList().forEach((item) => byId.set(item.id, item));
+  if (publishedBundle) {
+    publishedBundle.forEach((calc) => {
+      const existing = byId.get(calc.id);
+      const bundleItem = {
+        id: calc.id,
+        title: calc.title,
+        status: calc.status,
+        updatedAt: calc.updatedAt,
+        slug: calc.slug,
+      } as const;
+      if (!existing || (bundleItem.updatedAt ?? 0) >= (existing.updatedAt ?? 0)) {
+        byId.set(calc.id, bundleItem);
+      }
+    });
+  }
+  return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+/**
  * Следующий порядковый номер для slug по умолчанию (/1, /2, …).
  * По всем сохранённым калькуляторам ищет числовые slug и возвращает max + 1.
  */

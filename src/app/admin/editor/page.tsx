@@ -12,11 +12,12 @@ import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
-import { generateCalculatorId, saveCalculator, loadCalculator, getCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent, updateCalculatorStatus } from '@/lib/calculatorStorage';
+import { generateCalculatorId, saveCalculator, loadCalculator, getEditorCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent, updateCalculatorStatus } from '@/lib/calculatorStorage';
 import { pushCalculators, getCalculatorsJsonFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
 import ValidationErrors from '@/components/editor/ValidationErrors';
+import aiCalculatorPrompt from '../../../../AI_CALCULATOR_PROMPT.md?raw';
 
 // Демонстрационный набор блоков (загружается из JSON)
 const testBlocks = parkingDemo as Block[];
@@ -24,66 +25,6 @@ const testBlocks = parkingDemo as Block[];
 // Подсказка для AI-панели администратора:
 // Для генерации схемы калькулятора используйте инструкцию из раздела "Инструкция для AI Copilot/ChatGPT" в README.md этого проекта.
 // Просто скопируйте шаблон и вставьте его в окно AI.
-
-const AI_GENERATION_PROMPT = [
-  'Сгенерируй калькулятор для Igor.Page Calc.',
-  '',
-  'Нужно вернуть 2 отдельных файла:',
-  '1. `calculator.json` — JSON со схемой калькулятора (массив `blocks`).',
-  '2. `report.html` — HTML-отчёт с токенами `@id`, `@id.stepsCalculations`, `@id:expr`, `@id:exprOnly`.',
-  '',
-  'Требования:',
-  '- На выходе только эти 2 файла, без пояснений вне файлов.',
-  '- В `calculator.json` должны быть только валидные блоки конструктора.',
-  '- В `report.html` использовать токены отчёта.',
-  '- Для колонки формулы использовать `@id.stepsCalculations` или `@id:exprOnly`.',
-  '- Для колонки значения всегда использовать `@id`.',
-  '- Если в формуле есть `max`, `min`, `ceil`, `floor`, `round`, `roundup`, `rounddown`, в колонке значения всё равно нужен только итог, не текст формулы.',
-  '- Если есть формулы, у каждого блока `formula` обязательно заполнить `dependencies`.',
-  '',
-  'Пример файла `calculator.json`:',
-  '```json',
-  '[',
-  '  {',
-  '    "id": "inputArea",',
-  '    "type": "input",',
-  '    "label": "Площадь",',
-  '    "inputType": "number",',
-  '    "defaultValue": 50,',
-  '    "unit": "м²",',
-  '    "min": 0,',
-  '    "step": 1',
-  '  },',
-  '  {',
-  '    "id": "rate",',
-  '    "type": "constant",',
-  '    "value": 100',
-  '  },',
-  '  {',
-  '    "id": "totalCost",',
-  '    "type": "formula",',
-  '    "label": "Стоимость",',
-  '    "formula": "inputArea * rate",',
-  '    "dependencies": ["inputArea", "rate"]',
-  '  }',
-  ']',
-  '```',
-  '',
-  'Пример файла `report.html`:',
-  '```html',
-  '<h3>Расчёт</h3>',
-  '<table>',
-  '  <tr><th>Показатель</th><th>Формула</th><th>Значение</th></tr>',
-  '  <tr>',
-  '    <td>Стоимость</td>',
-  '    <td>= @totalCost.stepsCalculations</td>',
-  '    <td>@totalCost</td>',
-  '  </tr>',
-  '</table>',
-  '```',
-  '',
-  'Верни результат именно как 2 файла: `calculator.json` и `report.html`.'
-].join('\n');
 
 const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const blocks = useCalcStore((s) => s.blocks);
@@ -105,7 +46,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const forceNewCalculatorRef = useRef(false);
 
   const validation = useMemo(() => validateBlocks(blocks), [blocks]);
-  const calculatorList = useMemo(() => getCalculatorList().sort((a, b) => b.updatedAt - a.updatedAt), [listKey]);
+  const calculatorList = useMemo(() => getEditorCalculatorList(), [listKey]);
   const canSubmitReview = validation.valid && blocks.length > 0;
 
   const handleResetToDemo = () => {
@@ -575,12 +516,12 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1100 }} onClick={() => { setPasteJsonOpen(false); setPasteJsonText(''); }} aria-hidden="true" />
           <div style={{ position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 1101, width: '90%', maxWidth: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column', background: 'var(--pico-card-background-color)', border: '1px solid var(--pico-border-color)', borderRadius: 8, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', padding: 16 }}>
             <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: 'var(--pico-color)' }}>Вставить JSON (схема из Copilot)</div>
-            <p style={{ fontSize: 12, color: 'var(--color-muted-text)', marginBottom: 6 }}>Кнопка ниже копирует готовую инструкцию для AI: что построить, как оформить <code style={{ background: 'var(--pico-code-background-color)', padding: '2px 4px', borderRadius: 4 }}>calculator.json</code> и <code style={{ background: 'var(--pico-code-background-color)', padding: '2px 4px', borderRadius: 4 }}>report.html</code>, какие токены использовать в отчёте и что на выходе нужны именно 2 файла.</p>
+            <p style={{ fontSize: 12, color: 'var(--color-muted-text)', marginBottom: 6 }}>Кнопка ниже копирует готовую инструкцию для AI: что построить, как оформить <code style={{ background: 'var(--pico-code-background-color)', padding: '2px 4px', borderRadius: 4 }}>calculator.json</code> и <code style={{ background: 'var(--pico-code-background-color)', padding: '2px 4px', borderRadius: 4 }}>report.html</code>, какие токены использовать в отчёте, что формулу надо писать как <code style={{ background: 'var(--pico-code-background-color)', padding: '2px 4px', borderRadius: 4 }}>= @id.stepsCalculations</code>, и что на выходе нужны именно 2 файла.</p>
             <p style={{ fontSize: 12, color: 'var(--color-muted-text)', marginBottom: 4 }}>Формат: только отчёт <code>{'{'} "reportHtml": "&lt;html&gt;..." {'}'}</code> (блоки не трогаем), или блоки + отчёт, или массив блоков. При вставке только reportHtml обновляется лишь отчёт.</p>
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard?.writeText(AI_GENERATION_PROMPT).then(() => setSaveMessage('AI-инструкция скопирована')).catch(() => {});
+                navigator.clipboard?.writeText(aiCalculatorPrompt).then(() => setSaveMessage('AI-инструкция скопирована')).catch(() => {});
                 setTimeout(() => setSaveMessage(null), 2000);
               }}
               style={{ fontSize: 11, padding: '4px 8px', marginBottom: 8, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer' }}
