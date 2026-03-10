@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1773092218936,
+  "exportedAt": 1773168722322,
   "calculators": [
     {
       "id": "calc_sl62c3f1b_mmjpbpyh",
@@ -2685,6 +2685,423 @@
       ],
       "createdAt": 1773092216110,
       "updatedAt": 1773092216110
+    },
+    {
+      "id": "calc_p8yalmfbw_mmkyvij3",
+      "title": "Калькулятор2",
+      "slug": "1",
+      "blocks": [
+        {
+          "id": "objName",
+          "type": "input",
+          "label": "Наименование объекта",
+          "description": "Наименование объекта",
+          "inputType": "text",
+          "defaultValue": "Строгино"
+        },
+        {
+          "id": "objAddress",
+          "type": "input",
+          "label": "Адрес",
+          "description": "Адрес объекта",
+          "inputType": "text",
+          "defaultValue": "ул. Строгино"
+        },
+        {
+          "id": "inputMetroDistance",
+          "type": "input",
+          "label": "Метро, м",
+          "description": "Удаленность от метро, м",
+          "inputType": "number",
+          "defaultValue": 2200
+        },
+        {
+          "id": "inputAreaFlats",
+          "type": "input",
+          "label": "Площадь квартир, кв.м",
+          "description": "Площадь квартир, кв.м",
+          "inputType": "number",
+          "defaultValue": 16089.7
+        },
+        {
+          "id": "inputAreaNNP",
+          "type": "input",
+          "label": "Нежилая наземная площадь, кв.м",
+          "description": "Нежилая наземная площадь, кв.м",
+          "inputType": "number",
+          "defaultValue": 3466
+        },
+        {
+          "id": "inputSqmPerPlace",
+          "type": "input",
+          "label": "Кв.м/м.м",
+          "description": "Норма кв.м на машино-место",
+          "inputType": "number",
+          "defaultValue": 32
+        },
+        {
+          "id": "livingNormMkd",
+          "type": "constant",
+          "value": 33
+        },
+        {
+          "id": "k1Range",
+          "type": "constant",
+          "value": 1
+        },
+        {
+          "id": "k2Lookup",
+          "type": "constant",
+          "value": 0.9
+        },
+        {
+          "id": "formulaNp",
+          "type": "formula",
+          "label": "Число мест постоянного размещения",
+          "formula": "round((inputAreaFlats / livingNormMkd) * 0.257 * k1Range)",
+          "dependencies": [
+            "inputAreaFlats",
+            "livingNormMkd",
+            "k1Range"
+          ]
+        },
+        {
+          "id": "formulaNpMinus",
+          "type": "formula",
+          "label": "Число мест постоянного размещения (отклонение -10%)",
+          "formula": "round(formulaNp * 0.9)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNpPlus",
+          "type": "formula",
+          "label": "Число мест постоянного размещения (отклонение +10%)",
+          "formula": "round(formulaNp * 1.1)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNg",
+          "type": "formula",
+          "label": "Число мест гостевой парковки",
+          "formula": "round(formulaNp * 0.1)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaNgMinus",
+          "type": "formula",
+          "label": "Число мест гостевой парковки (отклонение -10%)",
+          "formula": "round(formulaNg * 0.9)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNgPlus",
+          "type": "formula",
+          "label": "Число мест гостевой парковки (отклонение +10%)",
+          "formula": "round(formulaNg * 1.1)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNgMgnSimple",
+          "type": "formula",
+          "label": "Число мест гостевой парковки для МГН",
+          "formula": "round(formulaNg * 0.1)",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaNv",
+          "type": "formula",
+          "label": "Число мест приобъектной парковки",
+          "formula": "round((inputAreaNNP / 90) * k1Range * k2Lookup)",
+          "dependencies": [
+            "inputAreaNNP",
+            "k1Range",
+            "k2Lookup"
+          ]
+        },
+        {
+          "id": "formulaNvMinus",
+          "type": "formula",
+          "label": "Число мест приобъектной парковки (отклонение -30%)",
+          "formula": "round(formulaNv * 0.7)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNvPlus",
+          "type": "formula",
+          "label": "Число мест приобъектной парковки (отклонение +30%)",
+          "formula": "round(formulaNv * 1.3)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNvMgnSimple",
+          "type": "formula",
+          "label": "Число мест приобъектной парковки для МГН",
+          "formula": "round(formulaNv * 0.1)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaNkResidential",
+          "type": "formula",
+          "label": "Число мест остановки (жилое назначение)",
+          "formula": "round(inputAreaFlats / 22100)",
+          "dependencies": [
+            "inputAreaFlats"
+          ]
+        },
+        {
+          "id": "formulaNkCommercial",
+          "type": "formula",
+          "label": "Число мест остановки (коммерция)",
+          "formula": "min(4, ceil(inputAreaNNP / 450))",
+          "dependencies": [
+            "inputAreaNNP"
+          ]
+        },
+        {
+          "id": "formulaNkTotal",
+          "type": "formula",
+          "label": "Всего мест остановки",
+          "formula": "formulaNkResidential + formulaNkCommercial",
+          "dependencies": [
+            "formulaNkResidential",
+            "formulaNkCommercial"
+          ]
+        },
+        {
+          "id": "formulaNRequired",
+          "type": "formula",
+          "label": "Всего требуется разместить стоянок и остановок",
+          "formula": "formulaNp + formulaNg + formulaNv - formulaNkTotal",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaNMin",
+          "type": "formula",
+          "label": "Всего требуется разместить стоянок и остановок (отклонение в меньшую сторону)",
+          "formula": "round((formulaNp * 0.9) + (formulaNg * 0.9) + (formulaNv * 0.7) + formulaNkTotal)",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaNMax",
+          "type": "formula",
+          "label": "Всего требуется разместить стоянок и остановок (отклонение в большую сторону)",
+          "formula": "round((formulaNp * 1.1) + (formulaNg * 1.1) + (formulaNv * 1.3) + formulaNkTotal)",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaParkingArea",
+          "type": "formula",
+          "label": "Площадь подземной автостоянки",
+          "formula": "round((formulaNp + formulaNg + formulaNv - formulaNkTotal) * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaParkingArea2",
+          "type": "formula",
+          "label": "Площадь подземной автостоянки в два уровня",
+          "formula": "round(formulaParkingArea / 2)",
+          "dependencies": [
+            "formulaParkingArea"
+          ]
+        },
+        {
+          "id": "formulaParkingAreaMin",
+          "type": "formula",
+          "label": "Площадь автостоянки (минимум)",
+          "formula": "round(formulaNMin * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaNMin",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaParkingAreaMax",
+          "type": "formula",
+          "label": "Площадь автостоянки (максимум)",
+          "formula": "round(formulaNMax * inputSqmPerPlace)",
+          "dependencies": [
+            "formulaNMax",
+            "inputSqmPerPlace"
+          ]
+        },
+        {
+          "id": "formulaBreakP1",
+          "type": "formula",
+          "label": "Постоянные (без учёта электромобилей)",
+          "formula": "max(0, round(formulaNp))",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaBreakP2",
+          "type": "formula",
+          "label": "Постоянные (электромобили)",
+          "formula": "round(formulaNp * 0.1)",
+          "dependencies": [
+            "formulaNp"
+          ]
+        },
+        {
+          "id": "formulaBreakG1",
+          "type": "formula",
+          "label": "Гостевые (без учёта МГН и электромобилей)",
+          "formula": "max(0, round(formulaNg * 0.9))",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaBreakG3",
+          "type": "formula",
+          "label": "Гостевые (МГН)",
+          "formula": "max(0, round(formulaNg * 0.1))",
+          "dependencies": [
+            "formulaNg"
+          ]
+        },
+        {
+          "id": "formulaBreakV1",
+          "type": "formula",
+          "label": "Приобъектные (без учёта МГН и электромобилей)",
+          "formula": "max(0, round(formulaNv * 0.7))",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaBreakV2",
+          "type": "formula",
+          "label": "Приобъектные (электромобили)",
+          "formula": "round(formulaNv * 0.1)",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaBreakV3",
+          "type": "formula",
+          "label": "Приобъектные (МГН)",
+          "formula": "max(0, round(formulaNv * 0.1))",
+          "dependencies": [
+            "formulaNv"
+          ]
+        },
+        {
+          "id": "formulaBreakMO",
+          "type": "formula",
+          "label": "Места остановок",
+          "formula": "round(formulaNkTotal)",
+          "dependencies": [
+            "formulaNkTotal"
+          ]
+        },
+        {
+          "id": "formulaBreakTotal",
+          "type": "formula",
+          "label": "Итого запроектировано",
+          "formula": "round(formulaNp + formulaNg + formulaNv - formulaNkTotal)",
+          "dependencies": [
+            "formulaNp",
+            "formulaNg",
+            "formulaNv",
+            "formulaNkTotal"
+          ]
+        }
+      ],
+      "values": {
+        "objName": "Строгино",
+        "objAddress": "ул. Строгино",
+        "inputMetroDistance": 2200,
+        "inputAreaFlats": 16089.7,
+        "inputAreaNNP": 3466,
+        "inputSqmPerPlace": 32,
+        "livingNormMkd": 33,
+        "k1Range": 1,
+        "k2Lookup": 0.9,
+        "formulaNp": 125,
+        "formulaNpMinus": 113,
+        "formulaNpPlus": 138,
+        "formulaNg": 13,
+        "formulaNgMinus": 12,
+        "formulaNgPlus": 14,
+        "formulaNgMgnSimple": 1,
+        "formulaNv": 35,
+        "formulaNvMinus": 25,
+        "formulaNvPlus": 46,
+        "formulaNvMgnSimple": 4,
+        "formulaNkResidential": 1,
+        "formulaNkCommercial": 4,
+        "formulaNkTotal": 5,
+        "formulaNRequired": 168,
+        "formulaNMin": 154,
+        "formulaNMax": 202,
+        "formulaParkingArea": 5376,
+        "formulaParkingArea2": 2688,
+        "formulaParkingAreaMin": 4928,
+        "formulaParkingAreaMax": 6464,
+        "formulaBreakP1": 125,
+        "formulaBreakP2": 13,
+        "formulaBreakG1": 12,
+        "formulaBreakG3": 1,
+        "formulaBreakV1": 25,
+        "formulaBreakV2": 4,
+        "formulaBreakV3": 4,
+        "formulaBreakMO": 5,
+        "formulaBreakTotal": 168
+      },
+      "reportHtml": "<h1>Отчёт: Расчёт числа мест стоянок и остановок</h1><h2>Введение</h2><h3><p>Данный отчёт содержит детальный расчёт числа мест для стоянок и остановок транспортных средств в соответствии с нормативными требованиями. Расчёты выполнены для многоквартирного дома с учётом всех необходимых параметров и коэффициентов.</p><hr></h3><h2>1. Исходные данные</h2><h3><table style=\"min-width: 75px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Наименование показателя</p></th><th colspan=\"1\" rowspan=\"1\"><p>Обозначение</p></th><th colspan=\"1\" rowspan=\"1\"><p>Значение</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Тип объекта</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Многоквартирный дом</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Год РНС</p></td><td colspan=\"1\" rowspan=\"1\"><p>г.</p></td><td colspan=\"1\" rowspan=\"1\"><p>2027 и далее</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Объект</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Строгино</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Район города Москвы</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Строгино</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Место площадки относительно ТТК г.Москва</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Снаружи ТТК</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Доступность рельсового каркаса</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>более 2 200 м (более 30 мин. пешком)</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Коэффициент пешей доступности рельсового каркаса</p></td><td colspan=\"1\" rowspan=\"1\"><p>K1</p></td><td colspan=\"1\" rowspan=\"1\"><p>1</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Уточняющий коэффициент деловой активности</p></td><td colspan=\"1\" rowspan=\"1\"><p>K2</p></td><td colspan=\"1\" rowspan=\"1\"><p>0.9</p></td></tr></tbody></table><hr></h3><h2>2. Расчёт числа мест постоянного размещения транспортных средств жителей</h2><h3><table style=\"min-width: 100px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Наименование показателя</p></th><th colspan=\"1\" rowspan=\"1\"><p>Обозначение</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Показатели расчета населения по типам жилой застройки</p></td><td colspan=\"1\" rowspan=\"1\"><p>S1</p></td><td colspan=\"1\" rowspan=\"1\"><p>33</p></td><td colspan=\"1\" rowspan=\"1\"><p>33</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Целевой показатель уровня автомобилизации</p></td><td colspan=\"1\" rowspan=\"1\"><p>A</p></td><td colspan=\"1\" rowspan=\"1\"><p>0.257</p></td><td colspan=\"1\" rowspan=\"1\"><p>0.257</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест постоянного размещения транспортных средств жителей</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nп</p></td><td colspan=\"1\" rowspan=\"1\"><p>(16089.7 / 33) × 0.257 × 1</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNp.stepsCalculations\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">(16089.7 / 33) * 0.257 * 1</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест постоянного размещения транспортных средств жителей (допустимое отклонение -10%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nп × 90%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNpMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNpMinus = round(125 * 0.9)\n113 = round(@formulaNp * 0.9)\">125 * 0.9</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест постоянного размещения транспортных средств жителей (допустимое отклонение +10%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nп × 110%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNpPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNpPlus = round(125 * 1.1)\n138 = round(@formulaNp * 1.1)\">125 * 1.1</span></p></td></tr></tbody></table><hr></h3><h2>3. Расчёт числа мест гостевой парковки</h2><h3><table style=\"min-width: 100px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Наименование показателя</p></th><th colspan=\"1\" rowspan=\"1\"><p>Обозначение</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест гостевой парковки</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nг</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nп × 10%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNg.stepsCalculations\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">125 * 0.1</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест гостевой парковки (допустимое отклонение -10%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nг × 90%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNgMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNgMinus = round(13 * 0.9)\n12 = round(@formulaNg * 0.9)\">13 * 0.9</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест гостевой парковки (допустимое отклонение +10%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nг × 110%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNgPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNgPlus = round(13 * 1.1)\n14 = round(@formulaNg * 1.1)\">13 * 1.1</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Из них для МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nг × 10%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNgMgnSimple\" class=\"report-token\" title=\"@formulaNgMgnSimple = round(13 * 0.1)\n1 = round(@formulaNg * 0.1)\">1</span> (шт.), в т.ч. увеличенных размеров: @formulaNgMgnSimpleEnlarged (шт.)</p></td></tr></tbody></table><hr></h3><h2>4. Расчёт числа мест приобъектной парковки</h2><h3><table style=\"min-width: 100px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Наименование показателя</p></th><th colspan=\"1\" rowspan=\"1\"><p>Обозначение</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест приобъектной парковки</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nв</p></td><td colspan=\"1\" rowspan=\"1\"><p>(3466 / 90) × 1 × 0.9</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNv.stepsCalculations\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">(3466 / 90) * 1 * 0.9</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест приобъектной парковки (допустимое отклонение -30%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nв × 70%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNvMinus.stepsCalculations\" class=\"report-token\" title=\"@formulaNvMinus = round(35 * 0.7)\n25 = round(@formulaNv * 0.7)\">35 * 0.7</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Число мест приобъектной парковки (допустимое отклонение +30%)</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nв × 130%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNvPlus.stepsCalculations\" class=\"report-token\" title=\"@formulaNvPlus = round(35 * 1.3)\n46 = round(@formulaNv * 1.3)\">35 * 1.3</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Из них для МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>-</p></td><td colspan=\"1\" rowspan=\"1\"><p>Nв × 10%</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNvMgnSimple\" class=\"report-token\" title=\"@formulaNvMgnSimple = round(35 * 0.1)\n4 = round(@formulaNv * 0.1)\">4</span> (шт.), в т.ч. увеличенных размеров: @formulaNvMgnSimpleEnlarged (шт.)</p></td></tr></tbody></table><hr></h3><h2>5. Расчёт числа мест остановки</h2><h3><table style=\"min-width: 100px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Функциональное назначение объекта</p></th><th colspan=\"1\" rowspan=\"1\"><p>Показатель S1</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество мест</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Жилое назначение</p></td><td colspan=\"1\" rowspan=\"1\"><p>кв.м на одно место остановки</p></td><td colspan=\"1\" rowspan=\"1\"><p>16089.7 / 22100</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkResidential.stepsCalculations\" class=\"report-token\" title=\"@formulaNkResidential = round(16089.7 / 22100)\n1 = round(@inputAreaFlats / 22100)\">16089.7 / 22100</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Коммерция (1 этаж)</p></td><td colspan=\"1\" rowspan=\"1\"><p>кв.м на одно место остановки</p></td><td colspan=\"1\" rowspan=\"1\"><p>min(4, ceil(3466 / 450))</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkCommercial.stepsCalculations\" class=\"report-token\" title=\"@formulaNkCommercial = min(4, ceil(3466 / 450))\n4 = min(4, ceil(@inputAreaNNP / 450))\">4</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Всего требуется</p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkResidential\" class=\"report-token\" title=\"@formulaNkResidential = round(16089.7 / 22100)\n1 = round(@inputAreaFlats / 22100)\">1</span> + <span data-token=\"formulaNkCommercial\" class=\"report-token\" title=\"@formulaNkCommercial = min(4, ceil(3466 / 450))\n4 = min(4, ceil(@inputAreaNNP / 450))\">4</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">1 + 4</span></p></td></tr></tbody></table><hr></h3><h2>6. Итоговые расчёты</h2><h3><table style=\"min-width: 100px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>№</p></th><th colspan=\"1\" rowspan=\"1\"><p>Наименование показателя</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>1.</p></td><td colspan=\"1\" rowspan=\"1\"><p>% электромобилей (по году РНС)</p></td><td colspan=\"1\" rowspan=\"1\"><p>0.1 × 100</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaEvSharePercent.stepsCalculations</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>2.</p></td><td colspan=\"1\" rowspan=\"1\"><p>Всего требуется разместить стоянок и остановок</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> + <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> + <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> - <span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNRequired.stepsCalculations\" class=\"report-token\" title=\"@formulaNRequired = 125 + 13 + 35 - 5\n168 = @formulaNp + @formulaNg + @formulaNv - @formulaNkTotal\">125 + 13 + 35 - 5</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>3.</p></td><td colspan=\"1\" rowspan=\"1\"><p>Всего требуется разместить стоянок и остановок (допустимое отклонение в меньшую сторону)</p></td><td colspan=\"1\" rowspan=\"1\"><p>(<span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> × 0.9) + (<span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.9) + (<span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.7) + <span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNMin.stepsCalculations\" class=\"report-token\" title=\"@formulaNMin = round((125 * 0.9) + (13 * 0.9) + (35 * 0.7) + 5)\n154 = round((@formulaNp * 0.9) + (@formulaNg * 0.9) + (@formulaNv * 0.7) + @formulaNkTotal)\">(125 * 0.9) + (13 * 0.9) + (35 * 0.7) + 5</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>4.</p></td><td colspan=\"1\" rowspan=\"1\"><p>Всего требуется разместить стоянок и остановок (допустимое отклонение в большую сторону)</p></td><td colspan=\"1\" rowspan=\"1\"><p>(<span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> × 1.1) + (<span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 1.1) + (<span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 1.3) + <span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNMax.stepsCalculations\" class=\"report-token\" title=\"@formulaNMax = round((125 * 1.1) + (13 * 1.1) + (35 * 1.3) + 5)\n202 = round((@formulaNp * 1.1) + (@formulaNg * 1.1) + (@formulaNv * 1.3) + @formulaNkTotal)\">(125 * 1.1) + (13 * 1.1) + (35 * 1.3) + 5</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>5.</p></td><td colspan=\"1\" rowspan=\"1\"><p>Площадь подземной автостоянки при обеспеченности <span data-token=\"inputSqmPerPlace\" class=\"report-token\" title=\"Норма кв.м на машино-место\">32</span> кв.м/м.м</p></td><td colspan=\"1\" rowspan=\"1\"><p>(<span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> + <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> + <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> - <span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span>) × inputSqmPerPlace</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaParkingArea.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingArea = round((125 + 13 + 35 - 5) * 32)\n5376 = round((@formulaNp + @formulaNg + @formulaNv - @formulaNkTotal) * @inputSqmPerPlace)\">(125 + 13 + 35 - 5) * 32</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>6.</p></td><td colspan=\"1\" rowspan=\"1\"><p>То же, в два уровня</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaParkingArea\" class=\"report-token\" title=\"@formulaParkingArea = round((125 + 13 + 35 - 5) * 32)\n5376 = round((@formulaNp + @formulaNg + @formulaNv - @formulaNkTotal) * @inputSqmPerPlace)\">5376</span> / 2</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaParkingArea2.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingArea2 = round(5376 / 2)\n2688 = round(@formulaParkingArea / 2)\">5376 / 2</span></p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>7.</p></td><td colspan=\"1\" rowspan=\"1\"><p>Площадь автостоянки (минимум / максимум)</p></td><td colspan=\"1\" rowspan=\"1\"><p>(<span data-token=\"formulaNMin\" class=\"report-token\" title=\"@formulaNMin = round((125 * 0.9) + (13 * 0.9) + (35 * 0.7) + 5)\n154 = round((@formulaNp * 0.9) + (@formulaNg * 0.9) + (@formulaNv * 0.7) + @formulaNkTotal)\">154</span> × inputSqmPerPlace) / (<span data-token=\"formulaNMax\" class=\"report-token\" title=\"@formulaNMax = round((125 * 1.1) + (13 * 1.1) + (35 * 1.3) + 5)\n202 = round((@formulaNp * 1.1) + (@formulaNg * 1.1) + (@formulaNv * 1.3) + @formulaNkTotal)\">202</span> × inputSqmPerPlace)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaParkingAreaMin.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingAreaMin = round(154 * 32)\n4928 = round(@formulaNMin * @inputSqmPerPlace)\">154 * 32</span> / <span data-token=\"formulaParkingAreaMax.stepsCalculations\" class=\"report-token\" title=\"@formulaParkingAreaMax = round(202 * 32)\n6464 = round(@formulaNMax * @inputSqmPerPlace)\">202 * 32</span></p></td></tr></tbody></table><hr></h3><h2>7. Фактическое расположение на участке и УДС м/м</h2><h3><table style=\"min-width: 75px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Наименование</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории ЗУ - места остановки</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuMo</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuMo</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории ЗУ - гостевые МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuGuestMgn</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuGuestMgn</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории ЗУ - приобъектные МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuPriobMgn</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuPriobMgn</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории УДС - места остановки</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsMo</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsMo</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории УДС - гостевые</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsGuest</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsGuest</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории УДС - гостевые МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsGuestMgn</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsGuestMgn</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории УДС - приобъектные</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsPriob</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsPriob</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>На территории УДС - приобъектные МГН</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsPriobMgn</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactUdsPriobMgn</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Всего фактически размещено</p></td><td colspan=\"1\" rowspan=\"1\"><p>@inputFactZuMo + @inputFactZuGuestMgn + @inputFactZuPriobMgn + @inputFactUdsMo + @inputFactUdsGuest + @inputFactUdsGuestMgn + @inputFactUdsPriob + @inputFactUdsPriobMgn</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaFActual.stepsCalculations</p></td></tr></tbody></table><hr></h3><h2>8. Требуется разместить в подземной автостоянке</h2><h3><table style=\"min-width: 125px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Позиция</p></th><th colspan=\"1\" rowspan=\"1\"><p>Описание</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th><th colspan=\"1\" rowspan=\"1\"><p>Условия размещения</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>П1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Постоянные (без учёта электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span>)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakP1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakP1 = max(0, round(125))\n125 = max(0, round(@formulaNp))\">125</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>не далее 1200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>П2</p></td><td colspan=\"1\" rowspan=\"1\"><p>Постоянные (электромобили)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> × 0.1</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakP2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakP2 = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">125 * 0.1</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>не далее 1200м (Тип 1-2, не менее одной стандартной зарядной станции (тип 3) на объект)</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.9)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakG1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakG1 = max(0, round(13 * 0.9))\n12 = max(0, round(@formulaNg * 0.9))\">12</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.1)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakG3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakG3 = max(0, round(13 * 0.1))\n1 = max(0, round(@formulaNg * 0.1))\">1</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 100м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.7)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakV1.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV1 = max(0, round(35 * 0.7))\n25 = max(0, round(@formulaNv * 0.7))\">25</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В2</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (электромобили)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.1</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakV2.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV2 = round(35 * 0.1)\n4 = round(@formulaNv * 0.1)\">35 * 0.1</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м (не менее одной зарядной станции, в том числе не менее 2% стандартных (тип 3) и не менее одной быстрой зарядной станции (тип 4) на объект площадью 5000 кв.м и более)</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.1)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakV3.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakV3 = max(0, round(35 * 0.1))\n4 = max(0, round(@formulaNv * 0.1))\">4</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 50м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>МО</p></td><td colspan=\"1\" rowspan=\"1\"><p>Места остановок</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakMO.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakMO = round(5)\n5 = round(@formulaNkTotal)\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 150м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p>Итого запроектировано</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakTotal\" class=\"report-token\" title=\"@formulaBreakTotal = round(125 + 13 + 35 - 5)\n168 = round(@formulaNp + @formulaNg + @formulaNv - @formulaNkTotal)\">168</span></p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaBreakTotal.stepsCalculations\" class=\"report-token\" title=\"@formulaBreakTotal = round(125 + 13 + 35 - 5)\n168 = round(@formulaNp + @formulaNg + @formulaNv - @formulaNkTotal)\">125 + 13 + 35 - 5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td></tr></tbody></table><hr></h3><h2>9. Допустимо разместить в подземной автостоянке (отклонение в меньшую сторону)</h2><h3><table style=\"min-width: 125px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Позиция</p></th><th colspan=\"1\" rowspan=\"1\"><p>Описание</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th><th colspan=\"1\" rowspan=\"1\"><p>Условия размещения</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>П1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Постоянные (без учёта электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> × 0.9)</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinP1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>не далее 1200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.9)</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinG1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.1)</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinG3.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 100м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.7)</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinV1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p>max(0, <span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.1)</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinV3.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 50м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>МО</p></td><td colspan=\"1\" rowspan=\"1\"><p>Места остановок</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinMO.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 150м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p>Итого запроектировано</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinTotal</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMinTotal.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td></tr></tbody></table><hr></h3><h2>10. Допустимо разместить в подземной автостоянке (отклонение в большую сторону)</h2><h3><table style=\"min-width: 125px\"><tbody><tr><th colspan=\"1\" rowspan=\"1\"><p>Позиция</p></th><th colspan=\"1\" rowspan=\"1\"><p>Описание</p></th><th colspan=\"1\" rowspan=\"1\"><p>Формула</p></th><th colspan=\"1\" rowspan=\"1\"><p>Количество, шт.</p></th><th colspan=\"1\" rowspan=\"1\"><p>Условия размещения</p></th></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>П1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Постоянные (без учёта электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNp\" class=\"report-token\" title=\"@formulaNp = round((16089.7 / 33) * 0.257 * 1)\n125 = round((@inputAreaFlats / @livingNormMkd) * 0.257 * @k1Range)\">125</span> × 1.1</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxP1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>не далее 1200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 1.1</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxG1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>Г3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Гостевые (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNg\" class=\"report-token\" title=\"@formulaNg = round(125 * 0.1)\n13 = round(@formulaNp * 0.1)\">13</span> × 0.1</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxG3.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 100м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В1</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (без учёта МГН и электромобилей)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 1.3</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxV1.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В2</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (электромобили)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.1</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxV2.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 200м (не менее одной зарядной станции, в том числе не менее 2% стандартных (тип 3) и не менее одной быстрой зарядной станции (тип 4) на объект площадью 5000 кв.м и более)</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>В3</p></td><td colspan=\"1\" rowspan=\"1\"><p>Приобъектные (МГН)</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNv\" class=\"report-token\" title=\"@formulaNv = round((3466 / 90) * 1 * 0.9)\n35 = round((@inputAreaNNP / 90) * @k1Range * @k2Lookup)\">35</span> × 0.1</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxV3.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 50м по СП59</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p>МО</p></td><td colspan=\"1\" rowspan=\"1\"><p>Места остановок</p></td><td colspan=\"1\" rowspan=\"1\"><p><span data-token=\"formulaNkTotal\" class=\"report-token\" title=\"@formulaNkTotal = 1 + 4\n5 = @formulaNkResidential + @formulaNkCommercial\">5</span></p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxMO.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p>в подземной - не далее 150м</p></td></tr><tr><td colspan=\"1\" rowspan=\"1\"><p></p></td><td colspan=\"1\" rowspan=\"1\"><p>Итого запроектировано</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxTotal</p></td><td colspan=\"1\" rowspan=\"1\"><p>@formulaBreakMaxTotal.stepsCalculations</p></td><td colspan=\"1\" rowspan=\"1\"><p></p></td></tr></tbody></table><hr></h3><h2>Заключение</h2><h3><p>В данном отчёте представлены расчёты числа мест для стоянок и остановок транспортных средств для многоквартирного дома. Все расчёты выполнены в соответствии с действующими нормативными требованиями и учитывают различные типы транспортных средств, включая электромобили и места для маломобильных групп населения. Также учтены допустимые отклонения в меньшую и большую сторону, что позволяет гибко планировать размещение автостоянок на территории объекта.</p></h3>",
+      "status": "published",
+      "comments": [],
+      "history": [
+        {
+          "id": "hist_1773168722320_94vcdez",
+          "action": "created",
+          "author": "user",
+          "timestamp": 1773168722320
+        }
+      ],
+      "createdAt": 1773168722320,
+      "updatedAt": 1773168722320
     }
   ]
 }
