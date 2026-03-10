@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1772657026734,
+  "exportedAt": 1773150442282,
   "entries": [
+    {
+      "id": "e1773111561377-9055qc",
+      "source": "Conclusions",
+      "translation": "Выводы",
+      "transcription": "[kənˈkluːʒənz]",
+      "fromLang": "en",
+      "toLang": "ru",
+      "addedAt": 1773111561377
+    },
     {
       "id": "e1772653553918-w2g92u",
       "source": "Curriculum Vitae",
