@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1773177748384,
+  "exportedAt": 1773215580364,
   "tasks": [
     {
       "id": "2",
@@ -97,7 +97,10 @@
       "start": 1773100800000,
       "end": 1773273600000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Игорь"
+      ]
     },
     {
       "id": "task-1773177741936",
@@ -105,7 +108,10 @@
       "start": 1773273600000,
       "end": 1773446400000,
       "progress": 0,
-      "type": "task"
+      "type": "task",
+      "labels": [
+        "Игорь"
+      ]
     }
   ],
   "labels": [
