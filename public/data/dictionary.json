@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1773321560998,
+  "exportedAt": 1773322003871,
   "entries": [
+    {
+      "id": "e1773321567719-9xqys3",
+      "source": "Promet robe i usluga finalna potrosnja",
+      "translation": "Транспорт и услуги конечное потребление",
+      "transcription": "[prǒmet rǒbe i ùsluga fǐnalna pǒtrosnja]",
+      "fromLang": "sr",
+      "toLang": "ru",
+      "addedAt": 1773321567719
+    },
     {
       "id": "e1773111561377-9055qc",
       "source": "Conclusions",
