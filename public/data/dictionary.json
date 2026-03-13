@@ -1,7 +1,52 @@
 {
   "version": 1,
-  "exportedAt": 1773150442282,
+  "exportedAt": 1773364395720,
   "entries": [
+    {
+      "id": "e1773359890635-h99fah",
+      "source": "детский набор для выпиливания",
+      "translation": "Дечји сет за изрезивање",
+      "transcription": "[ˈdʲet͡skʲɪj ˈnabɔr dlʲɪ vɨpʲɪlʲɪˈvanʲɪjə]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1773359890636
+    },
+    {
+      "id": "e1773322077483-c29gwq",
+      "source": "Я работаю инженером",
+      "translation": "Ја радим као инжењер.",
+      "transcription": "[jɐ rɐˈbotəj ɪnʐɨˈnʲerəm]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1773322077483
+    },
+    {
+      "id": "e1773322033307-tgxcfi",
+      "source": "Что это такое?",
+      "translation": "Что је ово?",
+      "transcription": "[ʂto ˈɛto ˈtaˈkoɛ]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1773322033307
+    },
+    {
+      "id": "e1773322016979-xoiiiw",
+      "source": "Могу ли я оплатить этот товар на кассе самообсуживания",
+      "translation": "Могу ли ја платити овај артикл на каси самоуслуге?",
+      "transcription": "[mɐˈɡu lʲi jɐ ˈplatʲɪtʲ ɐftʲɪt ˈtovər nɐ ˈkasʲɪ səmɐɐpˈsluʐɨvənʲɪjə]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1773322016979
+    },
+    {
+      "id": "e1773321567719-9xqys3",
+      "source": "Promet robe i usluga finalna potrosnja",
+      "translation": "Транспорт и услуги конечное потребление",
+      "transcription": "[prǒmet rǒbe i ùsluga fǐnalna pǒtrosnja]",
+      "fromLang": "sr",
+      "toLang": "ru",
+      "addedAt": 1773321567719
+    },
     {
       "id": "e1773111561377-9055qc",
       "source": "Conclusions",
