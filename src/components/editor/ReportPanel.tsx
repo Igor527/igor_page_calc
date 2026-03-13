@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback, useImperativeHandle } from 'react';
 import { useCalcStore } from '@/lib/store';
 import { sanitizeHtml, escapeHtml } from '@/lib/security';
-import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations, containsFormulaFunctionText } from '@/lib/reportHtml';
+import { replaceTokensInHtml, applyTableSizing, buildFormulaWithValues, getStepsCalculations } from '@/lib/reportHtml';
 import { isErrorValue, extractErrorMessage } from '@/lib/errors';
 import { recalculateValues } from '@/lib/engine';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
@@ -77,7 +77,12 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   const fontSizeKey = 'igor-page-calc-report-font-size';
   const [fontSize, setFontSize] = useState<number>(14);
   const [tokenPopup, setTokenPopup] = useState<{ id: string; x: number; y: number } | null>(null);
-  const tokenStyles = `.report-token{cursor:pointer;font-weight:600;color:var(--pico-color);} .report-token-active{background:#ffe08a;color:#222;padding:0 2px;border-radius:3px;}`;
+  const tokenStyles = [
+    `.report-token{cursor:pointer;font-weight:600;color:var(--pico-color);} .report-token-active{background:#ffe08a;color:#222;padding:0 2px;border-radius:3px;}`,
+    `.report-editor table{ border-collapse: collapse; table-layout: fixed; border: 2px solid var(--pico-primary); }`,
+    `.report-editor table td, .report-editor table th{ border: 1px solid var(--pico-primary-border-color); padding: 6px 8px; position: relative; min-width: 24px; min-height: 20px; }`,
+    `.report-editor table th{ background: var(--pico-primary-background); color: var(--pico-primary-color); border-color: var(--pico-primary); }`,
+  ].join('\n');
   const numberInputStyle = { width: 70, marginBottom: 0, paddingRight: 12, fontSize: 12, height: 28 };
 
   const errorItems = useMemo(() => {
@@ -241,9 +246,8 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
         const text = formatFormulaTokens(block);
         return { text, title };
       }
-      const text = getStepsCalculations(block, values, (v) => formatValue(v));
-      // В режиме значений не показываем служебные имена функций вроде max/min/ceil.
-      return { text: containsFormulaFunctionText(text) ? formatValue(value) : text, title };
+      // Режим значений: формула в виде чисел (22+10)/23, без вычисления и без max/min/floor/ceil
+      return { text: getStepsCalculations(block, values, (v) => formatValue(v)), title };
     }
     if (viewMode === 'formulas') {
       const tokenText = suffix ? (suffix === 'stepsCalculations' ? `@${id}.${suffix}` : `@${id}:${suffix}`) : `@${id}`;
@@ -335,6 +339,93 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
   }, []);
 
   useImperativeHandle(ref, () => ({ insertToken, getEditorHtml, setEditorHtml: setEditorHtmlExternal }), [insertToken, getEditorHtml, setEditorHtmlExternal]);
+
+  // Ресайз ячеек таблицы: перетаскивание правой границы (ширина столбца) и нижней (высота строки)
+  useEffect(() => {
+    const container = editorContainerRef.current;
+    if (!container) return;
+
+    const HANDLE = 6;
+    let resizing: 'col' | 'row' | null = null;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    let cell: HTMLTableCellElement | null = null;
+    let colIndex = 0;
+    let rowIndex = 0;
+    let table: HTMLTableElement | null = null;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!resizing || !cell || !table) return;
+      if (resizing === 'col') {
+        const dx = e.clientX - startX;
+        const newWidth = Math.max(24, startWidth + dx);
+        const rows = table.rows;
+        for (let r = 0; r < rows.length; r++) {
+          const c = rows[r].cells[colIndex];
+          if (c) (c as HTMLElement).style.width = `${newWidth}px`;
+        }
+      } else {
+        const dy = e.clientY - startY;
+        const newHeight = Math.max(20, startHeight + dy);
+        const row = table.rows[rowIndex];
+        if (row) (row as HTMLElement).style.height = `${newHeight}px`;
+      }
+    };
+
+    const onMouseUp = () => {
+      if (resizing && editorRef.current) {
+        setEditorHtml(editorRef.current.innerHTML);
+      }
+      resizing = null;
+      cell = null;
+      table = null;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      const target = (e.target as Node).nodeType === Node.ELEMENT_NODE ? (e.target as HTMLElement).closest?.('td, th') : null;
+      if (!target || !(target instanceof HTMLTableCellElement)) return;
+      const tableEl = target.closest('table');
+      if (!tableEl) return;
+      const rect = target.getBoundingClientRect();
+      const nearRight = e.clientX >= rect.right - HANDLE;
+      const nearBottom = e.clientY >= rect.bottom - HANDLE;
+      if (!nearRight && !nearBottom) return;
+
+      e.preventDefault();
+      cell = target;
+      table = tableEl as HTMLTableElement;
+      rowIndex = (target.parentElement as HTMLTableRowElement).rowIndex;
+      colIndex = target.cellIndex;
+
+      if (nearRight) {
+        resizing = 'col';
+        startX = e.clientX;
+        startWidth = target.offsetWidth;
+      } else {
+        resizing = 'row';
+        startY = e.clientY;
+        startHeight = (target.parentElement as HTMLElement).offsetHeight;
+      }
+
+      document.body.style.cursor = resizing === 'col' ? 'col-resize' : 'row-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    return () => {
+      container.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [editorHtml]);
 
   const insertTable = () => {
     const rows = Math.min(20, Math.max(1, tableRows));
@@ -617,6 +708,7 @@ const ReportPanel = React.forwardRef<ReportPanelHandle, ReportPanelProps>(({ onS
         <div ref={editorContainerRef} style={{ wordWrap: 'break-word', overflowWrap: 'break-word' }}>
           <div
             ref={editorRef}
+            className="report-editor"
             contentEditable
             suppressContentEditableWarning
             onInput={(e) => {

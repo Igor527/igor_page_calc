@@ -39,6 +39,36 @@ export function stripRoundForDisplay(formula: string): string {
 }
 
 /**
+ * Убирает все обёртки функций из списка HIDDEN_FUNCTION_TEXT для наглядного отображения шагов.
+ * Например: "max(0, 22)*2" → "(0, 22)*2", "floor(10*3)" → "10*3". Остаток строки после скобок сохраняется.
+ */
+export function stripAllHiddenFunctionsForDisplay(expression: string): string {
+  let t = expression.trim();
+  const pattern = new RegExp(`^(${HIDDEN_FUNCTION_TEXT.join('|')})\\s*\\(`, 'i');
+  for (;;) {
+    const match = t.match(pattern);
+    if (!match) return t;
+    const open = t.indexOf('(');
+    let depth = 0;
+    let endIdx = -1;
+    for (let i = open; i < t.length; i++) {
+      if (t[i] === '(') depth++;
+      else if (t[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          endIdx = i;
+          break;
+        }
+      }
+    }
+    if (endIdx < 0) return expression.trim();
+    const inner = t.slice(open + 1, endIdx).trim();
+    const tail = t.slice(endIdx + 1).trim();
+    t = tail ? `(${inner})${tail}` : inner;
+  }
+}
+
+/**
  * Подставляет в выражение формулы значения переменных.
  * Возвращает "expr = value" или только "expr" при exprOnly.
  * stripRoundForDisplay: убрать round(...) только из отображаемого выражения (расчёт не меняется).
@@ -73,9 +103,9 @@ export function buildFormulaWithValues(
 }
 
 /**
- * Шаги вычислений формулы: выражение с подставленными значениями, без round в отображении.
- * Для блока-формулы возвращает строку вида "50000/33*0.257*1"; для остальных — форматированное значение.
- * Используется токеном @id.stepsCalculations в отчёте.
+ * Шаги вычислений формулы: выражение с подставленными числами, без вычисления.
+ * Имена функций (max, min, floor, ceil и т.п.) убираются для наглядной визуализации шагов.
+ * Режим формул: показывается токен/формула; режим значений: только выражение вида (22+10)/23.
  */
 export function getStepsCalculations(
   block: Block,
@@ -85,7 +115,8 @@ export function getStepsCalculations(
   if (block.type !== 'formula' || !('formula' in block)) {
     return formatValue(values[block.id]);
   }
-  return buildFormulaWithValues(block, values, formatValue, true, true);
+  const exprWithValues = buildFormulaWithValues(block, values, formatValue, true, false);
+  return stripAllHiddenFunctionsForDisplay(exprWithValues) || formatValue(values[block.id]);
 }
 
 /**

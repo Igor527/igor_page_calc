@@ -4,6 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   stripRoundForDisplay,
+  stripAllHiddenFunctionsForDisplay,
   parseReportToken,
   replaceTokensInHtml,
   applyTableSizing,
@@ -107,9 +108,29 @@ describe('buildFormulaWithValues / getStepsCalculations', () => {
     expect(s).toContain('12');
   });
 
-  it('getStepsCalculations для formula возвращает выражение с числами', () => {
+  it('getStepsCalculations для formula возвращает выражение с числами без вычисления', () => {
     const s = getStepsCalculations(formulaBlock, values, formatValue);
     expect(s).toMatch(/3\s*\*\s*4/);
+    expect(s).not.toContain('12');
+  });
+
+  it('getStepsCalculations убирает max/min/floor/ceil — только числа и операторы', () => {
+    const block: Block = {
+      id: 'f',
+      type: 'formula',
+      formula: 'max(0, a) * b',
+      dependencies: ['a', 'b'],
+    };
+    const s = getStepsCalculations(block, values, formatValue);
+    expect(s).not.toMatch(/max|min|floor|ceil/i);
+    expect(s).toMatch(/0\s*,\s*3/);
+    expect(s).toMatch(/\*\s*4/);
+  });
+
+  it('stripAllHiddenFunctionsForDisplay убирает обёртки функций', () => {
+    expect(stripAllHiddenFunctionsForDisplay('max(0, 22)*2')).toBe('(0, 22)*2');
+    expect(stripAllHiddenFunctionsForDisplay('floor(10*3)')).toBe('10*3');
+    expect(stripAllHiddenFunctionsForDisplay('ceil(max(1, 2))')).toBe('1, 2');
   });
 
   it('containsFormulaFunctionText находит max/min/ceil и похожие функции', () => {
