@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1773359883628,
+  "exportedAt": 1773364395720,
   "entries": [
+    {
+      "id": "e1773359890635-h99fah",
+      "source": "детский набор для выпиливания",
+      "translation": "Дечји сет за изрезивање",
+      "transcription": "[ˈdʲet͡skʲɪj ˈnabɔr dlʲɪ vɨpʲɪlʲɪˈvanʲɪjə]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1773359890636
+    },
     {
       "id": "e1773322077483-c29gwq",
       "source": "Я работаю инженером",
