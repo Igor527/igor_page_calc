@@ -77,6 +77,18 @@ describe('replaceTokensInHtml', () => {
     const result = replaceTokensInHtml(html, blocks, null, getDisplay);
     expect(result).toContain('@unknown');
   });
+
+  it('для stepsCalculations всегда пишет data-token с точкой (id.stepsCalculations)', () => {
+    const blocksWithFormula: Block[] = [
+      ...blocks,
+      { id: 'f', type: 'formula', formula: 'a * b', dependencies: ['a', 'b'] },
+    ];
+    const getDisplay = () => ({ text: '3 * 4', title: '' });
+    const htmlWithColon = '<p><span data-token="f:stepsCalculations">3 * 4</span></p>';
+    const result = replaceTokensInHtml(htmlWithColon, blocksWithFormula, null, getDisplay);
+    expect(result).toContain('data-token="f.stepsCalculations"');
+    expect(result).not.toContain('data-token="f:stepsCalculations"');
+  });
 });
 
 describe('applyTableSizing', () => {

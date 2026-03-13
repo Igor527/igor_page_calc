@@ -157,13 +157,17 @@ export function replaceTokensInHtml(
 ): string {
   const allowedIds = new Set(blocks.map((b) => b.id));
 
+  const canonicalToken = (id: string, suffix: string | undefined, raw: string) =>
+    suffix === 'stepsCalculations' ? `${id}.${suffix}` : raw;
+
   let result = html.replace(/<span\b[^>]*data-token="([^"]+)"[^>]*>.*?<\/span>/gi, (match, token) => {
     const { id, suffix } = parseReportToken(token);
     if (!allowedIds.has(id)) return match;
     const display = getDisplay(id, suffix);
     const safeTitle = display.title ? ` title="${escapeHtml(display.title)}"` : '';
     const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
-    return `<span data-token="${token}" class="${cls}"${safeTitle}>${escapeHtml(display.text)}</span>`;
+    const outToken = canonicalToken(id, suffix, token);
+    return `<span data-token="${outToken}" class="${cls}"${safeTitle}>${escapeHtml(display.text)}</span>`;
   });
 
   const parts = result.split(/(<[^>]+>)/g);
@@ -179,7 +183,8 @@ export function replaceTokensInHtml(
       return part.replace(TOKEN_RE, (match, id, suffixColon, suffixDot) => {
         if (!allowedIds.has(id)) return match;
         const suffix = suffixColon ?? suffixDot;
-        const tokenStr = id + (suffixColon != null ? ':' + suffixColon : suffixDot != null ? '.' + suffixDot : '');
+        const rawStr = id + (suffixColon != null ? ':' + suffixColon : suffixDot != null ? '.' + suffixDot : '');
+        const tokenStr = canonicalToken(id, suffix, rawStr);
         const display = getDisplay(id, suffix);
         const safeTitle = display.title ? ` title="${escapeHtml(display.title)}"` : '';
         const cls = selectedId === id ? 'report-token report-token-active' : 'report-token';
