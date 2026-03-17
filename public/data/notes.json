@@ -1,16 +1,17 @@
 {
   "version": 1,
-  "exportedAt": 1773696596985,
+  "exportedAt": 1773773090938,
   "notes": [
     {
       "id": "2026-03-17_00-29-54",
-      "title": "",
-      "content": "",
+      "title": "Без заголовка",
+      "content": "<p>Curve.GetClosestPointTo</p>",
       "folderId": null,
       "createdAt": 1773696594399,
-      "updatedAt": 1773696594399,
+      "updatedAt": 1773696602787,
       "tags": [],
       "color": "none",
+      "archived": false,
       "todos": []
     },
     {
