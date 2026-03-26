@@ -28,6 +28,8 @@ import {
   getPlannerFromRepo,
   getCalculatorsJsonFromRepo,
   getRssListsFromRepo,
+  getCvFromRepo,
+  getPostsFromRepo,
   getSyncConfig,
   cancelScheduledPush,
 } from './lib/githubSync';
@@ -154,6 +156,14 @@ function App() {
   const pullAllFromRepo = useCallback(async () => {
     const notes = await getNotesFromRepo();
     if (notes) applyNotesFromRepoData(notes);
+    const cv = await getCvFromRepo();
+    if (typeof cv === 'string') {
+      try { localStorage.setItem('igor-cv-html', cv); } catch {}
+    }
+    const posts = await getPostsFromRepo();
+    if (Array.isArray(posts)) {
+      try { localStorage.setItem('igor-blog', JSON.stringify(posts)); } catch {}
+    }
     const dict = await getDictionaryFromRepo();
     if (dict) setDictionaryFromBundle(dict);
     const layouts = await getLayoutsFromRepo();

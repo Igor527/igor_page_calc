@@ -162,6 +162,44 @@ describe('getPublishedCalculators', () => {
     expect(pub[0].id).toBe('c1');
     expect(pub[0].slug).toBe('a');
   });
+
+  it('скрывает из списка калькулятор из бандла, если локально он новее и не published (ушёл на корректировку)', () => {
+    loadPublishedBundleFromContent(JSON.stringify({
+      version: 1,
+      exportedAt: 10,
+      calculators: [
+        {
+          id: 'c1',
+          title: 'A',
+          slug: 'a',
+          blocks: minimalBlocks,
+          status: 'published',
+          comments: [],
+          history: [],
+          createdAt: 1,
+          updatedAt: 100,
+        },
+      ],
+    }));
+    // Локально статус изменили позже (например, на "на корректировку"/review)
+    const store = (globalThis as unknown as { localStorage: Storage }).localStorage as unknown as {
+      setItem: (k: string, v: string) => void;
+    };
+    store.setItem('calc-c1', JSON.stringify({
+      id: 'c1',
+      title: 'A',
+      slug: 'a',
+      blocks: minimalBlocks,
+      status: 'review',
+      comments: [],
+      history: [],
+      createdAt: 1,
+      updatedAt: 200,
+    }));
+
+    const pub = getPublishedCalculators();
+    expect(pub.some((c) => c.id === 'c1')).toBe(false);
+  });
 });
 
 describe('published bundle loading for editor', () => {

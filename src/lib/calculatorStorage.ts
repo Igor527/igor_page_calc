@@ -317,7 +317,18 @@ export function getCalculatorBySlug(slug: string): SavedCalculator | null {
  */
 export function getPublishedCalculators(): Array<{ id: string; title: string; slug?: string }> {
   if (publishedBundle && publishedBundle.length > 0) {
+    // Локальная версия калькулятора (если новее бандла) должна перекрывать статус из репо.
+    // Это нужно, чтобы калькулятор сразу пропадал из публичного списка при переводе на корректировку.
+    const localById = new Map(
+      getCalculatorList().map((c) => [c.id, c] as const)
+    );
     return [...publishedBundle]
+      .filter((c) => {
+        const local = localById.get(c.id);
+        if (!local) return true;
+        if ((local.updatedAt ?? 0) < (c.updatedAt ?? 0)) return true;
+        return local.status === 'published';
+      })
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .map((c) => ({ id: c.id, title: c.title, slug: c.slug }));
   }

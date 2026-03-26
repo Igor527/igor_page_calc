@@ -183,10 +183,10 @@ function loadStoredLabels(): LabelWithColor[] {
 /** Применить данные планировщика из репо (задачи и метки с цветами). */
 export function applyPlannerFromRepoData(data: { tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>; labels?: Array<{ name: string; color?: string }> }): void {
   try {
-    if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+    if (Array.isArray(data.tasks)) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data.tasks));
     }
-    if (Array.isArray(data.labels) && data.labels.length > 0) {
+    if (Array.isArray(data.labels)) {
       localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(data.labels));
     }
   } catch {}
@@ -219,6 +219,9 @@ const PlannerPage: React.FC = () => {
   const [plannerLoaded, setPlannerLoaded] = useState(false);
   const [pullLoading, setPullLoading] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [isNarrow, setIsNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches);
   // Загрузка задач из public/data/planner.json (при первом открытии)
   useEffect(() => {
@@ -228,16 +231,21 @@ const PlannerPage: React.FC = () => {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const raw = data?.tasks;
-        if (!Array.isArray(raw) || raw.length === 0) return;
-        const parsed: PlannerTask[] = raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
+        const parsed: PlannerTask[] = Array.isArray(raw) ? raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
           ...t,
           start: new Date(typeof t.start === 'number' ? t.start : t.start),
           end: new Date(typeof t.end === 'number' ? t.end : t.end),
-        }));
-        setTasks(parsed);
+        })) : [];
+        if (parsed.length > 0) setTasks(parsed);
+        const rawLabels = Array.isArray(data?.labels) ? data.labels : [];
+        const parsedLabels: LabelWithColor[] = rawLabels
+          .filter((x: unknown) => x && typeof x === 'object' && 'name' in (x as Record<string, unknown>))
+          .map((x: unknown) => ({ name: String((x as { name: unknown }).name), color: typeof (x as { color?: unknown }).color === 'string' ? (x as { color: string }).color : undefined }));
+        if (parsedLabels.length > 0) setLabelsList(parsedLabels);
         try {
           const toStore = parsed.map((t) => ({ ...t, start: t.start.getTime(), end: t.end.getTime() }));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+          if (toStore.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+          if (parsedLabels.length > 0) localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(parsedLabels));
         } catch {}
       })
       .catch(() => {});
@@ -460,12 +468,6 @@ const PlannerPage: React.FC = () => {
         }
       : null;
 
-  const handleReset = () => {
-    if (window.confirm('Сбросить все задачи к демо-набору?')) {
-      setTasks(getDefaultTasks());
-    }
-  };
-
   const rowH = isNarrow ? ROW_HEIGHT_MOBILE : ROW_HEIGHT;
   const headerH = isNarrow ? GANTT_HEADER_HEIGHT_MOBILE : GANTT_HEADER_HEIGHT;
   const cellPad = isNarrow ? '0 4px' : '0 8px';
@@ -485,7 +487,7 @@ const PlannerPage: React.FC = () => {
           end: new Date(t.end),
         }));
         setTasks(parsed);
-        if (raw.labels?.length) setLabelsList(raw.labels);
+        setLabelsList(raw.labels ?? []);
       } else {
         setPullError('В репо нет данных планировщика или ошибка загрузки.');
       }
@@ -495,6 +497,29 @@ const PlannerPage: React.FC = () => {
       setPullLoading(false);
     }
   }, []);
+
+  const handlePushToRepo = useCallback(async () => {
+    if (!getSyncConfig()) {
+      setPushStatus('Синхронизация с GitHub не настроена.');
+      return;
+    }
+    setPushLoading(true);
+    setPushStatus('Загрузка в репо…');
+    try {
+      const r = await pushPlanner(tasks, labelsList);
+      if (r.ok) {
+        const now = Date.now();
+        setLastSyncedAt(now);
+        setPushStatus(`Успешно записано в репо в ${new Date(now).toLocaleTimeString('ru-RU')}`);
+      } else {
+        setPushStatus(r.error || 'Ошибка записи в репо');
+      }
+    } catch (e) {
+      setPushStatus(e instanceof Error ? e.message : 'Ошибка записи в репо');
+    } finally {
+      setPushLoading(false);
+    }
+  }, [tasks, labelsList]);
 
   return (
     <div
@@ -557,12 +582,22 @@ const PlannerPage: React.FC = () => {
             <button type="button" onClick={handlePullFromRepo} disabled={pullLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pullLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
               {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
             </button>
-            <button type="button" onClick={() => pushPlanner(tasks, labelsList).catch(() => {})} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
-              Загрузить в репо
+            <button type="button" onClick={handlePushToRepo} disabled={pushLoading} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: pushLoading ? 'wait' : 'pointer', fontSize: 12, height: 28 }}>
+              {pushLoading ? 'Загрузка…' : 'Загрузить в репо'}
             </button>
           </>
         )}
         {pullError && <span style={{ fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</span>}
+        {pushStatus && (
+          <span style={{ fontSize: 11, color: /Успешно/.test(pushStatus) ? 'var(--pico-primary-color)' : 'var(--pico-del-color)' }}>
+            {pushStatus}
+          </span>
+        )}
+        {lastSyncedAt && (
+          <span style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>
+            Последняя синхронизация: {new Date(lastSyncedAt).toLocaleString('ru-RU')}
+          </span>
+        )}
         {labelsList.length > 0 && (
           <>
             <select
@@ -598,9 +633,6 @@ const PlannerPage: React.FC = () => {
           title="Вести список меток (сотрудники, теги) и назначать их задачам"
         >
           Метки
-        </button>
-        <button type="button" onClick={handleReset} style={{ padding: '4px 10px', borderRadius: 4, border: '1px solid var(--pico-border-color)', background: 'var(--pico-background-color)', color: 'var(--pico-color)', cursor: 'pointer', fontSize: 12, height: 28 }}>
-          Сбросить к демо
         </button>
       </div>
 
