@@ -1,7 +1,29 @@
 {
   "version": 1,
-  "exportedAt": 1773111520039,
+  "exportedAt": 1773773090938,
   "notes": [
+    {
+      "id": "2026-03-17_00-29-54",
+      "title": "Без заголовка",
+      "content": "<p>Curve.GetClosestPointTo</p>",
+      "folderId": null,
+      "createdAt": 1773696594399,
+      "updatedAt": 1773696602787,
+      "tags": [],
+      "color": "none",
+      "archived": false,
+      "todos": []
+    },
+    {
+      "id": "2026-03-13_17-37-03",
+      "title": "ifc roadmap",
+      "content": "<ul><li><p><strong>Шаг 1: Формирование списка параметров.</strong> Составьте список (в Excel или JSON), какие именно поля требует экспертиза (Наименование, Материал, Толщина, Код КСИ, Артикул).</p></li><li><p><strong>Шаг 2: Создание Property Set.</strong> Создайте их в одном файле-шаблоне.</p></li><li><p><strong>Шаг 3: Тестовый экспорт.</strong> Возьмите один <code>3D Solid</code>, заполните данные, экспортируйте в IFC и откройте в BIMvision. Если увидели свои параметры в списке свойств объекта — <strong>вы победили 80% проблем</strong>.</p></li></ul><p></p>",
+      "folderId": null,
+      "createdAt": 1773412623246,
+      "updatedAt": 1773412633126,
+      "tags": [],
+      "color": "none"
+    },
     {
       "id": "2026-03-10_03-58-36_dup",
       "title": "Водный кодекс (копия)",
