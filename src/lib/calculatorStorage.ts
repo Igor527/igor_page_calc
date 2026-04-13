@@ -530,12 +530,29 @@ export interface PublishedBundleJson {
  * Положите результат в public/data/calculators.json и закоммитьте — на сайте будет этот список.
  */
 export function buildPublishedBundle(): PublishedBundleJson {
-  const list = getCalculatorsByStatus('published');
+  const published = getCalculatorsByStatus('published');
   return {
     version: 1,
     exportedAt: Date.now(),
-    calculators: list,
+    calculators: published,
   };
+}
+
+/** 
+ * Возвращает вообще все локальные калькуляторы (включая черновики) в упрощенном виде 
+ * только для логики синхронизации (чтобы знать, что удалить из репо).
+ */
+export function getAllCalculatorsMinimal(): Array<{ id: string; status: CalculatorStatus }> {
+  if (typeof localStorage === 'undefined') return [];
+  const list: Array<{ id: string; status: CalculatorStatus }> = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
+    const id = key.slice(CALC_PREFIX.length);
+    const calc = loadCalculatorFromStorage(id);
+    if (calc) list.push({ id: calc.id, status: calc.status });
+  }
+  return list;
 }
 
 /**
