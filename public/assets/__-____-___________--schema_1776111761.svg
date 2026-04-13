@@ -19,19 +19,19 @@
 
   <rect x="54" y="284" width="500" height="140" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
   <rect x="50" y="280" width="500" height="140" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
-  <text x="70" y="315" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">2. Формула идеального запроса</text>
-  <text x="70" y="345" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Забудь про сухие отписки. Опиши проблему,</text>
-  <text x="70" y="370" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">задай конкретный вопрос, дай задание</text>
-  <text x="70" y="395" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">и явно сформулируй цель своего письма.</text>
+  <text x="70" y="315" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">2. Личное общение</text>
+  <text x="70" y="345" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Мы все люди. Часто быстрее и эффективнее</text>
+  <text x="70" y="370" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">обсудить проблему в чате или на созвоне.</text>
+  <text x="70" y="395" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Нет реакции? Тогда переходи к пункту 3.</text>
 
   <line x1="300" y1="420" x2="300" y2="460" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="54" y="464" width="500" height="140" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
   <rect x="50" y="460" width="500" height="140" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
-  <text x="70" y="495" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">3. Личное общение</text>
-  <text x="70" y="525" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Мы все люди. Часто быстрее и эффективнее</text>
-  <text x="70" y="550" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">обсудить проблему в чате или на созвоне.</text>
-  <text x="70" y="575" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Нет реакции? Тогда смотри пункт 2.</text>
+  <text x="70" y="495" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">3. Формула идеального запроса</text>
+  <text x="70" y="525" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Забудь про сухие отписки. Опиши проблему,</text>
+  <text x="70" y="550" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">задай конкретный вопрос, дай задание</text>
+  <text x="70" y="575" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">и явно сформулируй цель своего письма.</text>
 
   <line x1="300" y1="600" x2="300" y2="640" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
 
