@@ -760,7 +760,6 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     const url = `${window.location.origin}/blog/${slug}`;
     navigator.clipboard.writeText(url);
   };
-  };
 
   return (
     <main className="blog-page-main mx-auto" style={{ maxWidth: editing ? '1200px' : '750px', transition: 'max-width 0.3s ease' }}>
