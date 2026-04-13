@@ -8,30 +8,29 @@ interface NodesListProps {
   onSelect: (id: string | null) => void;
 }
 
-const blockTypeLabels: Record<string, string> = {
-  input: 'Ввод',
-  formula: 'Формула',
-  text: 'Текст',
-  constant: 'Константа',
-  table_lookup: 'Поиск в таблице',
-  table_range: 'Диапазон таблицы',
-  data_table: 'Таблица',
-  chart: 'График',
-  select_from_table: 'Выбор из таблицы',
-  select_from_object: 'Выбор из объекта',
-  condition: 'Условие',
-  group: 'Группа',
-  output: 'Вывод',
-  image: 'Изображение',
-  button: 'Кнопка',
-  table_viewer: 'Просмотр таблицы',
+const blockTypeMeta: Record<BlockType, { label: string; icon: string; color: string }> = {
+  input: { label: 'Ввод', icon: '🔵', color: '#3b82f6' },
+  formula: { label: 'Формула', icon: '🟣', color: '#a855f7' },
+  text: { label: 'Текст', icon: '📄', color: '#64748b' },
+  constant: { label: 'Константа', icon: '🟠', color: '#f97316' },
+  table_lookup: { label: 'Поиск', icon: '🔍', color: '#06b6d4' },
+  table_range: { label: 'Диапазон', icon: '📊', color: '#8b5cf6' },
+  data_table: { label: 'Таблица', icon: '📅', color: '#f59e0b' },
+  chart: { label: 'График', icon: '📈', color: '#ec4899' },
+  select_from_table: { label: 'Выбор', icon: '🔘', color: '#10b981' },
+  select_from_object: { label: 'Объект', icon: '📦', color: '#6366f1' },
+  condition: { label: 'Условие', icon: '🔀', color: '#ef4444' },
+  group: { label: 'Группа', icon: '📁', color: '#a855f7' },
+  output: { label: 'Вывод', icon: '🟢', color: '#22c55e' },
+  image: { label: 'Имидж', icon: '🖼️', color: '#64748b' },
+  button: { label: 'Кнопка', icon: '🖱️', color: '#3b82f6' },
+  table_viewer: { label: 'Просмотр', icon: '📑', color: '#10b981' },
 };
 
-// Группы типов для меню "Добавить" — проще ориентироваться
 const blockTypeGroups: { title: string; types: BlockType[] }[] = [
-  { title: 'Ввод и формулы', types: ['input', 'constant', 'formula', 'output', 'condition'] },
+  { title: 'Ввод и логика', types: ['input', 'constant', 'formula', 'condition', 'output'] },
   { title: 'Таблицы и выбор', types: ['data_table', 'table_lookup', 'table_range', 'select_from_table', 'select_from_object', 'table_viewer'] },
-  { title: 'Графики и оформление', types: ['chart', 'text', 'image', 'group', 'button'] },
+  { title: 'Контент и декор', types: ['chart', 'text', 'image', 'group', 'button'] },
 ];
 
 const defaultBlockTemplates: Record<BlockType, Partial<Block>> = {
@@ -59,12 +58,11 @@ const NodesList: React.FC<NodesListProps> = ({ selectedId, onSelect }) => {
   const setValues = useCalcStore((s) => s.setValues);
   const [search, setSearch] = useState<string>('');
   const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
-  const [addType, setAddType] = useState<BlockType>('input');
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  const handleAddBlock = (type?: BlockType) => {
-    const blockType = type ?? addType;
-    const id = (blockType + '_' + Math.random().toString(36).slice(2, 8)).toLowerCase();
-    const template = { ...defaultBlockTemplates[blockType], id } as Block;
+  const handleAddBlock = (type: BlockType) => {
+    const id = (type + '_' + Math.random().toString(36).slice(2, 8)).toLowerCase();
+    const template = { ...defaultBlockTemplates[type], id } as Block;
     setBlocks([...blocks, template]);
     onSelect(id);
     setShowAddMenu(false);
@@ -72,11 +70,19 @@ const NodesList: React.FC<NodesListProps> = ({ selectedId, onSelect }) => {
 
   const handleDeleteBlock = (e: React.MouseEvent, blockId: string) => {
     e.stopPropagation();
-    if (!window.confirm(`Удалить блок «${blocks.find((b) => b.id === blockId)?.label || blockId}»?`)) return;
+    if (!window.confirm(`Удалить блок ${blockId}?`)) return;
     const newBlocks = blocks.filter((b) => b.id !== blockId);
     setBlocks(newBlocks);
     setValues(recalculateValues(newBlocks, {}));
     if (selectedId === blockId) onSelect(null);
+  };
+
+  const handleCloneBlock = (e: React.MouseEvent, block: Block) => {
+    e.stopPropagation();
+    const id = (block.type + '_' + Math.random().toString(36).slice(2, 8)).toLowerCase();
+    const clone = { ...JSON.parse(JSON.stringify(block)), id };
+    setBlocks([...blocks, clone]);
+    onSelect(id);
   };
 
   const filteredBlocks = useMemo(() => {
@@ -85,92 +91,60 @@ const NodesList: React.FC<NodesListProps> = ({ selectedId, onSelect }) => {
     return blocks.filter(
       (b) =>
         (b.label || b.id).toLowerCase().includes(lowerSearch) ||
-        (b.description || '').toLowerCase().includes(lowerSearch) ||
         b.type.toLowerCase().includes(lowerSearch)
     );
   }, [blocks, search]);
 
-  const groupedByType = useMemo(() => {
-    const groups: Record<string, Block[]> = {};
-    filteredBlocks.forEach((block) => {
-      if (!groups[block.type]) {
-        groups[block.type] = [];
-      }
-      groups[block.type].push(block);
+  const grouped = useMemo(() => {
+    const categories: Record<string, Block[]> = {
+      'Ввод и логика': [],
+      'Таблицы и выбор': [],
+      'Контент и декор': [],
+      'Прочее': []
+    };
+    
+    filteredBlocks.forEach(b => {
+      const group = blockTypeGroups.find(g => g.types.includes(b.type));
+      if (group) categories[group.title].push(b);
+      else categories['Прочее'].push(b);
     });
-    return groups;
+    return categories;
   }, [filteredBlocks]);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: 'var(--pico-card-background-color)',
-        borderRight: '1px solid var(--pico-border-color)',
-      }}
-    >
-      {/* Поиск и добавление */}
-      <div style={{ padding: '12px', borderBottom: '1px solid var(--pico-border-color)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>Поиск по названию или типу</span>
-          <div style={{ position: 'relative' }}>
+    <div className="flex flex-col h-full bg-[var(--pico-card-background-color)] border-r border-[var(--pico-border-color)]">
+      {/* Search & Add */}
+      <div className="p-3 border-b border-[var(--pico-border-color)]">
+        <div className="flex items-center gap-2 mb-2">
+          <input
+            type="text"
+            placeholder="Поиск блоков..."
+            className="flex-1 p-2 text-xs rounded border border-[var(--pico-border-color)] bg-[var(--pico-form-element-background-color)]"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="relative">
             <button
-              type="button"
               onClick={() => setShowAddMenu(!showAddMenu)}
-              style={{
-                padding: '4px 8px',
-                borderRadius: 4,
-                border: '1px solid var(--pico-border-color)',
-                background: 'var(--pico-primary-background)',
-                color: 'var(--pico-primary-color)',
-                cursor: 'pointer',
-                fontSize: 12,
-              }}
+              className="p-2 text-xs rounded bg-[var(--pico-primary-background)] text-[var(--pico-primary-color)] transition-opacity hover:opacity-90"
             >
               + Добавить
             </button>
             {showAddMenu && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: 4,
-                  background: 'var(--pico-card-background-color)',
-                  border: '1px solid var(--pico-border-color)',
-                  borderRadius: 4,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  zIndex: 1000,
-                  minWidth: 220,
-                  maxHeight: 340,
-                  overflowY: 'auto',
-                }}
-              >
-                {blockTypeGroups.map((group) => (
-                  <div key={group.title}>
-                    <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--pico-muted-color)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--pico-border-color)' }}>
+              <div className="absolute top-full right-0 mt-2 w-56 bg-[var(--pico-card-background-color)] border border-[var(--pico-border-color)] rounded shadow-lg z-[1000] max-h-[400px] overflow-y-auto">
+                {blockTypeGroups.map(group => (
+                  <div key={group.title} className="py-1">
+                    <div className="px-3 py-1 text-[10px] uppercase font-bold text-[var(--pico-muted-color)] opacity-70">
                       {group.title}
                     </div>
-                    {group.types.map((type) => (
+                    {group.types.map(type => (
                       <div
                         key={type}
                         onClick={() => handleAddBlock(type)}
-                        style={{
-                          padding: '6px 12px',
-                          cursor: 'pointer',
-                          fontSize: 13,
-                          borderBottom: '1px solid var(--pico-border-color)',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'var(--pico-card-background-color)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                        }}
+                        className="px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer hover:bg-[var(--pico-primary-background)] hover:text-[var(--pico-primary-color)]"
                       >
-                        {blockTypeLabels[type] || type}
+                        <span className="w-4 text-center">{blockTypeMeta[type].icon}</span>
+                        {blockTypeMeta[type].label}
                       </div>
                     ))}
                   </div>
@@ -179,147 +153,75 @@ const NodesList: React.FC<NodesListProps> = ({ selectedId, onSelect }) => {
             )}
           </div>
         </div>
-        <input
-          type="text"
-          placeholder="Поиск..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '6px 8px',
-            borderRadius: 4,
-            border: '1px solid var(--pico-border-color)',
-            fontSize: 13,
-            background: 'var(--pico-form-element-background-color)',
-            color: 'var(--pico-color)',
-          }}
-        />
-        <div style={{ fontSize: 11, color: 'var(--pico-muted-color)', marginTop: 4 }}>
-          Всего: {blocks.length} | Найдено: {filteredBlocks.length}
-        </div>
       </div>
 
-      {/* Список нод */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-        {Object.entries(groupedByType).map(([type, typeBlocks]) => (
-          <div key={type} style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'var(--pico-muted-color)',
-                marginBottom: 6,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              {blockTypeLabels[type] || type} ({typeBlocks.length})
+      {/* Scrollable List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-4">
+        {Object.entries(grouped).map(([category, items]) => items.length > 0 && (
+          <div key={category}>
+            <div className="px-2 mb-1 text-[10px] font-bold text-[var(--pico-muted-color)] uppercase tracking-wider opacity-60">
+              {category}
             </div>
-            {typeBlocks.map((block) => {
-              const isSelected = selectedId === block.id;
+            {items.map((block) => {
+              const selected = selectedId === block.id;
+              const meta = blockTypeMeta[block.type];
               return (
                 <div
                   key={block.id}
+                  onMouseEnter={() => setHoveredId(block.id)}
+                  onMouseLeave={() => setHoveredId(null)}
                   onClick={() => onSelect(block.id)}
-                  style={{
-                    padding: '8px 10px',
-                    marginBottom: 4,
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    background: isSelected
-                      ? 'var(--pico-primary-background)'
-                      : 'transparent',
-                    border: isSelected
-                      ? '1px solid var(--pico-primary-border-color)'
-                      : '1px solid transparent',
-                    color: isSelected ? 'var(--pico-primary-color)' : 'var(--pico-color)',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 6,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.background = 'var(--pico-card-background-color)';
-                      e.currentTarget.style.borderColor = 'var(--pico-border-color)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.borderColor = 'transparent';
-                    }
+                  className={`
+                    relative group flex items-start gap-3 p-2.5 mb-1 rounded-lg cursor-pointer transition-all
+                    ${selected 
+                      ? 'bg-blue-50/10 border-l-4 border-l-blue-500 shadow-sm' 
+                      : 'border-l-4 border-l-transparent hover:bg-[var(--pico-form-element-background-color)]'}
+                  `}
+                  style={{ 
+                    borderLeftColor: selected ? meta.color : 'transparent',
+                    backgroundColor: selected ? `${meta.color}15` : undefined 
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: isSelected ? 600 : 500, marginBottom: 2 }}>
-                      {block.label || block.id}
+                  <span className="text-lg leading-none mt-0.5 opacity-90">{meta.icon}</span>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[13px] font-medium truncate ${selected ? 'text-[var(--pico-primary-color)]' : ''}`}>
+                        {block.label || block.id}
+                      </span>
                     </div>
-                    {block.description && (
-                      <div
-                        style={{
-                          fontSize: 11,
-                          color: isSelected ? 'var(--pico-primary-color)' : 'var(--pico-muted-color)',
-                          opacity: 0.8,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {block.description}
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        fontSize: 10,
-                        color: isSelected ? 'var(--pico-primary-color)' : 'var(--pico-muted-color)',
-                        opacity: 0.6,
-                        marginTop: 2,
-                      }}
-                    >
-                      @{block.id}
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="text-[10px] px-1 rounded bg-[var(--pico-code-background-color)] opacity-60">
+                        @{block.id}
+                      </code>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDeleteBlock(e, block.id)}
-                    title="Удалить блок"
-                    style={{
-                      flexShrink: 0,
-                      width: 24,
-                      height: 24,
-                      padding: 0,
-                      border: 'none',
-                      borderRadius: 4,
-                      background: 'transparent',
-                      color: 'var(--color-muted-text)',
-                      cursor: 'pointer',
-                      fontSize: 14,
-                      lineHeight: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'var(--color-error-bg)';
-                      e.currentTarget.style.color = 'var(--color-danger)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = 'var(--color-muted-text)';
-                    }}
-                  >
-                    ×
-                  </button>
+
+                  {/* Actions (visible on hover or if selected) */}
+                  <div className={`
+                    flex gap-1 absolute right-2 top-2 transition-opacity
+                    ${hoveredId === block.id || selected ? 'opacity-100' : 'opacity-0'}
+                  `}>
+                    <button
+                      onClick={(e) => handleCloneBlock(e, block)}
+                      className="p-1 text-[10px] bg-[var(--pico-card-background-color)] border border-[var(--pico-border-color)] rounded hover:bg-[var(--pico-primary-background)] hover:text-white"
+                      title="Копировать"
+                    >
+                      📑
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteBlock(e, block.id)}
+                      className="p-1 text-[10px] bg-[var(--pico-card-background-color)] border border-[var(--pico-border-color)] rounded hover:bg-red-500 hover:text-white"
+                      title="Удалить"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         ))}
-        {filteredBlocks.length === 0 && (
-          <div style={{ padding: 20, textAlign: 'center', color: 'var(--pico-muted-color)' }}>
-            Нод не найдено
-          </div>
-        )}
       </div>
     </div>
   );

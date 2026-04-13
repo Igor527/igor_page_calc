@@ -54,7 +54,9 @@ const linkToEditor = <a href="/editor" style={{ ...linkStyle, marginTop: 16, dis
 const linkToHome = <a href="/" style={linkStyle}>На главную</a>;
 
 function getIsAdmin(firebaseUser: unknown): boolean {
-  if (useFirebaseAdmin()) return !!(firebaseUser && isAdminUser(firebaseUser as import('firebase/auth').User));
+  // Если залогинен админ через Firebase — безусловный успех
+  if (useFirebaseAdmin() && firebaseUser && isAdminUser(firebaseUser as import('firebase/auth').User)) return true;
+  // Иначе (для локальной разработки или гостевых сессий) проверяем локальный флаг
   return getLegacyAdminFlag();
 }
 
@@ -68,9 +70,13 @@ function App() {
   const path = window.location.pathname;
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const [firebaseUser, setFirebaseUser] = useState<import('firebase/auth').User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = subscribeToAuth(setFirebaseUser);
+    const unsub = subscribeToAuth((user) => {
+      setFirebaseUser(user);
+      setIsAuthLoading(false);
+    });
     
     // Глобальный фоллбэк для картинок. Если картинка из /assets/ не найдена (404, например на localhost 
     // до скачивания, или на проде до окончания деплоя), мы подменяем src на сырой GitHub URL.
@@ -215,6 +221,10 @@ function App() {
     if (!isAdmin || !getSyncConfig()) return;
     void pullAllFromRepo();
   }, [isAdmin, pullAllFromRepo]);
+
+  if (isAuthLoading && path !== '/') {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--pico-muted-color)' }}>Проверка авторизации...</div>;
+  }
 
   if (path.startsWith('/admin/notes')) {
     if (!isAdmin) {

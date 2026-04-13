@@ -758,9 +758,8 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   const copyLink = (slug: string) => {
     const url = `${window.location.origin}/blog/${slug}`;
-    navigator.clipboard.writeText(url).then(() => {
-      alert('Ссылка скопирована!');
-    });
+    navigator.clipboard.writeText(url);
+  };
   };
 
   return (
@@ -1050,7 +1049,8 @@ const PostCard: React.FC<{
 
 const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAdmin }) => {
   const posts = getPostsForDisplay();
-  const post = posts.find(p => p.slug === slug);
+  const normalizedSlug = slug.replace(/\/$/, ''); // Убираем слэш в конце
+  const post = posts.find(p => p.slug === normalizedSlug || p.slug === slug);
 
   useEffect(() => {
     let zoom: ReturnType<typeof mediumZoom> | null = null;

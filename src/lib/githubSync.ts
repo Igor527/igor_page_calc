@@ -431,23 +431,39 @@ export async function pushDictionary(entries: unknown[], priorityLangs: string[]
   return putFile(dataPath('dictionary.json'), payload, 'Автосинхронизация: словарь');
 }
 
-/** Объединить калькуляторы: по id калькулятора локальная версия перекрывает удалённую. */
-function mergeCalculators(remoteJson: string | null, localJson: string): string {
+/** Объединить калькуляторы: по id калькулятора локальная версия перекрывает удалённую. 
+ * Если калькулятор есть в remote, но в local он помечен как не-published (или удален), он исключается.
+ */
+function mergeCalculators(remoteJson: string | null, localJson: string, allLocalStatuses: Array<{ id: string; status: CalculatorStatus }>): string {
   if (!remoteJson?.trim()) return localJson;
   try {
     const remote = JSON.parse(remoteJson) as { calculators?: Array<{ id?: string; [k: string]: unknown }> };
     const local = JSON.parse(localJson) as { calculators?: Array<{ id?: string; [k: string]: unknown }> };
     const remoteList = remote?.calculators ?? [];
     const localList = local?.calculators ?? [];
+    
     const byId = new Map<string, unknown>();
+    const localStatusMap = new Map(allLocalStatuses.map(s => [s.id, s.status]));
+
+    // 1. Сначала берем всё из репо
     for (const c of remoteList) {
       const id = String((c as { id?: string }).id ?? '');
-      if (id) byId.set(id, c);
+      if (!id) continue;
+      
+      // Но если локально мы ЗНАЕМ, что этот калькулятор теперь черновик (или его нет в списке опубликованных)
+      // мы его НЕ добавляем из репо.
+      const localStatus = localStatusMap.get(id);
+      if (localStatus && localStatus !== 'published') continue;
+      
+      byId.set(id, c);
     }
+    
+    // 2. Сверху накатываем локальные опубликованные
     for (const c of localList) {
       const id = String((c as { id?: string }).id ?? '');
       if (id) byId.set(id, c);
     }
+    
     const merged = { ...local, calculators: [...byId.values()] };
     return JSON.stringify(merged, null, 2);
   } catch {
@@ -455,11 +471,11 @@ function mergeCalculators(remoteJson: string | null, localJson: string): string 
   }
 }
 
-/** Авто-пуш калькуляторов: перед отправкой загружаем репо и мержим по id (локальные поверх). */
-export async function pushCalculators(bundleJson: string): Promise<SyncResult> {
+/** Авто-пуш калькуляторов: перед отправкой загружаем репо и мержим по id. */
+export async function pushCalculators(bundleJson: string, allLocalStatuses: Array<{ id: string; status: CalculatorStatus }>): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remoteJson = await getCalculatorsJsonFromRepo();
-  const merged = mergeCalculators(remoteJson, bundleJson);
+  const merged = mergeCalculators(remoteJson, bundleJson, allLocalStatuses);
   return putFile(dataPath('calculators.json'), merged, 'Автосинхронизация: калькуляторы');
 }
 

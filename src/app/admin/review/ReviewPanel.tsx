@@ -77,9 +77,11 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
               setIsSyncing(true);
               try {
                 const { pushCalculators } = await import('@/lib/githubSync');
+                const { getAllCalculatorsMinimal } = await import('@/lib/calculatorStorage');
                 const bundle = buildPublishedBundle();
                 const jsonStr = JSON.stringify(bundle, null, 2);
-                const res = await pushCalculators(jsonStr);
+                const allStatuses = getAllCalculatorsMinimal();
+                const res = await pushCalculators(jsonStr, allStatuses);
                 if (res.ok) alert('Синхронизация успешно завершена!');
                 else alert('Ошибка синхронизации: ' + res.error);
               } catch (e) {
