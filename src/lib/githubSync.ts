@@ -124,6 +124,63 @@ export async function putFile(path: string, content: string, message: string): P
   return { ok: true };
 }
 
+/**
+ * Получить список файлов в директории репо. Возвращает массив файлов или null.
+ */
+export async function listFiles(path: string): Promise<Array<{name: string; path: string; sha: string; download_url: string | null}> | null> {
+  const cfg = getSyncConfig();
+  if (!cfg) return null;
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(cfg.branch)}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
+  });
+  if (!res.ok) {
+    if (res.status === 404) return []; // Папка еще не существует
+    return null;
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return data.filter((item: any) => item.type === 'file').map((item: any) => ({
+    name: item.name,
+    path: item.path,
+    sha: item.sha,
+    download_url: item.download_url,
+  }));
+}
+
+/**
+ * Удалить файл в репо.
+ */
+export async function deleteFile(path: string, sha: string, message: string): Promise<SyncResult> {
+  const cfg = getSyncConfig();
+  if (!cfg) return { ok: false, error: 'Не настроена синхронизация с GitHub' };
+  
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}`;
+  const body = {
+    message,
+    sha,
+    branch: cfg.branch,
+  };
+  
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/vnd.github.v3+json',
+      Authorization: `token ${cfg.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return { ok: false, error: (err as { message?: string }).message || res.statusText };
+  }
+  return { ok: true };
+}
+
+
 /** Проверка подключения: запрос к API репозитория. */
 export async function testConnection(): Promise<SyncResult> {
   const cfg = getSyncConfig();

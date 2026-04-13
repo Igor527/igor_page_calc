@@ -308,6 +308,16 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     }
   }, [value, editor]);
 
+  // Глобальный слушатель для внешней вставки (например, из AI Генератора)
+  useEffect(() => {
+    if (!editor) return;
+    const handleInsertImage = (e: CustomEvent<string>) => {
+      editor.chain().focus().setImage({ src: e.detail }).run();
+    };
+    window.addEventListener('insert-image-to-editor', handleInsertImage as EventListener);
+    return () => window.removeEventListener('insert-image-to-editor', handleInsertImage as EventListener);
+  }, [editor]);
+
   // Close emoji picker on outside click
   useEffect(() => {
     if (!showEmoji) return;

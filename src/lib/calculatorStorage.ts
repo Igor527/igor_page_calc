@@ -316,41 +316,28 @@ export function getCalculatorBySlug(slug: string): SavedCalculator | null {
  * Если загружен бандл из data/calculators.json — берётся из него, иначе из localStorage.
  */
 export function getPublishedCalculators(): Array<{ id: string; title: string; slug?: string }> {
-  if (publishedBundle && publishedBundle.length > 0) {
-    // Локальная версия калькулятора (если новее бандла) должна перекрывать статус из репо.
-    // Это нужно, чтобы калькулятор сразу пропадал из публичного списка при переводе на корректировку.
-    const localById = new Map(
-      getCalculatorList().map((c) => [c.id, c] as const)
-    );
-    return [...publishedBundle]
-      .filter((c) => {
-        const local = localById.get(c.id);
-        if (!local) return true;
-        if ((local.updatedAt ?? 0) < (c.updatedAt ?? 0)) return true;
-        return local.status === 'published';
-      })
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .map((c) => ({ id: c.id, title: c.title, slug: c.slug }));
+  // Собираем все локальные сохраненные данные
+  const localList = getCalculatorList().map(c => loadCalculatorFromStorage(c.id)).filter(Boolean) as SavedCalculator[];
+  const map = new Map<string, SavedCalculator>();
+  
+  // Добавляем бандл из репозитория
+  if (publishedBundle) {
+    publishedBundle.forEach(c => map.set(c.id, c));
   }
-  if (typeof localStorage === 'undefined') return [];
-  const result: Array<{ id: string; title: string; slug?: string; updatedAt: number }> = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key || !key.startsWith(CALC_PREFIX) || key === CALC_LIST_KEY) continue;
-    const id = key.slice(CALC_PREFIX.length);
-    if (!id) continue;
-    const calc = loadCalculatorFromStorage(id);
-    if (calc?.status === 'published') {
-      result.push({
-        id: calc.id,
-        title: calc.title,
-        slug: calc.slug,
-        updatedAt: calc.updatedAt,
-      });
+  
+  // Сливаем с локальными (если локальный новее, он перекрывает бандл)
+  localList.forEach(c => {
+    const existing = map.get(c.id);
+    if (!existing || c.updatedAt >= (existing.updatedAt || 0)) {
+       map.set(c.id, c);
     }
-  }
-  result.sort((a, b) => b.updatedAt - a.updatedAt);
-  return result.map(({ id, title, slug }) => ({ id, title, slug }));
+  });
+
+  // Отдаем ТОЛЬКО опубликованные
+  return Array.from(map.values())
+    .filter(c => c.status === 'published')
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .map(c => ({ id: c.id, title: c.title, slug: c.slug }));
 }
 
 /**

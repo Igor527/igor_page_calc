@@ -13,6 +13,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.0",
     "@tiptap/extension-color": "^3.20.0",
     "@tiptap/extension-details": "^3.20.0",
     "@tiptap/extension-font-family": "^3.20.0",
@@ -32,6 +33,7 @@
     "gantt-task-react": "^0.3.9",
     "marked": "^17.0.3",
     "mathjs": "^11.8.0",
+    "medium-zoom": "^1.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "recharts": "^3.7.0",

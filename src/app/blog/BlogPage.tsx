@@ -11,6 +11,9 @@ import {
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
+import mediumZoom from 'medium-zoom';
+import { AIGeneratorPanel } from '@/components/AIGeneratorPanel';
+
 
 const STORAGE_KEY = 'igor-blog';
 const VIEWS_KEY = 'igor-blog-views';
@@ -761,7 +764,7 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   };
 
   return (
-    <main className="blog-page-main max-w-[750px] mx-auto">
+    <main className="blog-page-main mx-auto" style={{ maxWidth: editing ? '1200px' : '750px', transition: 'max-width 0.3s ease' }}>
       <article>
         <header className="text-center mb-6">
           <h1 className="text-2xl font-semibold mb-2">Блог</h1>
@@ -807,10 +810,12 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
         {/* Editor form */}
         {isAdmin && editing ? (
-          <div style={{ marginBottom: 24, padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8 }}>
-            <input ref={titleRef} type="text" placeholder="Заголовок поста"
-              value={title} onChange={e => setTitle(e.target.value)}
-              style={{ width: '100%', marginBottom: 12, fontSize: 16, fontWeight: 600 }} />
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 24 }}>
+            <div style={{ flex: '1 1 450px', minWidth: 0 }}>
+              <div style={{ padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8 }}>
+                <input ref={titleRef} type="text" placeholder="Заголовок поста"
+                  value={title} onChange={e => setTitle(e.target.value)}
+                  style={{ width: '100%', marginBottom: 12, fontSize: 16, fontWeight: 600 }} />
 
             {/* Cover image editor */}
             {coverImage ? (
@@ -899,7 +904,15 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
               <button onClick={() => setEditing(null)} className="secondary">Отмена</button>
             </div>
           </div>
-        ) : isAdmin ? (
+        </div>
+
+        <div style={{ flex: '1 1 380px', maxWidth: '100%' }}>
+          <div style={{ position: 'sticky', top: '16px', maxHeight: 'calc(100vh - 32px)' }}>
+            <AIGeneratorPanel postSlug={title ? title.replace(/[^a-zA-Zа-яА-Я0-9]/g, '-').replace(/-+/g, '-').toLowerCase() : 'post'} />
+          </div>
+        </div>
+      </div>
+    ) : isAdmin ? (
           <>
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               <button onClick={startNew} style={{ flex: '1 1 auto' }}>+ Новый пост</button>
@@ -1040,8 +1053,26 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
   const post = posts.find(p => p.slug === slug);
 
   useEffect(() => {
-    if (post) incrementView(post.id);
-  }, [post?.id]);
+    let zoom: ReturnType<typeof mediumZoom> | null = null;
+    if (post) {
+      incrementView(post.id);
+      
+      // Инициализация зума с небольшой задержкой для прогрузки DOM
+      const timer = setTimeout(() => {
+        const isDark = document.documentElement.classList.contains('dark');
+        zoom = mediumZoom('.blog-content img.zoomable, .blog-content img[src$=".svg"]', {
+          margin: 24,
+          background: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          scrollOffset: 40
+        });
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        if (zoom) zoom.detach();
+      };
+    }
+  }, [post?.id, post?.content]);
 
   if (!post || (!post.published && !isAdmin)) {
     return (

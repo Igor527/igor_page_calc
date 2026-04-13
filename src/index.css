@@ -742,3 +742,30 @@ pre:hover .code-copy-btn,
     padding: 1rem !important;
   }
 }
+
+/* ─── UI Stickers for Blog (SVG / Zoomable) ─── */
+.blog-content img.zoomable,
+.blog-content img[src$=".svg"] {
+  margin: 2rem auto;
+  max-width: 100%;
+  border-radius: 12px;
+  background-color: var(--pico-card-background-color, #ffffff);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  border: 1px solid var(--pico-border-color, #e5e7eb);
+  cursor: zoom-in;
+  display: block;
+}
+
+.blog-content img.zoomable:hover,
+.blog-content img[src$=".svg"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.dark .blog-content img.zoomable,
+.dark .blog-content img[src$=".svg"] {
+  background-color: var(--pico-form-element-background-color, #1f2937);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
