@@ -256,8 +256,12 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
               placeholder="Имя-файла"
               style={{ ...inputStyle, flex: 1, marginBottom: 0 }}
             />
-            <button onClick={handleSaveToGitHub} style={{ ...buttonStyle, width: 'auto', marginBottom: 0, backgroundColor: '#10b981' }} title="Загрузить в репозиторий и Вставить в редактор по курсору">
-               Загрузить и Вставить
+            <button 
+              onClick={svgStr === savedSvgStr ? () => window.dispatchEvent(new CustomEvent('insert-image-to-editor', { detail: `/assets/${fileName}` })) : handleSaveToGitHub} 
+              style={{ ...buttonStyle, width: 'auto', marginBottom: 0, backgroundColor: svgStr === savedSvgStr ? 'transparent' : '#10b981', color: svgStr === savedSvgStr ? 'var(--pico-color)' : '#fff', border: svgStr === savedSvgStr ? '1px solid var(--pico-muted-color)' : 'none' }} 
+              title={svgStr === savedSvgStr ? "Схема уже сохранена, просто вставить в текст" : "Сохранить на GitHub и вставить в текст"}
+            >
+               {svgStr === savedSvgStr ? '✅ В репо (вставить)' : '☁️ Сохранить и Вставить'}
             </button>
           </div>
         </div>

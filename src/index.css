@@ -769,3 +769,34 @@ pre:hover .code-copy-btn,
   background-color: var(--pico-form-element-background-color, #1f2937);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 }
+
+/* Явная рамка для всех картинок внутри редактора TipTap */
+.rte-body img {
+  min-height: 48px;
+  min-width: 160px;
+  border: 2px dashed var(--pico-muted-color);
+  background: var(--pico-form-element-background-color);
+  border-radius: 6px;
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  margin: 1em 0;
+}
+
+/* Хак для Chrome/Safari: псевдоэлементы ::after показываются для картинок, если не удалось загрузить само изображение, либо если у него нет alt текста. Выводим путь .src, чтобы было видно, что именно вставлено */
+.rte-body img::after {
+  content: "🖼️ " attr(src);
+  display: flex;
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+  font-size: 11px;
+  color: var(--pico-muted-color);
+  text-align: center;
+  padding: 8px;
+  z-index: 10;
+  word-break: break-all;
+  opacity: 0.8;
+}
