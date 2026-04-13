@@ -1,0 +1,52 @@
+<svg width="100%" viewBox="0 0 600 960" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#1e1e1e" />
+    </marker>
+  </defs>
+
+  <rect width="600" height="960" fill="#f8f9fa" stroke="#1e1e1e" stroke-width="3" rx="16" ry="16"/>
+  <text x="300" y="60" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="32" font-weight="bold" text-anchor="middle" fill="#1e1e1e">Гайд по работе со смежниками</text>
+
+  <rect x="54" y="104" width="500" height="140" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
+  <rect x="50" y="100" width="500" height="140" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+  <text x="70" y="135" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">1. Сделай домашку</text>
+  <text x="70" y="165" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Прежде чем дергать смежный отдел, открой</text>
+  <text x="70" y="190" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">чертеж (раздел) коллеги. Вполне возможно,</text>
+  <text x="70" y="215" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">нужное решение уже заложено в проекте.</text>
+
+  <line x1="300" y1="240" x2="300" y2="280" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="54" y="284" width="500" height="140" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
+  <rect x="50" y="280" width="500" height="140" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+  <text x="70" y="315" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">2. Личное общение</text>
+  <text x="70" y="345" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Мы все люди. Часто быстрее и эффективнее</text>
+  <text x="70" y="370" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">обсудить проблему в чате или на созвоне.</text>
+  <text x="70" y="395" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Нет реакции? Тогда переходи к пункту 3.</text>
+
+  <line x1="300" y1="420" x2="300" y2="460" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="54" y="464" width="500" height="140" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
+  <rect x="50" y="460" width="500" height="140" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+  <text x="70" y="495" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">3. Формула идеального запроса</text>
+  <text x="70" y="525" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Забудь про сухие отписки. Опиши проблему,</text>
+  <text x="70" y="550" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">задай конкретный вопрос, дай задание</text>
+  <text x="70" y="575" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">и явно сформулируй цель своего письма.</text>
+
+  <line x1="300" y1="600" x2="300" y2="640" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="54" y="644" width="500" height="115" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
+  <rect x="50" y="640" width="500" height="115" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+  <text x="70" y="675" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">4. Подключение ГИПа</text>
+  <text x="70" y="705" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Если консенсус не найден, а письма летят в</text>
+  <text x="70" y="730" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">игнор — пора поговорить с Главным инженером.</text>
+
+  <line x1="300" y1="755" x2="300" y2="795" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="54" y="799" width="500" height="115" fill="#1e1e1e" opacity="0.1" rx="5" ry="5"/>
+  <rect x="50" y="795" width="500" height="115" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+  <text x="70" y="830" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="20" font-weight="bold" fill="#1e1e1e">5. Главное правило зеркальности</text>
+  <text x="70" y="860" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">Относись к чужим проектам и времени так,</text>
+  <text x="70" y="885" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" fill="#1e1e1e">как хотел бы, чтобы относились к твоим.</text>
+
+</svg>
