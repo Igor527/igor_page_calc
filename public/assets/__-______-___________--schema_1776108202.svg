@@ -65,6 +65,6 @@
     <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="22" font-weight="bold" text-anchor="middle" fill="#1e1e1e">Наша общая цель:</text>
     <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">не играть в настольный теннис,</text>
     <text x="360" y="90" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">а получить решение.</text>
-    <text x="360" y="110" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" text-anchor="middle" fill="#666">О настольном теннисе тоже будет пост)</text>
+    <text x="360" y="110" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" text-anchor="middle" fill="#666"></text>
   </g>
 </svg>
