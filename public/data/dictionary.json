@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1773845960300,
+  "exportedAt": 1774652187932,
   "entries": [
+    {
+      "id": "e1774652184755-zsqgcr",
+      "source": "Adjust plan",
+      "translation": "Скорректировать план",
+      "transcription": "/əˈdʒʌst plæn/",
+      "fromLang": "en",
+      "toLang": "ru",
+      "addedAt": 1774652184755
+    },
     {
       "id": "e1773359890635-h99fah",
       "source": "детский набор для выпиливания",
