@@ -1,5 +1,76 @@
 {
   "version": 1,
-  "exportedAt": 1776115008271,
-  "layouts": {}
+  "exportedAt": 1776115010611,
+  "layouts": {
+    "welcome": [
+      {
+        "id": "w1",
+        "type": "hero",
+        "title": "Добро пожаловать!",
+        "subtitle": "Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе."
+      },
+      {
+        "id": "w2",
+        "type": "link",
+        "linkLabel": "Редактор калькуляторов",
+        "linkUrl": "/editor",
+        "adminOnly": true
+      },
+      {
+        "id": "w3",
+        "type": "link",
+        "linkLabel": "Планировщик (Гантт)",
+        "linkUrl": "/planner",
+        "adminOnly": true,
+        "showForGuest": true
+      },
+      {
+        "id": "w5",
+        "type": "link",
+        "linkLabel": "Калькуляторы",
+        "linkUrl": "/calculators"
+      },
+      {
+        "id": "w6",
+        "type": "link",
+        "linkLabel": "Блог",
+        "linkUrl": "/blog"
+      },
+      {
+        "id": "w6rss",
+        "type": "link",
+        "linkLabel": "RSS подписки",
+        "linkUrl": "/rss",
+        "adminOnly": true
+      },
+      {
+        "id": "w6a",
+        "type": "link",
+        "linkLabel": "Словарь / Перевод",
+        "linkUrl": "/dictionary",
+        "adminOnly": true
+      },
+      {
+        "id": "w7",
+        "type": "link",
+        "linkLabel": "Заметки (админ)",
+        "linkUrl": "/admin/notes",
+        "adminOnly": true
+      },
+      {
+        "id": "w8",
+        "type": "link",
+        "linkLabel": "CV",
+        "linkUrl": "/cv"
+      },
+      {
+        "id": "w9",
+        "type": "link",
+        "linkLabel": "Метеостанция",
+        "linkUrl": "/weather",
+        "adminOnly": true,
+        "showForGuest": true
+      }
+    ]
+  }
 }
