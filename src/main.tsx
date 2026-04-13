@@ -289,7 +289,7 @@ function App() {
     return <BlogList isAdmin={isAdmin} />;
   }
   if (path.startsWith('/blog/')) {
-    const blogSlug = path.slice('/blog/'.length);
+    const blogSlug = decodeURIComponent(path.slice('/blog/'.length));
     return <BlogPostView slug={blogSlug} isAdmin={isAdmin} />;
   }
   if (path === '/calculators') {
@@ -297,7 +297,7 @@ function App() {
   }
   // Калькулятор по имени: /calculators/:id или /calculators/:slug
   if (path.startsWith('/calculators/')) {
-    const idOrSlug = path.slice('/calculators/'.length);
+    const idOrSlug = decodeURIComponent(path.slice('/calculators/'.length));
     if (!idOrSlug) {
       return (
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>

@@ -217,9 +217,22 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
           style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
         />
 
-        <button onClick={handleGenerate} disabled={isGenerating} style={{ ...buttonStyle, marginTop: 4 }}>
-          {isGenerating ? 'Нейронка рисует...' : 'Сгенерировать SVG'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px', marginTop: 4 }}>
+          <button onClick={handleGenerate} disabled={isGenerating} style={{ ...buttonStyle, flex: 2, marginBottom: 0 }}>
+            {isGenerating ? 'Нейронка рисует...' : 'Сгенерировать SVG'}
+          </button>
+          <button 
+            onClick={() => {
+              setSvgStr(`<svg viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg" fill="none">\n  <rect width="800" height="600" fill="#F8F9FA" rx="16"/>\n  <text x="400" y="300" text-anchor="middle" font-family="'Segoe UI', sans-serif" font-size="24" fill="#2C3E50">Пустой холст</text>\n</svg>`);
+              setFileName(`schema-${Date.now().toString().slice(-6)}.svg`);
+            }} 
+            disabled={isGenerating} 
+            style={{ ...buttonStyle, flex: 1, marginBottom: 0, backgroundColor: 'transparent', border: '1px solid var(--pico-muted-color)', color: 'var(--pico-color)' }}
+            title="Создать пустой шаблон для ручного написания кода"
+          >
+            Пустой холст
+          </button>
+        </div>
       </div>
 
       {/* Editor & Preview */}
