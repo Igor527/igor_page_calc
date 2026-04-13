@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1776115010611,
+  "exportedAt": 1776115543492,
   "layouts": {
     "welcome": [
       {
@@ -70,6 +70,12 @@
         "linkUrl": "/weather",
         "adminOnly": true,
         "showForGuest": true
+      },
+      {
+        "id": "s1776115506649",
+        "type": "link",
+        "linkLabel": "Рисование",
+        "linkUrl": "/drawing"
       }
     ]
   }
