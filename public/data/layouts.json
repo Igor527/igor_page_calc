@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1776115706981,
+  "exportedAt": 1776115818785,
   "layouts": {
     "welcome": [
       {
@@ -75,7 +75,8 @@
         "id": "s1776115506649",
         "type": "link",
         "linkLabel": "Рисование",
-        "linkUrl": "/drawing"
+        "linkUrl": "/admin/drawing",
+        "adminOnly": true
       }
     ]
   }
