@@ -246,8 +246,13 @@ function App() {
   }
   if (path.startsWith('/admin/drawing')) {
     if (!isAdmin) {
-      window.location.replace('/');
-      return null;
+      return (
+        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <h2>Доступ только для админа</h2>
+          <p style={{ color: 'var(--color-muted-text)' }}>Эта страница доступна только в режиме админа.</p>
+          {linkToHome}
+        </div>
+      );
     }
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DrawingPage /></React.Suspense>;
   }
