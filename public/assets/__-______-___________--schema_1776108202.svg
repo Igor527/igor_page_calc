@@ -1,0 +1,70 @@
+<svg viewBox="0 0 800 1000" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="1000" fill="#fcfceb" stroke="#1e1e1e" stroke-width="3" rx="8" ry="8"/>
+
+  <text x="400" y="60" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="40" font-weight="bold" text-anchor="middle" fill="#1e1e1e">Гайд по работе со смежниками</text>
+
+  <!-- Блок 1 -->
+  <g transform="translate(40, 120)">
+    <rect x="0" y="0" width="720" height="100" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="24" text-anchor="middle" fill="#1e1e1e">1. Сделай домашку</text>
+    <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Прежде чем дергать смежный отдел,</text>
+    <text x="360" y="90" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">открой чертеж (раздел) смежника.</text>
+  </g>
+
+  <!-- Соединительная линия 1-2 -->
+  <path d="M400 220 L400 250" stroke="#1e1e1e" stroke-width="2" fill="none"/>
+
+  <!-- Блок 2 -->
+  <g transform="translate(40, 250)">
+    <rect x="0" y="0" width="720" height="140" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="24" text-anchor="middle" fill="#1e1e1e">2. Формула идеального запроса</text>
+    <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Забудь про сухие отписки, опиши проблему.</text>
+    <text x="360" y="95" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Задай вопрос, дай задание,</text>
+    <text x="360" y="120" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">сформулируй явно цель письма.</text>
+  </g>
+
+  <!-- Соединительная линия 2-3 -->
+  <path d="M400 390 L400 420" stroke="#1e1e1e" stroke-width="2" fill="none"/>
+
+  <!-- Блок 3 -->
+  <g transform="translate(40, 420)">
+    <rect x="0" y="0" width="720" height="100" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="24" text-anchor="middle" fill="#1e1e1e">3. Личное общение</text>
+    <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Обсуди проблему в чате/созвоне до письма.</text>
+    <text x="360" y="90" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Нет реакции - смотри пункт 2.</text>
+  </g>
+
+  <!-- Соединительная линия 3-4 -->
+  <path d="M400 520 L400 550" stroke="#1e1e1e" stroke-width="2" fill="none"/>
+
+  <!-- Блок 4 -->
+  <g transform="translate(40, 550)">
+    <rect x="0" y="0" width="720" height="80" fill="#b2f2bb" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="24" text-anchor="middle" fill="#1e1e1e">4. Если консенсус не найден</text>
+    <text x="360" y="65" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">поговори с Главным инженером проекта</text>
+  </g>
+
+  <!-- Соединительная линия 4-5 -->
+  <path d="M400 630 L400 660" stroke="#1e1e1e" stroke-width="2" fill="none"/>
+
+  <!-- Блок 5 -->
+  <g transform="translate(40, 660)">
+    <rect x="0" y="0" width="720" height="120" fill="#a5d8ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="24" text-anchor="middle" fill="#1e1e1e">5. Главное правило зеркальности</text>
+    <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">Относись к чужим проектам/времени</text>
+    <text x="360" y="90" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">так, как хотел бы, чтобы относились</text>
+    <text x="360" y="110" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">к твоему проекту/времени.</text>
+  </g>
+
+  <!-- Соединительная линия 5-6 -->
+  <path d="M400 780 L400 810" stroke="#1e1e1e" stroke-width="2" fill="none"/>
+
+  <!-- Блок 6 (Итог) -->
+  <g transform="translate(40, 810)">
+    <rect x="0" y="0" width="720" height="120" fill="#f3f0ff" stroke="#1e1e1e" stroke-width="2" rx="5" ry="5"/>
+    <text x="360" y="40" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="22" font-weight="bold" text-anchor="middle" fill="#1e1e1e">Наша общая цель:</text>
+    <text x="360" y="70" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">не играть в настольный теннис,</text>
+    <text x="360" y="90" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="18" text-anchor="middle" fill="#1e1e1e">а получить решение.</text>
+    <text x="360" y="110" font-family="Comic Sans MS, 'Chalkboard SE', 'Comic Neue', cursive" font-size="16" text-anchor="middle" fill="#666">О настольном теннисе тоже будет пост)</text>
+  </g>
+</svg>
