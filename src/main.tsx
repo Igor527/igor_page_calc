@@ -78,6 +78,12 @@ function App() {
       setIsAuthLoading(false);
     });
     
+    // Если Firebase не настроен, subscribeToAuth вернет null. 
+    // В этом случае мы сразу снимаем флаг загрузки, чтобы не застрять на экране проверки.
+    if (!unsub) {
+      setIsAuthLoading(false);
+    }
+    
     // Глобальный фоллбэк для картинок. Если картинка из /assets/ не найдена (404, например на localhost 
     // до скачивания, или на проде до окончания деплоя), мы подменяем src на сырой GitHub URL.
     const handleImageError = (e: ErrorEvent) => {
