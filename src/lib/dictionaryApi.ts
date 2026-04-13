@@ -109,7 +109,7 @@ function useMistralProxy(): boolean {
 
 export function getMistralApiKey(): string {
   try {
-    return (import.meta.env?.VITE_MISTRAL_API_KEY as string)?.trim() ?? '';
+    return localStorage.getItem('igor-mistral-api') || '';
   } catch {
     return '';
   }
@@ -126,10 +126,10 @@ export async function testMistralAccess(): Promise<MistralTestResult> {
   const useProxy = useMistralProxy();
   const key = getMistralApiKey();
   if (!useProxy && !key) {
-    return { ok: false, message: 'Ключ не задан. Добавьте VITE_MISTRAL_API_KEY в .env и перезапустите dev-сервер.' };
+    return { ok: false, message: 'Ключ не задан. Укажите Mistral API Key в окне настройки входа (Синхронизация).' };
   }
   if (useProxy && !key) {
-    return { ok: false, message: 'Ключ не задан в .env. Добавьте VITE_MISTRAL_API_KEY и перезапустите npm run dev.' };
+    return { ok: false, message: 'Ключ не задан. Укажите Mistral API Key в окне настройки входа.' };
   }
 
   const url = getMistralApiUrl();
@@ -199,8 +199,8 @@ export async function mistralChat(userMessage: string): Promise<MistralChatResul
 
   const useProxy = useMistralProxy();
   const key = getMistralApiKey();
-  if (!useProxy && !key) return { ok: false, message: 'Добавьте VITE_MISTRAL_API_KEY в .env.' };
-  if (useProxy && !key) return { ok: false, message: 'Добавьте VITE_MISTRAL_API_KEY в .env и перезапустите dev.' };
+  if (!useProxy && !key) return { ok: false, message: 'Укажите Mistral API Key в окне настройки входа.' };
+  if (useProxy && !key) return { ok: false, message: 'Укажите Mistral API Key в настройках.' };
 
   const url = getMistralApiUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };

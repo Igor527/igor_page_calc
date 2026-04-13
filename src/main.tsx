@@ -70,7 +70,39 @@ function App() {
 
   useEffect(() => {
     const unsub = subscribeToAuth(setFirebaseUser);
-    return () => unsub?.();
+    
+    // Глобальный фоллбэк для картинок. Если картинка из /assets/ не найдена (404, например на localhost 
+    // до скачивания, или на проде до окончания деплоя), мы подменяем src на сырой GitHub URL.
+    const handleImageError = (e: ErrorEvent) => {
+      const target = e.target as HTMLImageElement;
+      if (target && target.tagName === 'IMG' && target.src && target.src.includes('/assets/') && !target.dataset.fallbackAttempted) {
+        target.dataset.fallbackAttempted = "true";
+        try {
+          const cfgStr = localStorage.getItem('igor-github-sync-config');
+          if (cfgStr) {
+            const cfg = JSON.parse(cfgStr);
+            if (cfg.owner && cfg.repo && cfg.token) {
+              const filename = target.src.substring(target.src.lastIndexOf('/assets/') + '/assets/'.length);
+              fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/public/assets/${encodeURIComponent(filename)}?ref=${encodeURIComponent(cfg.branch || 'main')}`, {
+                headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` }
+              }).then(res => res.json()).then(data => {
+                if (data && data.content) {
+                  // GitHub API возвращает контент в base64
+                  const mime = filename.endsWith('.svg') ? 'image/svg+xml' : 'image/png';
+                  target.src = `data:${mime};base64,${data.content.replace(/\\n/g, '')}`;
+                }
+              }).catch(() => {});
+            }
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('error', handleImageError as EventListener, true); // capture phase
+
+    return () => {
+      unsub?.();
+      window.removeEventListener('error', handleImageError as EventListener, true);
+    };
   }, []);
 
   // Обработка возврата с GitHub после редиректа (на любой странице)

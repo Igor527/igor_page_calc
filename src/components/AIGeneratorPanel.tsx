@@ -61,9 +61,10 @@ async function generateSVGWithMistral(systemPrompt: string, userPrompt: string, 
 export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) => {
   const [systemPrompt, setSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
   const [userPrompt, setUserPrompt] = useState(DEFAULT_USER_PROMPT);
-  const [apiKey, setApiKey] = useState(import.meta.env.VITE_MISTRAL_API_KEY || '');
+  const [apiKey, setApiKey] = useState('');
   
   const [svgStr, setSvgStr] = useState('');
+  const [savedSvgStr, setSavedSvgStr] = useState('');
   const [fileName, setFileName] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingPrompt, setIsSavingPrompt] = useState(false);
@@ -135,12 +136,31 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
     const path = `public/assets/${fname}`;
     const res = await putFile(path, svgStr, `Добавлен стикер ${fname}`);
     if (res.ok) {
+      setSavedSvgStr(svgStr);
       alert(`Стикер сохранен и скопирован в буфер!\n\n/assets/${fname}`);
       fetchAssets();
       navigator.clipboard.writeText(`/assets/${fname}`);
       window.dispatchEvent(new CustomEvent('insert-image-to-editor', { detail: `/assets/${fname}` }));
     } else {
       alert('Ошибка: ' + res.error);
+    }
+  };
+
+  const loadAssetToEditor = async (path: string, name: string) => {
+    setIsLoadingAssets(true);
+    try {
+      const file = await getFile(path);
+      if (file && file.content) {
+        setSvgStr(file.content);
+        setSavedSvgStr(file.content);
+        setFileName(name);
+      } else {
+        alert('Не удалось загрузить содержимое файла');
+      }
+    } catch {
+      alert('Ошибка при скачивании файла из репо');
+    } finally {
+      setIsLoadingAssets(false);
     }
   };
 
@@ -214,7 +234,14 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
             dangerouslySetInnerHTML={{ __html: svgStr }}
           />
 
-          <label style={{ fontSize: '11px', fontWeight: 'bold' }}>Сырой код (можно править вручную)</label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 'bold', margin: 0 }}>Сырой код (можно править вручную)</label>
+            {svgStr === savedSvgStr ? (
+              <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 'bold' }}>✅ В репо</span>
+            ) : (
+              <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: 'bold' }}>⚠️ Есть несохраненные изменения</span>
+            )}
+          </div>
           <textarea 
             value={svgStr} 
             onChange={e => setSvgStr(e.target.value)} 
@@ -256,6 +283,11 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
                     {asset.name}
                   </div>
                   <div style={{ display: 'flex', gap: '4px' }}>
+                    <button 
+                      onClick={() => loadAssetToEditor(asset.path, asset.name)} 
+                      style={{ padding: '2px 4px', background: 'transparent', border: '1px solid var(--pico-muted-color)', color: 'var(--pico-color)', borderRadius: '4px', cursor: 'pointer' }}
+                      title="Открыть редактор"
+                    >✏️</button>
                     <button 
                       onClick={() => window.dispatchEvent(new CustomEvent('insert-image-to-editor', { detail: `/assets/${asset.name}` }))} 
                       style={{ padding: '2px 4px', background: 'transparent', border: '1px solid var(--pico-primary)', color: 'var(--pico-primary)', borderRadius: '4px', cursor: 'pointer' }}

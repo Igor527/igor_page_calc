@@ -15,6 +15,7 @@ const SyncSettings: React.FC = () => {
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('main');
   const [token, setToken] = useState('');
+  const [mistralKey, setMistralKey] = useState('');
   const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,6 +30,8 @@ const SyncSettings: React.FC = () => {
       setRepo(getEnv('VITE_GITHUB_SYNC_REPO'));
       setBranch(getEnv('VITE_GITHUB_SYNC_BRANCH') || 'main');
     }
+    const savedMistral = localStorage.getItem('igor-mistral-api');
+    if (savedMistral) setMistralKey('••••••••');
   }, []);
 
   const handleSave = () => {
@@ -43,8 +46,15 @@ const SyncSettings: React.FC = () => {
       return;
     }
     const result = setSyncConfigSafe(payload);
+    
+    if (mistralKey && !mistralKey.startsWith('••••')) {
+      localStorage.setItem('igor-mistral-api', mistralKey.trim());
+    } else if (!mistralKey) {
+      localStorage.removeItem('igor-mistral-api');
+    }
+
     if (result.ok) {
-      setTestResult('Сохранено. Нажмите «Проверить» для проверки.');
+      setTestResult('Настройки и API-ключи успешно сохранены. Нажмите «Проверить» для теста GitHub.');
     } else {
       setTestResult(result.error || 'Не удалось сохранить.');
     }
@@ -126,10 +136,22 @@ const SyncSettings: React.FC = () => {
               <input
                 type="password"
                 inputMode="text"
-                autoComplete="off"
+                autoComplete="new-password"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="ghp_... (вставьте из буфера обмена)"
+                placeholder="ghp_..."
+                style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <span style={{ fontSize: 11 }}>Mistral API Key (для генератора схем и перевода)</span>
+              <input
+                type="password"
+                inputMode="text"
+                autoComplete="new-password"
+                value={mistralKey}
+                onChange={(e) => setMistralKey(e.target.value)}
+                placeholder="Ключ Mistral AI"
                 style={{ padding: '10px 12px', fontSize: 16, minHeight: 44 }}
               />
             </label>
@@ -145,7 +167,8 @@ const SyncSettings: React.FC = () => {
               type="button"
               onClick={() => {
               const r = setSyncConfigSafe(null);
-              setOwner(''); setRepo(''); setBranch('main'); setToken('');
+              setOwner(''); setRepo(''); setBranch('main'); setToken(''); setMistralKey('');
+              localStorage.removeItem('igor-mistral-api');
               setTestResult(r.ok ? 'Сброшено' : (r.error || 'Ошибка'));
             }}
               className="secondary"
