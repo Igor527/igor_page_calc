@@ -8,6 +8,7 @@ import {
   updateCalculatorSlug,
   loadCalculator,
   downloadPublishedBundle,
+  buildPublishedBundle,
   type SavedCalculator,
   type CalculatorStatus 
 } from '@/lib/calculatorStorage';
@@ -21,6 +22,7 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [refreshKey, setRefreshKey] = useState(0); // Для принудительного обновления списка
   const [slugEdit, setSlugEdit] = useState('');
   const [slugSaving, setSlugSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => setSlugEdit(''), [selectedCalc?.id]);
 
@@ -66,11 +68,34 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       <div style={{ flex: '0 0 300px', borderRight: '1px solid var(--pico-border-color)', overflowY: 'auto' }}>
         <h2 style={{ fontSize: '1.2rem', marginBottom: 12 }}>Ревью калькуляторов</h2>
         <p style={{ fontSize: 12, color: 'var(--pico-muted-color)', marginBottom: 12 }}>
-          Опубликуйте калькуляторы, затем нажмите «Экспорт для GitHub» — положите скачанный файл в репо в <code>public/data/calculators.json</code> и сделайте push. На сайте будет этот список.
+          Опубликуйте калькуляторы, а затем синхронизируйте базу с GitHub, чтобы изменения появились на сайте для всех.
         </p>
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button 
+            type="button" 
+            onClick={async () => {
+              setIsSyncing(true);
+              try {
+                const { pushCalculators } = await import('@/lib/githubSync');
+                const bundle = buildPublishedBundle();
+                const jsonStr = JSON.stringify(bundle, null, 2);
+                const res = await pushCalculators(jsonStr);
+                if (res.ok) alert('Синхронизация успешно завершена!');
+                else alert('Ошибка синхронизации: ' + res.error);
+              } catch (e) {
+                alert('Не удалось синхронизировать: ' + (e as Error).message);
+              } finally {
+                setIsSyncing(false);
+              }
+            }}
+            disabled={isSyncing}
+            style={{ fontSize: 12, backgroundColor: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)', border: 'none', padding: '6px 12px', borderRadius: '4px' }}
+          >
+            {isSyncing ? 'Синхронизация...' : '☁️ Синхронизировать базу с GitHub'}
+          </button>
+          
           <button type="button" className="outline" style={{ fontSize: 12 }} onClick={downloadPublishedBundle}>
-            Экспорт для GitHub (calculators.json)
+            Экспорт файла (вручную)
           </button>
         </div>
         <div style={{ marginBottom: 16 }}>

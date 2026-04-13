@@ -88,6 +88,29 @@
     box-sizing: border-box;
   }
 
+  /* Глобальные стили для таблиц (редактор, блог, markdown) */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 1rem;
+    color: var(--pico-color);
+  }
+  table th, table td {
+    border: 1px solid var(--pico-border-color);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+  }
+  table th {
+    background-color: var(--pico-card-background-color);
+    font-weight: 600;
+  }
+  table tr:nth-child(even) td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  .dark table tr:nth-child(even) td {
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
   /* Выделение текста — контрастное во всех браузерах */
   ::selection {
     background-color: var(--pico-primary);

@@ -11,6 +11,7 @@ const PublicCalculator = React.lazy(() => import('./app/public/PublicCalculator'
 const ReviewPanel = React.lazy(() => import('./app/admin/review/ReviewPanel'));
 const PlannerPage = React.lazy(() => import('./app/planner/PlannerPage'));
 const NotesPage = React.lazy(() => import('./app/admin/notes/NotesPage'));
+const DrawingPage = React.lazy(() => import('./app/admin/drawing/DrawingPage'));
 const DictionaryPage = React.lazy(() => import('./app/dictionary/DictionaryPage'));
 const CvPage = React.lazy(() => import('./app/cv/CvPage'));
 const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
@@ -226,6 +227,13 @@ function App() {
       );
     }
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><NotesPage dataVersion={bundleTick} /></React.Suspense>;
+  }
+  if (path.startsWith('/admin/drawing')) {
+    if (!isAdmin) {
+      window.location.replace('/');
+      return null;
+    }
+    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DrawingPage /></React.Suspense>;
   }
   if (path.startsWith('/admin/review')) {
     window.location.replace('/editor');

@@ -38,6 +38,7 @@ const WelcomePage: React.FC<{
                 <a href="/weather" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">Метеостанция</a>
                 <a href="/editor" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">Редактор</a>
                 <a href="/blog" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">Блог</a>
+                <a href="/admin/drawing" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-blue-900 bg-blue-50 dark:bg-blue-950 no-underline text-inherit">🎨 Рисование</a>
               </div>
               <p className="text-xs opacity-90">Настройте синхронизацию ниже — изменения будут пушиться в репо.</p>
               {getSyncConfig() && onPullAllFromRepo && (
