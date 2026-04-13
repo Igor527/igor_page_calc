@@ -689,7 +689,7 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const visiblePosts = useMemo(() => {
     let list = isAdmin ? posts.filter((p) => !p.deleted) : displayPosts.filter((p) => p.published);
     if (filterTag) list = list.filter((p) => p.tags?.includes(filterTag));
-    return list.sort((a, b) => sortAsc ? a.updatedAt - b.updatedAt : b.updatedAt - a.updatedAt);
+    return list.sort((a, b) => sortAsc ? a.createdAt - b.createdAt : b.createdAt - a.createdAt);
   }, [posts, displayPosts, isAdmin, filterTag, sortAsc]);
 
   const startNew = () => {
@@ -988,7 +988,7 @@ const PostCard: React.FC<{
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>{post.title}</h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+              <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
               {views > 0 && <span>👁 {views}</span>}
               {isAdmin && !post.published && (
                 <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
