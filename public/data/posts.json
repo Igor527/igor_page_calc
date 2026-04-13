@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "exportedAt": 1776113452347,
+  "exportedAt": 1776114228051,
   "posts": [
     {
       "id": "post_q9hfn4h_mnsuaia9",
       "title": "Не будь \"почтальоном\"",
-      "content": "<p>Вкратце, о моей работе с коллегами/заказчиками/подрядчиками/экспертизой - пинг-понг <br>по мотивам <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/\">https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/</a><br><br>Это вроде бы часть игры, никто не может, не должен, быть совершенным, но иногда просто \"достало\")<br>Ну, и новая фича сайта - .svg генерация по тексту с ИИ)</p><img src=\"/assets/__-____-___________--schema_1776111761.svg\" width=\"430\"><p>О настольном теннисе тоже скоро поговорим)</p><p></p>",
+      "content": "<p>Вкратце, о моей работе с коллегами/заказчиками/подрядчиками/экспертизой - пинг-понг <br>по мотивам <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/\">https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/</a><br><br>Это вроде бы часть игры, никто не может, не должен, быть совершенным, но иногда просто \"достало\")<br>Ну, и новая фича сайта (для админа) - .svg генерация по тексту с ИИ)</p><img src=\"/assets/__-____-___________--schema_1776111761.svg\" width=\"430\"><p>О настольном теннисе тоже скоро поговорим)</p><p></p>",
       "slug": "не-будь-почтальоном",
       "published": true,
       "tags": [],
@@ -16,7 +16,7 @@
         "zoom": 1
       },
       "createdAt": 1775821535504,
-      "updatedAt": 1776113452347,
+      "updatedAt": 1776114228051,
       "deleted": false
     },
     {
