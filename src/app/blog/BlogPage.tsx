@@ -1167,7 +1167,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
           </div>
         )}
 
-        <CommentSection postId={post.id} isAdmin={isAdmin} />
+        {/* <CommentSection postId={post.id} isAdmin={isAdmin} /> */}
 
         <hr style={{ margin: '32px 0' }} />
         <p className="text-center">
