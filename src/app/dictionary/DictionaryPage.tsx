@@ -61,7 +61,7 @@ export function setDictionaryFromBundle(data: { entries?: DictionaryEntry[]; pri
 /** Загрузить словарь из data/dictionary.json (статический файл сайта). */
 export async function loadDictionaryBundle(): Promise<boolean> {
   try {
-    const res = await fetch('./data/dictionary.json');
+    const res = await fetch('/data/dictionary.json');
     if (!res.ok) return false;
     const data = await res.json();
     setDictionaryFromBundle(data);

@@ -186,7 +186,7 @@ const CALC_PREFIX = 'calc-';
 /** Список опубликованных калькуляторов из JSON в репо (при наличии). Приоритет над localStorage для публичного списка. */
 let publishedBundle: SavedCalculator[] | null = null;
 
-const PUBLISHED_JSON_URL = './data/calculators.json';
+const PUBLISHED_JSON_URL = '/data/calculators.json';
 
 /**
  * Загружает опубликованный список из репо (data/calculators.json). Вызвать при старте приложения.

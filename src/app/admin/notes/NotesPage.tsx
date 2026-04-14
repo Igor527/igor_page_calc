@@ -77,7 +77,7 @@ function save(key: string, value: unknown) {
 
 /** Загружает data/notes.json из репо (статический файл сайта) и подставляет в localStorage. */
 export function loadNotesBundle(): Promise<boolean> {
-  return fetch('./data/notes.json')
+  return fetch('/data/notes.json')
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { notes?: Note[]; folders?: NoteFolder[] }) => {
       const notes = Array.isArray(data.notes) ? data.notes : [];

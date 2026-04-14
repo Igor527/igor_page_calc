@@ -114,7 +114,7 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
 let blogBundle: BlogPost[] | null = null;
 
 export function loadBlogBundle(): Promise<void> {
-  return fetch('./data/posts.json', { cache: 'no-store' })
+  return fetch('/data/posts.json', { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
       const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
@@ -171,10 +171,26 @@ function generateId(): string {
   return 'post_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
 }
 
+const TRANS_MAP: Record<string, string> = {
+  'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+  'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+  'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'ts',
+  'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+};
+
+function transliterate(text: string): string {
+  return text.split('').map(char => {
+    const lower = char.toLowerCase();
+    const trans = TRANS_MAP[lower];
+    if (trans === undefined) return char;
+    return char === lower ? trans : trans.charAt(0).toUpperCase() + trans.slice(1);
+  }).join('');
+}
+
 function slugify(text: string): string {
-  return text
+  return transliterate(text)
     .toLowerCase()
-    .replace(/[^a-zа-яё0-9\s-]/gi, '')
+    .replace(/[^a-z0-9\s-]/gi, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
@@ -602,6 +618,19 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   useEffect(() => { savePosts(posts); }, [posts]);
 
+  // Скролл к посту при наличии якоря в URL (например, #slug)
+  useEffect(() => {
+    if (posts.length > 0 && window.location.hash) {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 300); // Небольшая задержка, чтобы рендер завершился
+    }
+  }, [posts]);
+
   const runPullMergePush = useCallback(async () => {
     setSyncStatus('loading');
     setSyncError(null);
@@ -977,14 +1006,16 @@ const PostCard: React.FC<{
   const views = getViewCounts()[post.id] || 0;
 
   return (
-    <article style={{ padding: 0, border: '1px solid var(--pico-border-color)', borderRadius: 8, overflow: 'hidden' }}>
+    <article id={post.slug} style={{ padding: 0, border: '1px solid var(--pico-border-color)', borderRadius: 8, overflow: 'hidden' }}>
       {post.coverImage && (
         <CoverDisplay src={post.coverImage} settings={post.coverSettings} maxHeight={280} alt={post.title || 'cover'} />
       )}
       <div className="blog-card-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>{post.title}</h2>
+            <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>
+              <a href={`/blog/${post.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</a>
+            </h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
               <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
               {views > 0 && <span>👁 {views}</span>}
