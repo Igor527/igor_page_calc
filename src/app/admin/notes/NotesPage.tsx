@@ -49,6 +49,22 @@ function colorCss(id?: string): string {
   return NOTE_COLORS.find(c => c.id === id)?.css ?? 'transparent';
 }
 
+const NOTES_VIEW_MODE_KEY = 'igor-notes-view-mode';
+type NotesViewMode = 'list' | 'grid';
+
+function loadNotesViewMode(): NotesViewMode {
+  try {
+    const v = localStorage.getItem(NOTES_VIEW_MODE_KEY);
+    return v === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+
+function htmlToPlainExcerpt(html: string): string {
+  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /* ═══════════════════ Storage ═══════════════════ */
 
 const NOTES_KEY = 'igor-notes-v2';
@@ -518,6 +534,49 @@ const NoteTodoBlock: React.FC<{ noteId: string; todos: NoteTodoItem[] }> = ({ no
   );
 };
 
+/* ═══════════════════ Note preview (grid) ═══════════════════ */
+
+const NotePreviewTile: React.FC<{
+  note: Note;
+  isSelected: boolean;
+  onSelect: () => void;
+}> = ({ note, isSelected, onSelect }) => {
+  const excerpt = useMemo(() => htmlToPlainExcerpt(note.content), [note.content]);
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={`note-card note-card--preview${note.archived ? ' note-card--archived' : ''}${isSelected ? ' note-card--preview-selected' : ''}`}
+      style={{
+        borderLeft: note.color && note.color !== 'none' ? `4px solid ${colorCss(note.color)}` : undefined,
+      }}
+      onClick={onSelect}
+    >
+      <div className="note-card__body">
+        <div className="note-card__title">{note.title || note.id}</div>
+        {excerpt ? (
+          <p className="note-card__excerpt">{excerpt}</p>
+        ) : (
+          <p className="note-card__excerpt note-card__empty">Пустая заметка</p>
+        )}
+        <div className="note-card__preview-meta">
+          {note.pinned && <span title="Закреплена">📌 </span>}
+          {new Date(note.updatedAt).toLocaleDateString('ru-RU')}
+          {note.tags && note.tags.length > 0 && (
+            <span>{` · ${note.tags.slice(0, 3).map(t => `#${t}`).join(' ')}`}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ═══════════════════ NoteCard ═══════════════════ */
 
 const NoteCard: React.FC<{
@@ -543,15 +602,20 @@ const NoteCard: React.FC<{
   onEditTagsChange: (v: string[]) => void;
   onEditColorChange: (v: string) => void;
   onEditTodosChange: (v: NoteTodoItem[]) => void;
-  cardRef: React.RefObject<HTMLDivElement | null>;
+  cardRef?: React.Ref<HTMLDivElement | null>;
 }> = ({ note, folders, isEditing, editTitle, editContent, editTags, editColor, editTodos, onStartEdit, onSave, onCancel, onDelete, onArchive, onTogglePin, onDuplicate, onMove, onExport, onEditTitleChange, onEditContentChange, onEditTagsChange, onEditColorChange, onEditTodosChange, cardRef }) => {
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const overflowRef = useRef<HTMLDetailsElement | null>(null);
+  const closeOverflow = () => {
+    const d = overflowRef.current;
+    if (d) d.open = false;
+  };
+
   const wordCount = useMemo(() => {
     const text = (isEditing ? editContent : note.content).replace(/<[^>]*>/g, ' ');
     return text.trim().split(/\s+/).filter(Boolean).length;
   }, [isEditing, editContent, note.content]);
 
-  // Обработка контента после рендера: кнопки копирования кода + стили изображений (как в блоге)
   useEffect(() => {
     if (!isEditing && contentRef.current && note.content) {
       attachCodeCopyButtons(contentRef.current);
@@ -559,46 +623,65 @@ const NoteCard: React.FC<{
     }
   }, [isEditing, note.content]);
 
+  const cardClass =
+    'note-card' +
+    (note.archived ? ' note-card--archived' : '') +
+    (isEditing ? ' note-card--editing' : '');
+
   return (
-    <div ref={cardRef} id={`note-${note.id}`} style={{
-      border: '1px solid var(--pico-border-color)', borderRadius: 8, padding: 0, marginBottom: 16,
-      borderLeft: note.color && note.color !== 'none' ? `4px solid ${colorCss(note.color)}` : undefined,
-      background: isEditing ? 'var(--pico-card-background-color)' : 'transparent',
-      opacity: note.archived ? 0.6 : 1,
-    }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderBottom: '1px solid var(--pico-border-color)', flexWrap: 'wrap', fontSize: 12 }}>
-        <span style={{ color: 'var(--pico-muted-color)', marginRight: 4 }}>{note.id}</span>
+    <div
+      ref={cardRef}
+      id={`note-${note.id}`}
+      className={cardClass}
+      style={{
+        borderLeft: note.color && note.color !== 'none' ? `4px solid ${colorCss(note.color)}` : undefined,
+      }}
+    >
+      <div className="note-card__toolbar">
+        <span className="note-card__id" title={note.id}>{note.id}</span>
         {note.pinned && <span title="Закреплена">📌</span>}
         {note.archived && <span title="В архиве">📦</span>}
-        <span style={{ flex: 1 }} />
+        <span className="note-card__toolbar-spacer" />
         {isEditing ? (
           <>
-            <button onClick={onSave} className="notes-touch-btn" style={{ fontSize: 12 }}>Сохранить</button>
-            <button onClick={onCancel} className="notes-touch-btn secondary" style={{ fontSize: 12 }}>Отмена</button>
+            <button type="button" onClick={onSave} className="notes-touch-btn" style={{ fontSize: 12 }}>Сохранить</button>
+            <button type="button" onClick={onCancel} className="notes-touch-btn secondary" style={{ fontSize: 12 }}>Отмена</button>
           </>
         ) : (
           <>
-            <button onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }}>✎</button>
-            <button onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'}>{note.pinned ? '📌' : '📍'}</button>
-            <button onClick={onDuplicate} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Дублировать">📋</button>
-            <button onClick={onExport} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Скачать">⬇</button>
-            <select value={note.folderId ?? '__root__'} onChange={e => onMove(e.target.value === '__root__' ? null : e.target.value)}
-              className="notes-touch-btn" style={{ fontSize: 11, maxWidth: 120 }} title="Переместить">
-              <option value="__root__">/ корень</option>
-              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-            </select>
-            <button onClick={onArchive} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.archived ? 'Разархивировать' : 'Архивировать'}>📦</button>
-            <button onClick={onDelete} className="outline secondary notes-touch-btn" style={{ fontSize: 12 }} title="Удалить">✕</button>
+            <button type="button" onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать">✎</button>
+            <button type="button" onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'}>{note.pinned ? '📌' : '📍'}</button>
+            <details ref={overflowRef} className="note-card__overflow">
+              <summary title="Ещё действия">⋯</summary>
+              <div className="note-card__overflow-panel">
+                <button type="button" onClick={() => { onDuplicate(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title="Дублировать">📋 Дублировать</button>
+                <button type="button" onClick={() => { onExport(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title="Скачать">⬇ Скачать</button>
+                <label style={{ fontSize: 11, color: 'var(--pico-muted-color)' }}>Папка</label>
+                <select
+                  value={note.folderId ?? '__root__'}
+                  onChange={(e) => {
+                    onMove(e.target.value === '__root__' ? null : e.target.value);
+                    closeOverflow();
+                  }}
+                  className="notes-touch-btn"
+                  style={{ fontSize: 11 }}
+                  title="Переместить"
+                >
+                  <option value="__root__">/ корень</option>
+                  {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+                <button type="button" onClick={() => { onArchive(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title={note.archived ? 'Разархивировать' : 'Архивировать'}>📦 {note.archived ? 'Разархивировать' : 'В архив'}</button>
+                <button type="button" onClick={() => { onDelete(); closeOverflow(); }} className="notes-touch-btn outline secondary" style={{ fontSize: 12 }} title="Удалить">✕ Удалить</button>
+              </div>
+            </details>
           </>
         )}
       </div>
-      {/* Body */}
-      <div style={{ padding: '12px 18px 16px' }}>
+      <div className="note-card__body">
         {isEditing ? (
           <>
             <input type="text" placeholder="Заголовок" value={editTitle} onChange={e => onEditTitleChange(e.target.value)}
-              style={{ width: '100%', marginBottom: 8, fontSize: 18, fontWeight: 600, border: 'none', borderBottom: '1px solid var(--pico-border-color)', background: 'transparent', padding: '4px 0' }} />
+              style={{ width: '100%', marginBottom: 8, fontSize: 18, fontWeight: 600, border: 'none', borderBottom: '1px solid var(--pico-border-color)', background: 'transparent', padding: '4px 0', color: 'var(--pico-color)' }} />
             <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <div style={{ flex: 1, minWidth: 150 }}>
                 <TagInput tags={editTags} onChange={onEditTagsChange} />
@@ -630,8 +713,8 @@ const NoteCard: React.FC<{
           </>
         ) : (
           <>
-            {note.title && <h2 style={{ fontSize: 20, margin: '0 0 4px' }}>{note.title}</h2>}
-            <div style={{ fontSize: 11, color: 'var(--pico-muted-color)', marginBottom: 8, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {note.title && <h2 className="note-card__title">{note.title}</h2>}
+            <div className="note-card__meta">
               <span>{new Date(note.updatedAt).toLocaleString('ru-RU')}</span>
               <span>{wordCount} слов</span>
             </div>
@@ -648,7 +731,7 @@ const NoteCard: React.FC<{
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(note.content) }}
               />
             ) : (
-              <p style={{ color: 'var(--pico-muted-color)', fontStyle: 'italic', margin: 0 }}>Пустая заметка</p>
+              <p className="note-card__empty">Пустая заметка</p>
             )}
             {note.todos && note.todos.length > 0 && <NoteTodoBlock noteId={note.id} todos={note.todos} />}
           </>
@@ -680,11 +763,23 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [pullLoading, setPullLoading] = useState(false);
   const [pullError, setPullError] = useState<string | null>(null);
+  const [notesViewMode, setNotesViewModeState] = useState<NotesViewMode>(() => loadNotesViewMode());
+  const [gridFocusId, setGridFocusId] = useState<string | null>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const folderImportRef = useRef<HTMLInputElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
+  const detailPaneRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const setNotesViewMode = useCallback((m: NotesViewMode) => {
+    setNotesViewModeState(m);
+    try {
+      localStorage.setItem(NOTES_VIEW_MODE_KEY, m);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => { save(NOTES_KEY, notes); }, [notes]);
   useEffect(() => { save(FOLDERS_KEY, folders); }, [folders]);
@@ -771,6 +866,14 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     });
   }, [notes, selectedFolder, search, sortMode, showArchived, filterTag]);
 
+  useEffect(() => {
+    if (notesViewMode !== 'grid') return;
+    setGridFocusId((prev) => {
+      if (prev && visibleNotes.some((n) => n.id === prev)) return prev;
+      return visibleNotes[0]?.id ?? null;
+    });
+  }, [notesViewMode, visibleNotes]);
+
   const treeNotes = useMemo(() => notes.filter(n => !n.archived), [notes]);
 
   // CRUD
@@ -779,8 +882,15 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     setNotes(prev => [note, ...prev]);
     setEditingId(note.id);
     setEditTitle(''); setEditContent(initialContent); setEditTags([]); setEditColor('none'); setEditTodos([]);
-    setTimeout(() => { cardRefs.current.get(note.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
-  }, [selectedFolder]);
+    setGridFocusId(note.id);
+    setTimeout(() => {
+      if (notesViewMode === 'grid') {
+        detailPaneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        cardRefs.current.get(note.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 80);
+  }, [selectedFolder, notesViewMode]);
 
   const saveEdit = useCallback(() => {
     if (!editingId) return;
@@ -947,11 +1057,50 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
         setShowArchived(true);
       }
     }
+    if (notesViewMode === 'grid') {
+      setGridFocusId(id);
+      setTimeout(() => {
+        detailPaneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+      return;
+    }
     setTimeout(() => {
       const el = cardRefs.current.get(id) ?? document.getElementById(`note-${id}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
-  }, [editingId, saveEdit, notes, selectedFolder, showArchived]);
+  }, [editingId, saveEdit, notes, selectedFolder, showArchived, notesViewMode]);
+
+  const renderNoteCard = (note: Note) => (
+    <NoteCard
+      key={note.id}
+      note={note}
+      folders={folders}
+      isEditing={editingId === note.id}
+      editTitle={editTitle}
+      editContent={editContent}
+      editTags={editTags}
+      editColor={editColor}
+      editTodos={editTodos}
+      onStartEdit={() => startEdit(note)}
+      onSave={saveEdit}
+      onCancel={cancelEdit}
+      onDelete={() => deleteNote(note.id)}
+      onArchive={() => archiveNote(note.id)}
+      onTogglePin={() => togglePin(note.id)}
+      onDuplicate={() => duplicateNote(note.id)}
+      onMove={(fid) => moveToFolder(note.id, fid)}
+      onExport={() => exportNote(note)}
+      onEditTitleChange={setEditTitle}
+      onEditContentChange={setEditContent}
+      onEditTagsChange={setEditTags}
+      onEditColorChange={setEditColor}
+      onEditTodosChange={setEditTodos}
+      cardRef={(el) => {
+        if (el) cardRefs.current.set(note.id, el);
+        else cardRefs.current.delete(note.id);
+      }}
+    />
+  );
 
   /* ═══════════════════ Render ═══════════════════ */
 
@@ -1026,43 +1175,55 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           onScrollToNote={scrollToNote} onMoveNote={moveToFolder} onMoveFolder={moveFolderTo} />
       </div>
 
-      {/* Feed */}
-      <div ref={feedRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 60px' }}>
+      {/* Main: list or grid + detail */}
+      <div ref={feedRef} className="notes-feed-bg">
+        <div className="notes-view-toggle">
+          <span className="notes-view-toggle-label">Вид</span>
+          <button type="button" className={notesViewMode === 'list' ? 'is-active' : ''} onClick={() => { if (editingId) saveEdit(); setNotesViewMode('list'); }}>
+            Список
+          </button>
+          <button type="button" className={notesViewMode === 'grid' ? 'is-active' : ''} onClick={() => { if (editingId) saveEdit(); setNotesViewMode('grid'); }}>
+            Плитка
+          </button>
+        </div>
+
         {visibleNotes.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--pico-muted-color)' }}>
             <span style={{ fontSize: 48, opacity: 0.3, display: 'block', marginBottom: 12 }}>📝</span>
             <p>{search ? 'Ничего не найдено' : showArchived ? 'Нет архивных заметок.' : 'Нет заметок. Создайте первую или вставьте картинку (Ctrl+V).'}</p>
-            {!showArchived && <button onClick={() => createNote()} style={{ fontSize: 13 }}>+ Новая заметка</button>}
+            {!showArchived && <button type="button" onClick={() => createNote()} style={{ fontSize: 13 }}>+ Новая заметка</button>}
+          </div>
+        ) : notesViewMode === 'list' ? (
+          <div className="notes-feed notes-feed--list">
+            {visibleNotes.map((note) => renderNoteCard(note))}
           </div>
         ) : (
-          visibleNotes.map(note => (
-            <NoteCard
-              key={note.id}
-              note={note}
-              folders={folders}
-              isEditing={editingId === note.id}
-              editTitle={editTitle}
-              editContent={editContent}
-              editTags={editTags}
-              editColor={editColor}
-              editTodos={editTodos}
-              onStartEdit={() => startEdit(note)}
-              onSave={saveEdit}
-              onCancel={cancelEdit}
-              onDelete={() => deleteNote(note.id)}
-              onArchive={() => archiveNote(note.id)}
-              onTogglePin={() => togglePin(note.id)}
-              onDuplicate={() => duplicateNote(note.id)}
-              onMove={(fid) => moveToFolder(note.id, fid)}
-              onExport={() => exportNote(note)}
-              onEditTitleChange={setEditTitle}
-              onEditContentChange={setEditContent}
-              onEditTagsChange={setEditTags}
-              onEditColorChange={setEditColor}
-              onEditTodosChange={setEditTodos}
-              cardRef={{ current: null, ...{ set current(el: HTMLDivElement | null) { if (el) cardRefs.current.set(note.id, el); } } } as React.RefObject<HTMLDivElement | null>}
-            />
-          ))
+          <div className="notes-main-inner notes-main--split">
+            <div className="notes-feed--grid-wrap">
+              <div className="notes-feed--grid">
+                {visibleNotes.map((note) => (
+                  <NotePreviewTile
+                    key={note.id}
+                    note={note}
+                    isSelected={gridFocusId === note.id}
+                    onSelect={() => {
+                      if (editingId && editingId !== note.id) saveEdit();
+                      setGridFocusId(note.id);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div ref={detailPaneRef} className="notes-detail-pane">
+              {(() => {
+                const detail = gridFocusId ? visibleNotes.find((n) => n.id === gridFocusId) : null;
+                if (!detail) {
+                  return <div className="notes-detail-empty">Выберите заметку в плитке.</div>;
+                }
+                return renderNoteCard(detail);
+              })()}
+            </div>
+          </div>
         )}
       </div>
     </div>

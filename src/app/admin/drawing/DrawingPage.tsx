@@ -4,6 +4,19 @@ import 'tldraw/tldraw.css';
 import { getFile, putFile, deleteFile } from '@/lib/githubSync';
 import { AiDiagramPanel } from './AiDiagramPanel';
 
+const SNAPSHOT_COMMENT_START = '<!-- tldraw-snapshot:';
+const SNAPSHOT_COMMENT_END = ' -->';
+
+/** Извлекает payload снимка из SVG: последний маркер (наш при сохранении), граница по первому ` -->` после него. */
+function extractTldrawSnapshotPayload(svgText: string): string | null {
+  const start = svgText.lastIndexOf(SNAPSHOT_COMMENT_START);
+  if (start < 0) return null;
+  const payloadFrom = start + SNAPSHOT_COMMENT_START.length;
+  const end = svgText.indexOf(SNAPSHOT_COMMENT_END, payloadFrom);
+  if (end <= payloadFrom) return null;
+  return svgText.slice(payloadFrom, end);
+}
+
 const DrawingPage: React.FC = () => {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [fileName, setFileName] = useState('scheme-' + Date.now().toString().slice(-6) + '.svg');
@@ -75,44 +88,48 @@ const DrawingPage: React.FC = () => {
     setIsLoading(true);
     try {
       const file = await getFile(path);
-      if (file && file.content) {
-        const match = file.content.match(/<!-- tldraw-snapshot: (.*?) -->/s);
-        if (match && match[1]) {
-          const snapshot = JSON.parse(decodeURIComponent(match[1]));
+      if (!file?.content) return;
+
+      const encoded = extractTldrawSnapshotPayload(file.content);
+      if (encoded) {
+        try {
+          const snapshot = JSON.parse(decodeURIComponent(encoded.trim()));
           editor.loadSnapshot(snapshot);
           setFileName(name);
-        } else {
-          // Fallback: load as flat SVG image
-          setFileName(name);
-          const assetId = AssetRecordType.createId();
-          await editor.createAssets([
-            {
-              id: assetId,
-              type: 'image',
-              typeName: 'asset',
-              props: {
-                name: name,
-                src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(file.content)))}`,
-                w: 800,
-                h: 600,
-                mimeType: 'image/svg+xml',
-                isAnimated: false,
-              },
-              meta: {},
-            },
-          ]);
-          editor.createShape({
-            type: 'image',
-            x: 0,
-            y: 0,
-            props: {
-              assetId,
-              w: 800,
-              h: 600,
-            },
-          });
+          return;
+        } catch {
+          /* снимок в комментарии битый — грузим как картинку */
         }
       }
+
+      setFileName(name);
+      const assetId = AssetRecordType.createId();
+      await editor.createAssets([
+        {
+          id: assetId,
+          type: 'image',
+          typeName: 'asset',
+          props: {
+            name: name,
+            src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(file.content)))}`,
+            w: 800,
+            h: 600,
+            mimeType: 'image/svg+xml',
+            isAnimated: false,
+          },
+          meta: {},
+        },
+      ]);
+      editor.createShape({
+        type: 'image',
+        x: 0,
+        y: 0,
+        props: {
+          assetId,
+          w: 800,
+          h: 600,
+        },
+      });
     } catch (e) {
       alert('Ошибка загрузки файла');
     } finally {
@@ -168,7 +185,18 @@ const DrawingPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: 'var(--pico-background-color)' }}>
+    <div
+      className="drawing-page-root"
+      style={{
+        display: 'flex',
+        height: 'calc(100vh - var(--content-offset-from-header, 112px) - var(--site-footer-height, 56px))',
+        width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        background: 'var(--pico-background-color)',
+        minHeight: 0,
+      }}
+    >
       
       {/* LEFT: Assets */}
       <div style={{ width: '280px', flexShrink: 0, borderRight: '1px solid var(--pico-border-color)', display: 'flex', flexDirection: 'column' }}>
