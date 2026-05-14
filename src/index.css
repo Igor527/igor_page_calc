@@ -1112,3 +1112,8 @@ pre:hover .code-copy-btn,
   --tl-layer-header-footer: 1350;
   --tl-layer-following-indicator: 1400;
 }
+
+/* Chrome: content-visibility на канве tldraw иногда даёт «пустой» холст после ре-лейаута родителя */
+.drawing-page-root .tl-canvas {
+  content-visibility: visible !important;
+}
