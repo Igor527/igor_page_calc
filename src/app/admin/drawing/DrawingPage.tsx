@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { Tldraw, Editor, createShapeId, AssetRecordType } from 'tldraw';
+import { Tldraw, Editor, AssetRecordType } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { getFile, putFile, deleteFile } from '@/lib/githubSync';
 import { AiDiagramPanel } from './AiDiagramPanel';
@@ -156,18 +156,49 @@ const DrawingTldrawIsland = memo(function DrawingTldrawIsland({
 }: {
   editorRef: React.MutableRefObject<Editor | null>;
 }) {
+  const canvasHostRef = useRef<HTMLDivElement>(null);
+
   const onMount = useCallback(
     (editor: Editor) => {
       editorRef.current = editor;
-      scheduleEditorViewportAndFit(editor);
-      const t = window.setTimeout(() => scheduleEditorViewportAndFit(editor), 200);
-      return () => window.clearTimeout(t);
+      let resizeRaf = 0;
+      const bump = () => scheduleEditorViewportAndFit(editor);
+
+      bump();
+      const t200 = window.setTimeout(bump, 200);
+      const t900 = window.setTimeout(bump, 900);
+      const t1800 = window.setTimeout(bump, 1800);
+
+      const host = canvasHostRef.current;
+      let ro: ResizeObserver | undefined;
+      if (host && typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => {
+          cancelAnimationFrame(resizeRaf);
+          resizeRaf = requestAnimationFrame(bump);
+        });
+        ro.observe(host);
+      }
+
+      const onVis = () => {
+        if (document.visibilityState === 'visible') bump();
+      };
+      document.addEventListener('visibilitychange', onVis);
+
+      return () => {
+        ro?.disconnect();
+        cancelAnimationFrame(resizeRaf);
+        document.removeEventListener('visibilitychange', onVis);
+        window.clearTimeout(t200);
+        window.clearTimeout(t900);
+        window.clearTimeout(t1800);
+      };
     },
     [editorRef]
   );
 
   return (
     <div
+      ref={canvasHostRef}
       style={{
         flex: 1,
         position: 'relative',

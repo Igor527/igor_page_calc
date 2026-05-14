@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, startTransition } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 
@@ -195,7 +195,9 @@ function App() {
       loadNotesBundle(),
       loadLayoutsBundle(),
       dictLoad,
-    ]).then(() => setBundleTick((n) => n + 1));
+    ]).then(() => {
+      startTransition(() => setBundleTick((n) => n + 1));
+    });
   }, []);
 
   const pullAllFromRepo = useCallback(async () => {
@@ -220,7 +222,7 @@ function App() {
     const rssData = await getRssListsFromRepo();
     if (rssData) setRssListsFromBundle(rssData);
     ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
-    setBundleTick((n) => n + 1);
+    startTransition(() => setBundleTick((n) => n + 1));
   }, []);
 
   useEffect(() => {
