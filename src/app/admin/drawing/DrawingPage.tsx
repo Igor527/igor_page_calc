@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { Tldraw, Editor, createShapeId, AssetRecordType } from 'tldraw';
 import 'tldraw/tldraw.css';
 import { getFile, putFile, deleteFile } from '@/lib/githubSync';
@@ -17,44 +17,194 @@ function extractTldrawSnapshotPayload(svgText: string): string | null {
   return svgText.slice(payloadFrom, end);
 }
 
-const DrawingPage: React.FC = () => {
-  const [editor, setEditor] = useState<Editor | null>(null);
-  const [fileName, setFileName] = useState('scheme-' + Date.now().toString().slice(-6) + '.svg');
-  const [assets, setAssets] = useState<{ name: string; path: string; sha: string; url: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [svgStr, setSvgStr] = useState('');
+type GitHubAssetRow = { name: string; path: string; sha: string; url: string };
+
+/**
+ * Список файлов из GitHub — в отдельном memo-компоненте, чтобы `setAssets` после сети
+ * не ре-рендерил родителя с `<Tldraw />` (иначе через ~1–2 с канва могла «гаснуть»).
+ */
+const DrawingAssetsList = memo(function DrawingAssetsList({
+  onPickAsset,
+  refreshKey,
+}: {
+  onPickAsset: (path: string, name: string) => void;
+  refreshKey: number;
+}) {
+  const [assets, setAssets] = useState<GitHubAssetRow[]>([]);
+  const [listLoading, setListLoading] = useState(false);
 
   const fetchAssets = useCallback(async () => {
-    setIsLoading(true);
+    setListLoading(true);
     try {
       const cfgStr = localStorage.getItem('igor-github-sync-config');
       if (!cfgStr) return;
-      const cfg = JSON.parse(cfgStr);
+      const cfg = JSON.parse(cfgStr) as { token?: string; owner?: string; repo?: string; branch?: string };
       if (!cfg.token || !cfg.owner || !cfg.repo) return;
-      
-      const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/public/assets?ref=${encodeURIComponent(cfg.branch || 'main')}`, {
-        headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` }
-      });
+
+      const res = await fetch(
+        `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/public/assets?ref=${encodeURIComponent(cfg.branch || 'main')}`,
+        { headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` } }
+      );
       if (!res.ok) throw new Error('Ошибка сети');
-      const data = await res.json();
+      const data: unknown = await res.json();
       if (Array.isArray(data)) {
-        setAssets(data.filter((f: any) => f.name.endsWith('.svg') || f.name.endsWith('.png')));
+        setAssets(
+          data.filter(
+            (f): f is GitHubAssetRow =>
+              typeof f === 'object' &&
+              f !== null &&
+              'name' in f &&
+              typeof (f as GitHubAssetRow).name === 'string' &&
+              ((f as GitHubAssetRow).name.endsWith('.svg') || (f as GitHubAssetRow).name.endsWith('.png'))
+          )
+        );
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setIsLoading(false);
+      setListLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchAssets(); }, [fetchAssets]);
+  useEffect(() => {
+    void fetchAssets();
+  }, [fetchAssets, refreshKey]);
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '12px', minHeight: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0 0 8px' }}>
+        <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Assets</span>
+        <button
+          type="button"
+          onClick={() => void fetchAssets()}
+          style={{ fontSize: '10px', background: 'transparent', color: 'var(--pico-primary)', border: 'none', cursor: 'pointer' }}
+        >
+          Обновить
+        </button>
+      </div>
+      {listLoading && <p style={{ fontSize: '10px', color: 'var(--pico-muted-color)', margin: '0 0 8px' }}>Загрузка списка…</p>}
+      {!listLoading && assets.length === 0 && (
+        <p style={{ fontSize: '10px', color: 'var(--pico-muted-color)', margin: '0 0 8px' }}>Нет файлов или не настроен GitHub.</p>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {assets.map((a) => (
+          <div
+            key={a.sha}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '4px 8px',
+              background: 'var(--pico-card-background-color)',
+              border: '1px solid var(--pico-border-color)',
+              borderRadius: '4px',
+            }}
+          >
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={() => onPickAsset(a.path, a.name)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onPickAsset(a.path, a.name);
+                }
+              }}
+              style={{ fontSize: '11px', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}
+            >
+              {a.name}
+            </span>
+            <button
+              type="button"
+              onClick={async () => {
+                if (confirm('Удалить?')) {
+                  await deleteFile(a.path, a.sha, 'Remove');
+                  void fetchAssets();
+                }
+              }}
+              style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '0 4px', cursor: 'pointer' }}
+            >
+              🗑
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
+const DrawingPage: React.FC = () => {
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const [fileName, setFileName] = useState('scheme-' + Date.now().toString().slice(-6) + '.svg');
+  const [fileLoading, setFileLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [svgStr, setSvgStr] = useState('');
+  const [assetsRefreshKey, setAssetsRefreshKey] = useState(0);
+
+  const handleEditorMount = useCallback((api: Editor) => {
+    setEditor(api);
+  }, []);
+
+  const loadAssetToCanvas = useCallback(
+    async (path: string, name: string) => {
+      if (!editor) return;
+      setFileLoading(true);
+      try {
+        const file = await getFile(path);
+        if (!file?.content) return;
+
+        const encoded = extractTldrawSnapshotPayload(file.content);
+        if (encoded) {
+          try {
+            const snapshot = JSON.parse(decodeURIComponent(encoded.trim()));
+            editor.loadSnapshot(snapshot);
+            setFileName(name);
+            return;
+          } catch {
+            /* снимок в комментарии битый — грузим как картинку */
+          }
+        }
+
+        setFileName(name);
+        const assetId = AssetRecordType.createId();
+        await editor.createAssets([
+          {
+            id: assetId,
+            type: 'image',
+            typeName: 'asset',
+            props: {
+              name: name,
+              src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(file.content)))}`,
+              w: 800,
+              h: 600,
+              mimeType: 'image/svg+xml',
+              isAnimated: false,
+            },
+            meta: {},
+          },
+        ]);
+        editor.createShape({
+          type: 'image',
+          x: 0,
+          y: 0,
+          props: {
+            assetId,
+            w: 800,
+            h: 600,
+          },
+        });
+      } catch (e) {
+        alert('Ошибка загрузки файла');
+      } finally {
+        setFileLoading(false);
+      }
+    },
+    [editor]
+  );
 
   const handleSaveToGitHub = async () => {
     if (!editor || !fileName) return;
     setIsSaving(true);
     try {
-      // Export to SVG
       const svg = await editor.getSvgString(Array.from(editor.getCurrentPageShapeIds()), {
         padding: 32,
         scale: 1,
@@ -62,16 +212,15 @@ const DrawingPage: React.FC = () => {
       });
       if (!svg) throw new Error('Failed to generate SVG');
 
-      // Add tldraw snapshot as metadata for future editing
       const snapshot = editor.getSnapshot();
       const finalSvg = svg.svg + `\n<!-- tldraw-snapshot: ${encodeURIComponent(JSON.stringify(snapshot))} -->`;
 
       const path = `public/assets/${fileName.endsWith('.svg') ? fileName : fileName + '.svg'}`;
       const res = await putFile(path, finalSvg, `Добавлена схема ${path}`);
-      
+
       if (res.ok) {
         alert(`Сохранено: /assets/${fileName}`);
-        fetchAssets();
+        setAssetsRefreshKey((k) => k + 1);
       } else {
         alert('Ошибка: ' + res.error);
       }
@@ -80,60 +229,6 @@ const DrawingPage: React.FC = () => {
       alert('Ошибка при сохранении');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const loadAssetToCanvas = async (path: string, name: string) => {
-    if (!editor) return;
-    setIsLoading(true);
-    try {
-      const file = await getFile(path);
-      if (!file?.content) return;
-
-      const encoded = extractTldrawSnapshotPayload(file.content);
-      if (encoded) {
-        try {
-          const snapshot = JSON.parse(decodeURIComponent(encoded.trim()));
-          editor.loadSnapshot(snapshot);
-          setFileName(name);
-          return;
-        } catch {
-          /* снимок в комментарии битый — грузим как картинку */
-        }
-      }
-
-      setFileName(name);
-      const assetId = AssetRecordType.createId();
-      await editor.createAssets([
-        {
-          id: assetId,
-          type: 'image',
-          typeName: 'asset',
-          props: {
-            name: name,
-            src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(file.content)))}`,
-            w: 800,
-            h: 600,
-            mimeType: 'image/svg+xml',
-            isAnimated: false,
-          },
-          meta: {},
-        },
-      ]);
-      editor.createShape({
-        type: 'image',
-        x: 0,
-        y: 0,
-        props: {
-          assetId,
-          w: 800,
-          h: 600,
-        },
-      });
-    } catch (e) {
-      alert('Ошибка загрузки файла');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -168,7 +263,7 @@ const DrawingPage: React.FC = () => {
     });
   };
 
-  const addShape = (type: string, props: any = {}) => {
+  const addShape = (type: string, props: Record<string, unknown> = {}) => {
     if (!editor) return;
     const { x, y } = editor.getViewportPageBounds().center;
     editor.createShape({
@@ -179,8 +274,8 @@ const DrawingPage: React.FC = () => {
         geo: type,
         w: 100,
         h: 50,
-        ...props
-      }
+        ...props,
+      },
     });
   };
 
@@ -197,71 +292,114 @@ const DrawingPage: React.FC = () => {
         minHeight: 0,
       }}
     >
-      
-      {/* LEFT: Assets */}
-      <div style={{ width: '280px', flexShrink: 0, borderRight: '1px solid var(--pico-border-color)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid var(--pico-border-color)' }}>
+      <div
+        style={{
+          width: '280px',
+          flexShrink: 0,
+          borderRight: '1px solid var(--pico-border-color)',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+        }}
+      >
+        <div style={{ padding: '16px', borderBottom: '1px solid var(--pico-border-color)', flexShrink: 0 }}>
           <h2 style={{ fontSize: '16px', margin: '0 0 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <a href="/" style={{ fontSize: '11px', textDecoration: 'none' }}>← На главную</a>
+            <a href="/" style={{ fontSize: '11px', textDecoration: 'none' }}>
+              ← На главную
+            </a>
             <span>Рисование</span>
           </h2>
           <div style={{ display: 'flex', gap: '4px', marginBottom: '8px' }}>
-            <input type="text" value={fileName} onChange={e => setFileName(e.target.value)} style={{ flex: 1, fontSize: '11px', padding: '4px 8px', margin: 0 }} />
-            <button onClick={handleSaveToGitHub} disabled={isSaving} style={{ padding: '4px 8px', fontSize: '11px', margin: 0, background: '#10b981' }}>
+            <input
+              type="text"
+              value={fileName}
+              onChange={(e) => setFileName(e.target.value)}
+              style={{ flex: 1, fontSize: '11px', padding: '4px 8px', margin: 0 }}
+            />
+            <button
+              type="button"
+              onClick={() => void handleSaveToGitHub()}
+              disabled={isSaving}
+              style={{ padding: '4px 8px', fontSize: '11px', margin: 0, background: '#10b981' }}
+            >
               {isSaving ? '...' : 'Пуш'}
             </button>
           </div>
-          <button onClick={() => { editor?.clearPage(); setFileName('scheme-' + Date.now().toString().slice(-6) + '.svg'); }} 
-            className="outline" style={{ width: '100%', fontSize: '11px', padding: '4px', margin: 0 }}>
+          <button
+            type="button"
+            onClick={() => {
+              editor?.clearPage();
+              setFileName('scheme-' + Date.now().toString().slice(-6) + '.svg');
+            }}
+            className="outline"
+            style={{ width: '100%', fontSize: '11px', padding: '4px', margin: 0 }}
+          >
             Новый файл
           </button>
+          {fileLoading && <p style={{ fontSize: '10px', color: 'var(--pico-muted-color)', margin: '8px 0 0' }}>Загрузка файла…</p>}
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0 0 8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Assets</span>
-            <button onClick={fetchAssets} style={{ fontSize: '10px', background: 'transparent', color: 'var(--pico-primary)', border: 'none', cursor: 'pointer' }}>Обновить</button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {assets.map(a => (
-              <div key={a.sha} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--pico-card-background-color)', border: '1px solid var(--pico-border-color)', borderRadius: '4px' }}>
-                <span onClick={() => loadAssetToCanvas(a.path, a.name)} style={{ fontSize: '11px', cursor: 'pointer', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
-                <button onClick={async () => { if (confirm('Удалить?')) { await deleteFile(a.path, a.sha, 'Remove'); fetchAssets(); } }} style={{ background: 'transparent', border: 'none', color: '#ef4444', padding: '0 4px', cursor: 'pointer' }}>🗑</button>
-              </div>
-            ))}
-          </div>
-        </div>
+        <DrawingAssetsList onPickAsset={loadAssetToCanvas} refreshKey={assetsRefreshKey} />
       </div>
 
-      {/* CENTER: Canvas */}
-      <div style={{ flex: 1, position: 'relative', borderRight: '1px solid var(--pico-border-color)' }}>
-        <Tldraw 
-          onMount={(api) => setEditor(api)}
-          inferDarkMode={true}
-        />
+      <div
+        style={{
+          flex: 1,
+          position: 'relative',
+          borderRight: '1px solid var(--pico-border-color)',
+          minWidth: 0,
+          minHeight: 0,
+        }}
+      >
+        <Tldraw onMount={handleEditorMount} inferDarkMode={true} />
       </div>
 
-      {/* RIGHT: AI & Code */}
-      <div style={{ width: '320px', flexShrink: 0, display: 'flex', flexDirection: 'column', overflowY: 'auto', padding: '16px', background: 'var(--pico-background-color)' }}>
-        <AiDiagramPanel 
-          svgStr={svgStr} 
-          setSvgStr={setSvgStr} 
-          onImportToCanvas={handleImportSVG} 
-        />
-        
-        {/* Favorites: Top 10 Blocks */}
+      <div
+        style={{
+          width: '320px',
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          overflowY: 'auto',
+          padding: '16px',
+          background: 'var(--pico-background-color)',
+          minHeight: 0,
+        }}
+      >
+        <AiDiagramPanel svgStr={svgStr} setSvgStr={setSvgStr} onImportToCanvas={handleImportSVG} />
+
         <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--pico-border-color)' }}>
           <h3 style={{ fontSize: '14px', marginBottom: '12px' }}>Топ-10 блоков</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-            <button onClick={() => addShape('rectangle', { text: 'Процесс' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">⬜ Процесс</button>
-            <button onClick={() => addShape('rhombus', { text: 'Условие' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">🔶 Условие</button>
-            <button onClick={() => addShape('oval', { text: 'Начало' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">🟢 Старт/Конец</button>
-            <button onClick={() => addShape('trapezoid', { text: 'Данные' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">▱ Данные</button>
-            <button onClick={() => addShape('rectangle', { dash: 'dashed', text: 'Заметка' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">📝 Заметка</button>
-            <button onClick={() => addShape('diamond', { text: 'Решение' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">💎 Решение</button>
-            <button onClick={() => addShape('cloud', { text: 'Облако' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">☁️ Облако</button>
-            <button onClick={() => editor?.createShape({ type: 'arrow', x: 0, y: 0, props: { text: 'Связь' } })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">↗️ Стрелка</button>
-            <button onClick={() => editor?.createShape({ type: 'text', props: { text: 'Заголовок' } })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">🔤 Текст</button>
-            <button onClick={() => addShape('ellipse', { text: 'Инфо' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">⭕ Круг</button>
+            <button type="button" onClick={() => addShape('rectangle', { text: 'Процесс' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              ⬜ Процесс
+            </button>
+            <button type="button" onClick={() => addShape('rhombus', { text: 'Условие' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              🔶 Условие
+            </button>
+            <button type="button" onClick={() => addShape('oval', { text: 'Начало' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              🟢 Старт/Конец
+            </button>
+            <button type="button" onClick={() => addShape('trapezoid', { text: 'Данные' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              ▱ Данные
+            </button>
+            <button type="button" onClick={() => addShape('rectangle', { dash: 'dashed', text: 'Заметка' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              📝 Заметка
+            </button>
+            <button type="button" onClick={() => addShape('diamond', { text: 'Решение' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              💎 Решение
+            </button>
+            <button type="button" onClick={() => addShape('cloud', { text: 'Облако' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              ☁️ Облако
+            </button>
+            <button type="button" onClick={() => editor?.createShape({ type: 'arrow', x: 0, y: 0, props: { text: 'Связь' } })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              ↗️ Стрелка
+            </button>
+            <button type="button" onClick={() => editor?.createShape({ type: 'text', props: { text: 'Заголовок' } })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              🔤 Текст
+            </button>
+            <button type="button" onClick={() => addShape('ellipse', { text: 'Инфо' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
+              ⭕ Круг
+            </button>
           </div>
         </div>
       </div>
