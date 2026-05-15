@@ -1,40 +1,60 @@
-import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { Tldraw, Editor, AssetRecordType } from 'tldraw';
-import 'tldraw/tldraw.css';
+import React, { useState, useEffect, useCallback, memo, useRef, Suspense } from 'react';
 import { getFile, putFile, deleteFile } from '@/lib/githubSync';
 import { AiDiagramPanel } from './AiDiagramPanel';
+import type { ExcalidrawCanvasHandle } from './ExcalidrawCanvas';
+import {
+  extractEmbeddedScenePayload,
+  parseScenePayload,
+  buildSvgWithScene,
+} from './excalidrawScene';
+import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/element/types';
 
-const SNAPSHOT_COMMENT_START = '<!-- tldraw-snapshot:';
-const SNAPSHOT_COMMENT_END = ' -->';
-
-function extractTldrawSnapshotPayload(svgText: string): string | null {
-  const start = svgText.lastIndexOf(SNAPSHOT_COMMENT_START);
-  if (start < 0) return null;
-  const payloadFrom = start + SNAPSHOT_COMMENT_START.length;
-  const end = svgText.indexOf(SNAPSHOT_COMMENT_END, payloadFrom);
-  if (end <= payloadFrom) return null;
-  return svgText.slice(payloadFrom, end);
-}
+const ExcalidrawCanvas = React.lazy(() => import('./ExcalidrawCanvas'));
 
 type GitHubAssetRow = { name: string; path: string; sha: string; url: string };
 
-/**
- * После loadSnapshot и во flex-контейнере tldraw часто оставляет камеру/вьюпорт несогласованными с DOM —
- * визуально это «пустой» чёрный/белый холст при живых панелях инструментов.
- */
-function scheduleEditorViewportAndFit(editor: Editor) {
-  const run = () => {
-    try {
-      const el = editor.getContainer();
-      if (el) editor.updateViewportScreenBounds(el, true);
-      editor.zoomToFit({ animation: { duration: 0 } });
-    } catch {
-      /* ignore */
-    }
-  };
-  requestAnimationFrame(() => {
-    requestAnimationFrame(run);
+type PendingScene = NonNullable<ReturnType<typeof parseScenePayload>>;
+
+const BLOCK_TEMPLATES: { label: string; skeleton: ExcalidrawElementSkeleton }[] = [
+  { label: 'Процесс', skeleton: { type: 'rectangle', width: 160, height: 72, label: { text: 'Процесс' } } },
+  { label: 'Условие', skeleton: { type: 'diamond', width: 120, height: 120, label: { text: 'Условие' } } },
+  { label: 'Старт/Конец', skeleton: { type: 'ellipse', width: 140, height: 72, label: { text: 'Старт/Конец' } } },
+  { label: 'Данные', skeleton: { type: 'rectangle', width: 160, height: 56, label: { text: 'Данные' } } },
+  {
+    label: 'Заметка',
+    skeleton: { type: 'rectangle', width: 140, height: 64, strokeStyle: 'dashed', label: { text: 'Заметка' } },
+  },
+  { label: 'Решение', skeleton: { type: 'diamond', width: 110, height: 110, label: { text: 'Решение' } } },
+  { label: 'Облако', skeleton: { type: 'ellipse', width: 150, height: 90, label: { text: 'Облако' } } },
+  {
+    label: 'Стрелка',
+    skeleton: {
+      type: 'arrow',
+      x: 0,
+      y: 0,
+      start: { x: 0, y: 0 },
+      end: { x: 120, y: 0 },
+      label: { text: 'Связь' },
+    },
+  },
+  { label: 'Текст', skeleton: { type: 'text', text: 'Заголовок', fontSize: 28 } },
+  { label: 'Круг', skeleton: { type: 'ellipse', width: 100, height: 100, label: { text: 'Инфо' } } },
+];
+
+const pendingSceneRef: { current: PendingScene | null } = { current: null };
+
+function applyPendingScene(canvas: ExcalidrawCanvasHandle) {
+  const pending = pendingSceneRef.current;
+  if (!pending) return;
+  const api = canvas.getApi();
+  if (!api) return;
+  pendingSceneRef.current = null;
+  api.updateScene({
+    elements: pending.elements,
+    appState: pending.appState,
+    files: pending.files,
   });
+  api.scrollToContent();
 }
 
 const DrawingAssetsList = memo(function DrawingAssetsList({
@@ -146,149 +166,84 @@ const DrawingAssetsList = memo(function DrawingAssetsList({
   );
 });
 
-/**
- * Канва в отдельном memo: родитель страницы не должен иметь state, иначе любой setState
- * (имя файла, SVG в AI-панели, сохранение) снова гоняет reconciliation по `<Tldraw />` и
- * может оставить поверх холста слой загрузки / «сплошной» фон.
- */
-const DrawingTldrawIsland = memo(function DrawingTldrawIsland({
-  editorRef,
+const DrawingExcalidrawIsland = memo(function DrawingExcalidrawIsland({
+  canvasRef,
 }: {
-  editorRef: React.MutableRefObject<Editor | null>;
+  canvasRef: React.MutableRefObject<ExcalidrawCanvasHandle | null>;
 }) {
-  const canvasHostRef = useRef<HTMLDivElement>(null);
-
-  const onMount = useCallback(
-    (editor: Editor) => {
-      editorRef.current = editor;
-      let resizeRaf = 0;
-      const bump = () => scheduleEditorViewportAndFit(editor);
-
-      bump();
-      const t200 = window.setTimeout(bump, 200);
-      const t900 = window.setTimeout(bump, 900);
-      const t1800 = window.setTimeout(bump, 1800);
-
-      const host = canvasHostRef.current;
-      let ro: ResizeObserver | undefined;
-      if (host && typeof ResizeObserver !== 'undefined') {
-        ro = new ResizeObserver(() => {
-          cancelAnimationFrame(resizeRaf);
-          resizeRaf = requestAnimationFrame(bump);
-        });
-        ro.observe(host);
-      }
-
-      const onVis = () => {
-        if (document.visibilityState === 'visible') bump();
-      };
-      document.addEventListener('visibilitychange', onVis);
-
-      return () => {
-        ro?.disconnect();
-        cancelAnimationFrame(resizeRaf);
-        document.removeEventListener('visibilitychange', onVis);
-        window.clearTimeout(t200);
-        window.clearTimeout(t900);
-        window.clearTimeout(t1800);
-      };
-    },
-    [editorRef]
-  );
+  const onApiReady = useCallback(() => {
+    const handle = canvasRef.current;
+    if (handle) applyPendingScene(handle);
+  }, [canvasRef]);
 
   return (
-    <div
-      ref={canvasHostRef}
-      style={{
-        flex: 1,
-        position: 'relative',
-        borderRight: '1px solid var(--pico-border-color)',
-        minWidth: 0,
-        minHeight: 0,
-      }}
+    <Suspense
+      fallback={
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 0 }}>
+          Загрузка редактора…
+        </div>
+      }
     >
-      <Tldraw onMount={onMount} inferDarkMode={true} />
-    </div>
+      <ExcalidrawCanvas canvasRef={canvasRef} onApiReady={onApiReady} />
+    </Suspense>
   );
 });
 
-function DrawingLeftColumn({ editorRef }: { editorRef: React.MutableRefObject<Editor | null> }) {
+function DrawingLeftColumn({ canvasRef }: { canvasRef: React.MutableRefObject<ExcalidrawCanvasHandle | null> }) {
   const [fileName, setFileName] = useState('scheme-' + Date.now().toString().slice(-6) + '.svg');
   const [fileLoading, setFileLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [assetsRefreshKey, setAssetsRefreshKey] = useState(0);
 
-  const loadAssetToCanvas = useCallback(async (path: string, name: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      alert('Редактор ещё не готов. Подождите секунду и нажмите файл снова.');
-      return;
-    }
-    setFileLoading(true);
-    try {
-      const file = await getFile(path);
-      if (!file?.content) return;
-
-      const encoded = extractTldrawSnapshotPayload(file.content);
-      if (encoded) {
-        try {
-          const snapshot = JSON.parse(decodeURIComponent(encoded.trim()));
-          editor.loadSnapshot(snapshot);
-          setFileName(name);
-          scheduleEditorViewportAndFit(editor);
-          return;
-        } catch {
-          /* битый снимок — картинка */
-        }
+  const loadAssetToCanvas = useCallback(
+    async (path: string, name: string) => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        alert('Редактор ещё не готов. Подождите секунду и нажмите файл снова.');
+        return;
       }
+      setFileLoading(true);
+      try {
+        const file = await getFile(path);
+        if (!file?.content) return;
 
-      setFileName(name);
-      const assetId = AssetRecordType.createId();
-      await editor.createAssets([
-        {
-          id: assetId,
-          type: 'image',
-          typeName: 'asset',
-          props: {
-            name: name,
-            src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(file.content)))}`,
-            w: 800,
-            h: 600,
-            mimeType: 'image/svg+xml',
-            isAnimated: false,
-          },
-          meta: {},
-        },
-      ]);
-      editor.createShape({
-        type: 'image',
-        x: 0,
-        y: 0,
-        props: { assetId, w: 800, h: 600 },
-      });
-      scheduleEditorViewportAndFit(editor);
-    } catch {
-      alert('Ошибка загрузки файла');
-    } finally {
-      setFileLoading(false);
-    }
-  }, [editorRef]);
+        const embedded = extractEmbeddedScenePayload(file.content);
+        if (embedded?.format === 'excalidraw') {
+          const scene = parseScenePayload(embedded.payload);
+          if (scene) {
+            const api = canvas.getApi();
+            if (api) {
+              api.updateScene({
+                elements: scene.elements,
+                appState: scene.appState,
+                files: scene.files,
+              });
+              api.scrollToContent();
+            } else {
+              pendingSceneRef.current = scene;
+            }
+            setFileName(name);
+            return;
+          }
+        }
+
+        setFileName(name);
+        canvas.embedSvg(file.content, name);
+      } catch {
+        alert('Ошибка загрузки файла');
+      } finally {
+        setFileLoading(false);
+      }
+    },
+    [canvasRef]
+  );
 
   const handleSaveToGitHub = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor || !fileName) return;
+    const api = canvasRef.current?.getApi();
+    if (!api || !fileName) return;
     setIsSaving(true);
     try {
-      const svg = await editor.getSvgString(Array.from(editor.getCurrentPageShapeIds()), {
-        padding: 32,
-        scale: 1,
-        background: true,
-      });
-      if (!svg) throw new Error('Failed to generate SVG');
-
-      const snapshot = editor.getSnapshot();
-      const finalSvg = svg.svg + `\n<!-- tldraw-snapshot: ${encodeURIComponent(JSON.stringify(snapshot))} -->`;
-
+      const finalSvg = await buildSvgWithScene(api);
       const path = `public/assets/${fileName.endsWith('.svg') ? fileName : fileName + '.svg'}`;
       const res = await putFile(path, finalSvg, `Добавлена схема ${path}`);
 
@@ -304,7 +259,7 @@ function DrawingLeftColumn({ editorRef }: { editorRef: React.MutableRefObject<Ed
     } finally {
       setIsSaving(false);
     }
-  }, [editorRef, fileName]);
+  }, [canvasRef, fileName]);
 
   return (
     <div
@@ -343,7 +298,7 @@ function DrawingLeftColumn({ editorRef }: { editorRef: React.MutableRefObject<Ed
         <button
           type="button"
           onClick={() => {
-            editorRef.current?.clearPage();
+            canvasRef.current?.resetScene();
             setFileName('scheme-' + Date.now().toString().slice(-6) + '.svg');
           }}
           className="outline"
@@ -358,54 +313,28 @@ function DrawingLeftColumn({ editorRef }: { editorRef: React.MutableRefObject<Ed
   );
 }
 
-function DrawingRightColumn({ editorRef }: { editorRef: React.MutableRefObject<Editor | null> }) {
+function DrawingRightColumn({ canvasRef }: { canvasRef: React.MutableRefObject<ExcalidrawCanvasHandle | null> }) {
   const [svgStr, setSvgStr] = useState('');
 
   const handleImportSVG = useCallback(
-    async (svg: string) => {
-      const editor = editorRef.current;
-      if (!editor) return;
-      const assetId = AssetRecordType.createId();
-      await editor.createAssets([
-        {
-          id: assetId,
-          type: 'image',
-          typeName: 'asset',
-          props: {
-            name: 'ai-generated.svg',
-            src: `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`,
-            w: 800,
-            h: 600,
-            mimeType: 'image/svg+xml',
-            isAnimated: false,
-          },
-          meta: {},
-        },
-      ]);
-      editor.createShape({
-        type: 'image',
-        x: editor.getViewportPageBounds().center.x - 400,
-        y: editor.getViewportPageBounds().center.y - 300,
-        props: { assetId, w: 800, h: 600 },
-      });
-      scheduleEditorViewportAndFit(editor);
+    (svg: string) => {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        alert('Редактор ещё не готов.');
+        return;
+      }
+      canvas.embedSvg(svg, 'ai-generated.svg');
     },
-    [editorRef]
+    [canvasRef]
   );
 
-  const addShape = useCallback(
-    (type: string, props: Record<string, unknown> = {}) => {
-      const editor = editorRef.current;
-      if (!editor) return;
-      const { x, y } = editor.getViewportPageBounds().center;
-      editor.createShape({
-        type: 'geo',
-        x: x - 50,
-        y: y - 25,
-        props: { geo: type, w: 100, h: 50, ...props },
-      });
+  const addBlock = useCallback(
+    (skeleton: ExcalidrawElementSkeleton) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      canvas.appendSkeletons([skeleton]);
     },
-    [editorRef]
+    [canvasRef]
   );
 
   return (
@@ -426,46 +355,17 @@ function DrawingRightColumn({ editorRef }: { editorRef: React.MutableRefObject<E
       <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--pico-border-color)' }}>
         <h3 style={{ fontSize: '14px', marginBottom: '12px' }}>Топ-10 блоков</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-          <button type="button" onClick={() => addShape('rectangle', { text: 'Процесс' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            ⬜ Процесс
-          </button>
-          <button type="button" onClick={() => addShape('rhombus', { text: 'Условие' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            🔶 Условие
-          </button>
-          <button type="button" onClick={() => addShape('oval', { text: 'Начало' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            🟢 Старт/Конец
-          </button>
-          <button type="button" onClick={() => addShape('trapezoid', { text: 'Данные' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            ▱ Данные
-          </button>
-          <button type="button" onClick={() => addShape('rectangle', { dash: 'dashed', text: 'Заметка' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            📝 Заметка
-          </button>
-          <button type="button" onClick={() => addShape('diamond', { text: 'Решение' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            💎 Решение
-          </button>
-          <button type="button" onClick={() => addShape('cloud', { text: 'Облако' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            ☁️ Облако
-          </button>
-          <button
-            type="button"
-            onClick={() => editorRef.current?.createShape({ type: 'arrow', x: 0, y: 0, props: { text: 'Связь' } })}
-            style={{ fontSize: '10px', padding: '6px', margin: 0 }}
-            className="outline"
-          >
-            ↗️ Стрелка
-          </button>
-          <button
-            type="button"
-            onClick={() => editorRef.current?.createShape({ type: 'text', props: { text: 'Заголовок' } })}
-            style={{ fontSize: '10px', padding: '6px', margin: 0 }}
-            className="outline"
-          >
-            🔤 Текст
-          </button>
-          <button type="button" onClick={() => addShape('ellipse', { text: 'Инфо' })} style={{ fontSize: '10px', padding: '6px', margin: 0 }} className="outline">
-            ⭕ Круг
-          </button>
+          {BLOCK_TEMPLATES.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              onClick={() => addBlock(t.skeleton)}
+              style={{ fontSize: '10px', padding: '6px', margin: 0 }}
+              className="outline"
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -473,7 +373,7 @@ function DrawingRightColumn({ editorRef }: { editorRef: React.MutableRefObject<E
 }
 
 const DrawingPage: React.FC = () => {
-  const editorRef = useRef<Editor | null>(null);
+  const canvasRef = useRef<ExcalidrawCanvasHandle | null>(null);
 
   return (
     <div
@@ -488,9 +388,9 @@ const DrawingPage: React.FC = () => {
         minHeight: 0,
       }}
     >
-      <DrawingLeftColumn editorRef={editorRef} />
-      <DrawingTldrawIsland editorRef={editorRef} />
-      <DrawingRightColumn editorRef={editorRef} />
+      <DrawingLeftColumn canvasRef={canvasRef} />
+      <DrawingExcalidrawIsland canvasRef={canvasRef} />
+      <DrawingRightColumn canvasRef={canvasRef} />
     </div>
   );
 };

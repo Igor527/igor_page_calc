@@ -227,7 +227,7 @@ const PlannerPage: React.FC = () => {
   useEffect(() => {
     if (plannerLoaded) return;
     setPlannerLoaded(true);
-    fetch('./data/planner.json')
+    fetch('/data/planner.json')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const raw = data?.tasks;

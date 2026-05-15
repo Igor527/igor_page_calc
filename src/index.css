@@ -1102,18 +1102,8 @@ pre:hover .code-copy-btn,
   opacity: 0.8;
 }
 
-/* /admin/drawing: панели и меню tldraw выше фиксированной шапки/подвала (z-index: 1000 в index.html) */
-.drawing-page-root .tl-container {
-  --tl-layer-menu-click-capture: 1100;
-  --tl-layer-panels: 1150;
-  --tl-layer-menus: 1200;
-  --tl-layer-toasts: 1250;
-  --tl-layer-cursor: 1300;
-  --tl-layer-header-footer: 1350;
-  --tl-layer-following-indicator: 1400;
-}
-
-/* Chrome: content-visibility на канве tldraw иногда даёт «пустой» холст после ре-лейаута родителя */
-.drawing-page-root .tl-canvas {
-  content-visibility: visible !important;
+/* /admin/drawing: Excalidraw fills flex column */
+.drawing-page-root .drawing-excalidraw-host {
+  height: 100%;
+  min-height: 0;
 }

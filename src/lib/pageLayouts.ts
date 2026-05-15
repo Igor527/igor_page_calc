@@ -39,7 +39,7 @@ export function setAllLayoutsFromBundle(data: Record<string, PageSection[]>): vo
 /** Загрузить порядок окон из data/layouts.json (статический файл сайта). */
 export async function loadLayoutsBundle(): Promise<boolean> {
   try {
-    const res = await fetch('./data/layouts.json');
+    const res = await fetch('/data/layouts.json');
     if (!res.ok) return false;
     const data = await res.json();
     const layouts = data?.layouts ?? data;

@@ -130,7 +130,7 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
 
   useEffect(() => {
     let cancelled = false;
-    fetch('./data/cv.json')
+    fetch('/data/cv.json')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { html?: string } | null) => {
         if (!cancelled && data && typeof data.html === 'string') setFetchedHtml(data.html);
