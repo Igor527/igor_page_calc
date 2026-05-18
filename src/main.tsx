@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback, startTransition } from 'react';
+import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 
 import WelcomePage from './app/welcome/WelcomePage';
 import CalculatorsListPage from './app/calculators/CalculatorsListPage';
 import { AdminLogin } from './components/AdminLogin';
+import AdminSessionBanner from './components/AdminSessionBanner';
+import AdminAccessDenied from './components/AdminAccessDenied';
 
 const EditorPage = React.lazy(() => import('./app/admin/editor/page'));
 const PublicCalculator = React.lazy(() => import('./app/public/PublicCalculator'));
@@ -23,17 +25,19 @@ import { loadCalculator, getCalculatorBySlug, loadPublishedBundle, loadPublished
 import { loadLayoutsBundle, setAllLayoutsFromBundle } from './lib/pageLayouts';
 import { applyPlannerFromRepoData } from './app/planner/PlannerPage';
 import {
-  getNotesFromRepo,
+  fetchNotesFromRepo,
+  fetchPostsFromRepo,
   getDictionaryFromRepo,
   getLayoutsFromRepo,
   getPlannerFromRepo,
   getCalculatorsJsonFromRepo,
   getRssListsFromRepo,
   getCvFromRepo,
-  getPostsFromRepo,
   getSyncConfig,
   cancelScheduledPush,
+  testConnection,
 } from './lib/githubSync';
+import { GITHUB_SYNC_NOT_CONFIGURED } from './lib/syncAuthMessages';
 import { setRssListsFromBundle } from './app/rss/RssPage';
 import {
   subscribeToAuth,
@@ -71,6 +75,8 @@ function App() {
   const search = typeof window !== 'undefined' ? window.location.search : '';
   const [firebaseUser, setFirebaseUser] = useState<import('firebase/auth').User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const wasFirebaseAdminRef = useRef(false);
+  const [adminSessionExpired, setAdminSessionExpired] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeToAuth((user) => {
@@ -117,6 +123,27 @@ function App() {
       window.removeEventListener('error', handleImageError as EventListener, true);
     };
   }, []);
+
+  useEffect(() => {
+    if (!useFirebaseAdmin()) return;
+    const isFirebaseAdminNow = !!(firebaseUser && isAdminUser(firebaseUser));
+    if (wasFirebaseAdminRef.current && !isFirebaseAdminNow && !isAuthLoading) {
+      setAdminSessionExpired(true);
+    }
+    if (isFirebaseAdminNow) {
+      wasFirebaseAdminRef.current = true;
+      setAdminSessionExpired(false);
+    }
+  }, [firebaseUser, isAuthLoading]);
+
+  const withSessionBanner = (content: React.ReactNode) => (
+    <>
+      {adminSessionExpired && (
+        <AdminSessionBanner onDismiss={() => setAdminSessionExpired(false)} />
+      )}
+      {content}
+    </>
+  );
 
   // Обработка возврата с GitHub после редиректа (на любой странице)
   useEffect(() => {
@@ -200,17 +227,23 @@ function App() {
     });
   }, []);
 
-  const pullAllFromRepo = useCallback(async () => {
-    const notes = await getNotesFromRepo();
-    if (notes) applyNotesFromRepoData(notes);
+  const pullAllFromRepo = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
+    if (!getSyncConfig()) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
+    const conn = await testConnection();
+    if (!conn.ok) return { ok: false, error: conn.error };
+
+    const notesR = await fetchNotesFromRepo();
+    if (!notesR.ok) return { ok: false, error: notesR.error };
+    applyNotesFromRepoData(notesR);
+
     const cv = await getCvFromRepo();
     if (typeof cv === 'string') {
       try { localStorage.setItem('igor-cv-html', cv); } catch {}
     }
-    const posts = await getPostsFromRepo();
-    if (Array.isArray(posts)) {
-      try { localStorage.setItem('igor-blog', JSON.stringify(posts)); } catch {}
-    }
+    const postsR = await fetchPostsFromRepo();
+    if (!postsR.ok) return { ok: false, error: postsR.error };
+    try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
+
     const dict = await getDictionaryFromRepo();
     if (dict) setDictionaryFromBundle(dict);
     const layouts = await getLayoutsFromRepo();
@@ -223,6 +256,7 @@ function App() {
     if (rssData) setRssListsFromBundle(rssData);
     ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
     startTransition(() => setBundleTick((n) => n + 1));
+    return { ok: true };
   }, []);
 
   useEffect(() => {
@@ -236,27 +270,23 @@ function App() {
 
   if (path.startsWith('/admin/notes')) {
     if (!isAdmin) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Заметки доступны только в режиме админа.</p>
-          {linkToHome}
-        </div>
+      return withSessionBanner(
+        <AdminAccessDenied resourceLabel="Заметки" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><NotesPage dataVersion={bundleTick} /></React.Suspense>;
+    return withSessionBanner(
+      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><NotesPage dataVersion={bundleTick} /></React.Suspense>
+    );
   }
   if (path.startsWith('/admin/drawing')) {
     if (!isAdmin) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Эта страница доступна только в режиме админа.</p>
-          {linkToHome}
-        </div>
+      return withSessionBanner(
+        <AdminAccessDenied resourceLabel="Страница рисования" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DrawingPage /></React.Suspense>;
+    return withSessionBanner(
+      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><DrawingPage /></React.Suspense>
+    );
   }
   if (path.startsWith('/admin/review')) {
     window.location.replace('/editor');
@@ -279,15 +309,13 @@ function App() {
   }
   if (path === '/dictionary') {
     if (!isAdmin) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ только для админа</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Словарь доступен только в режиме админа.</p>
-          {linkToHome}
-        </div>
+      return withSessionBanner(
+        <AdminAccessDenied resourceLabel="Словарь" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><DictionaryPage dataVersion={bundleTick} /></React.Suspense>;
+    return withSessionBanner(
+      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><DictionaryPage dataVersion={bundleTick} /></React.Suspense>
+    );
   }
   if (path === '/cv') {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage isAdmin={isAdmin} /></React.Suspense>;
@@ -317,7 +345,7 @@ function App() {
     return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><RssPage /></React.Suspense>;
   }
   if (path === '/blog') {
-    return <BlogList isAdmin={isAdmin} />;
+    return withSessionBanner(<BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />);
   }
   if (path.startsWith('/blog/')) {
     const blogSlug = decodeURIComponent(path.slice('/blog/'.length));
@@ -376,7 +404,15 @@ function App() {
   }
 
   // Главная: welcome
-  return <WelcomePage isAdmin={isAdmin} isLimitedGuest={isLimitedGuest} dataVersion={bundleTick} onPullAllFromRepo={pullAllFromRepo} />;
+  return withSessionBanner(
+    <WelcomePage
+      isAdmin={isAdmin}
+      isLimitedGuest={isLimitedGuest}
+      dataVersion={bundleTick}
+      onPullAllFromRepo={pullAllFromRepo}
+      adminSessionExpired={adminSessionExpired}
+    />
+  );
 }
 
 // При падении приложения показываем сообщение вместо пустого экрана

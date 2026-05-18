@@ -4,6 +4,8 @@
  * Токен — GitHub Personal Access Token с правами repo (contents: read/write).
  */
 
+import { formatGitHubApiError, GITHUB_REPO_FETCH_FAILED, GITHUB_SYNC_NOT_CONFIGURED } from './syncAuthMessages';
+
 const CONFIG_KEY = 'igor-github-sync-config';
 
 export interface GitHubSyncConfig {
@@ -59,6 +61,10 @@ export interface SyncResult {
   error?: string;
 }
 
+export type GitHubFileResult =
+  | { ok: true; content: string; sha: string }
+  | { ok: false; status?: number; error: string };
+
 /** Декодировать base64 в UTF-8 (в браузере atob даёт бинарную строку в Latin-1, кириллица ломается). */
 function base64ToUtf8(base64: string): string {
   const binary = atob(base64.replace(/\s/g, ''));
@@ -68,18 +74,25 @@ function base64ToUtf8(base64: string): string {
 }
 
 /**
- * Получить содержимое файла из репо. Возвращает { content, sha } или null при ошибке.
+ * Получить содержимое файла из репо с описанием ошибки (в т.ч. 401/403 — просроченный токен).
  */
-export async function getFile(path: string): Promise<{ content: string; sha: string } | null> {
+export async function fetchFile(path: string): Promise<GitHubFileResult> {
   const cfg = getSyncConfig();
-  if (!cfg) return null;
+  if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(cfg.branch)}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return {
+      ok: false,
+      status: res.status,
+      error: formatGitHubApiError(res.status, (err as { message?: string }).message),
+    };
+  }
   const data = await res.json();
-  if (!data.content || !data.sha) return null;
+  if (!data.content || !data.sha) return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
   try {
     const content =
       typeof atob !== 'undefined'
@@ -87,8 +100,14 @@ export async function getFile(path: string): Promise<{ content: string; sha: str
         : Buffer.from(data.content, 'base64').toString('utf8');
     return { content, sha: data.sha };
   } catch {
-    return null;
+    return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
   }
+}
+
+/** Получить содержимое файла из репо. Возвращает { content, sha } или null при ошибке. */
+export async function getFile(path: string): Promise<{ content: string; sha: string } | null> {
+  const r = await fetchFile(path);
+  return r.ok ? { content: r.content, sha: r.sha } : null;
 }
 
 /**
@@ -119,7 +138,7 @@ export async function putFile(path: string, content: string, message: string): P
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    return { ok: false, error: (err as { message?: string }).message || res.statusText };
+    return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
   }
   return { ok: true };
 }
@@ -175,7 +194,7 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
   
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    return { ok: false, error: (err as { message?: string }).message || res.statusText };
+    return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
   }
   return { ok: true };
 }
@@ -184,14 +203,14 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
 /** Проверка подключения: запрос к API репозитория. */
 export async function testConnection(): Promise<SyncResult> {
   const cfg = getSyncConfig();
-  if (!cfg) return { ok: false, error: 'Не заданы owner, repo или token' };
+  if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
   });
   if (res.ok) return { ok: true };
   const err = await res.json().catch(() => ({}));
-  return { ok: false, error: (err as { message?: string }).message || res.statusText };
+  return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
 }
 
 const DEBOUNCE_MS = 2500;
@@ -272,54 +291,78 @@ export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<S
   return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
 }
 
-/** Посты из репо (public/data/posts.json). null если файла нет или ошибка. */
-export async function getPostsFromRepo(): Promise<Array<{ id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown }> | null> {
-  const file = await getFile(dataPath('posts.json'));
-  if (!file) return null;
+type BlogPostRepo = { id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown };
+
+/** Посты из репо (public/data/posts.json) с текстом ошибки. */
+export async function fetchPostsFromRepo(): Promise<
+  | { ok: true; posts: BlogPostRepo[] }
+  | { ok: false; error: string }
+> {
+  const file = await fetchFile(dataPath('posts.json'));
+  if (!file.ok) return { ok: false, error: file.error };
   try {
     const data = JSON.parse(file.content) as { posts?: unknown[] };
     const list = Array.isArray(data?.posts) ? data.posts : [];
-    return list as Array<{ id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown }>;
+    return { ok: true, posts: list as BlogPostRepo[] };
   } catch {
-    return null;
+    return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
   }
 }
 
-/** Загрузить JSON из репо по пути. Возвращает распарсенный объект или null. */
-async function getJsonFromRepo(path: string): Promise<unknown | null> {
-  const file = await getFile(path);
-  if (!file) return null;
+/** Посты из репо (public/data/posts.json). null если файла нет или ошибка. */
+export async function getPostsFromRepo(): Promise<BlogPostRepo[] | null> {
+  const r = await fetchPostsFromRepo();
+  return r.ok ? r.posts : null;
+}
+
+/** Загрузить JSON из репо по пути. */
+async function getJsonFromRepo(path: string): Promise<{ data: unknown | null; error?: string }> {
+  const file = await fetchFile(path);
+  if (!file.ok) return { data: null, error: file.error };
   try {
-    return JSON.parse(file.content);
+    return { data: JSON.parse(file.content) };
   } catch {
-    return null;
+    return { data: null, error: GITHUB_REPO_FETCH_FAILED };
   }
+}
+
+/** Заметки и папки из репо (notes.json) с текстом ошибки. */
+export async function fetchNotesFromRepo(): Promise<
+  | { ok: true; notes: unknown[]; folders: unknown[] }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await getJsonFromRepo(dataPath('notes.json'));
+  if (error) return { ok: false, error };
+  if (!data) return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
+  const parsed = data as { notes?: unknown[]; folders?: unknown[] };
+  return {
+    ok: true,
+    notes: Array.isArray(parsed.notes) ? parsed.notes : [],
+    folders: Array.isArray(parsed.folders) ? parsed.folders : [],
+  };
 }
 
 /** Заметки и папки из репо (notes.json). */
 export async function getNotesFromRepo(): Promise<{ notes: unknown[]; folders: unknown[] } | null> {
-  const data = await getJsonFromRepo(dataPath('notes.json')) as { notes?: unknown[]; folders?: unknown[] } | null;
-  if (!data) return null;
-  return {
-    notes: Array.isArray(data.notes) ? data.notes : [],
-    folders: Array.isArray(data.folders) ? data.folders : [],
-  };
+  const r = await fetchNotesFromRepo();
+  return r.ok ? { notes: r.notes, folders: r.folders } : null;
 }
 
 /** Словарь из репо (dictionary.json). */
 export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; priorityLangs: string[] } | null> {
-  const data = await getJsonFromRepo(dataPath('dictionary.json')) as { entries?: unknown[]; priorityLangs?: string[] } | null;
-  if (!data) return null;
+  const { data, error } = await getJsonFromRepo(dataPath('dictionary.json'));
+  if (error || !data) return null;
+  const parsed = data as { entries?: unknown[]; priorityLangs?: string[] };
   return {
-    entries: Array.isArray(data.entries) ? data.entries : [],
-    priorityLangs: Array.isArray(data.priorityLangs) ? data.priorityLangs : [],
+    entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+    priorityLangs: Array.isArray(parsed.priorityLangs) ? parsed.priorityLangs : [],
   };
 }
 
 /** Порядок окон из репо (layouts.json). */
 export async function getLayoutsFromRepo(): Promise<Record<string, unknown[]> | null> {
-  const data = await getJsonFromRepo(dataPath('layouts.json')) as { layouts?: Record<string, unknown[]> } | Record<string, unknown[]> | null;
-  if (!data) return null;
+  const { data, error } = await getJsonFromRepo(dataPath('layouts.json'));
+  if (error || !data) return null;
   const layouts = (data as { layouts?: Record<string, unknown[]> }).layouts ?? data as Record<string, unknown[]>;
   return layouts && typeof layouts === 'object' ? layouts : null;
 }
@@ -331,11 +374,12 @@ export type PlannerRepoData = {
 };
 
 export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
-  const data = await getJsonFromRepo(dataPath('planner.json')) as { tasks?: unknown[]; labels?: unknown[] } | null;
-  if (!data) return null;
-  const tasks = Array.isArray(data.tasks) ? data.tasks as PlannerRepoData['tasks'] : [];
-  const labels = Array.isArray(data.labels)
-    ? (data.labels as Array<{ name?: string; color?: string }>).filter((l) => l && typeof l.name === 'string').map((l) => ({ name: l.name!, color: l.color }))
+  const { data, error } = await getJsonFromRepo(dataPath('planner.json'));
+  if (error || !data) return null;
+  const parsed = data as { tasks?: unknown[]; labels?: unknown[] };
+  const tasks = Array.isArray(parsed.tasks) ? parsed.tasks as PlannerRepoData['tasks'] : [];
+  const labels = Array.isArray(parsed.labels)
+    ? (parsed.labels as Array<{ name?: string; color?: string }>).filter((l) => l && typeof l.name === 'string').map((l) => ({ name: l.name!, color: l.color }))
     : undefined;
   return { tasks, labels };
 }
@@ -348,9 +392,11 @@ export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
 
 /** CV (резюме) из репо: public/data/cv.json с полем html. */
 export async function getCvFromRepo(): Promise<string | null> {
-  const data = await getJsonFromRepo(dataPath('cv.json')) as { html?: string } | null;
-  if (!data || typeof data.html !== 'string') return null;
-  return data.html;
+  const { data, error } = await getJsonFromRepo(dataPath('cv.json'));
+  if (error || !data) return null;
+  const parsed = data as { html?: string };
+  if (typeof parsed.html !== 'string') return null;
+  return parsed.html;
 }
 
 /** Авто-пуш CV в репо (public/data/cv.json). */
@@ -536,9 +582,10 @@ export async function pushPlanner(
 
 /** Списки RSS из репо (rss-lists.json). */
 export async function getRssListsFromRepo(): Promise<{ lists: unknown[] } | null> {
-  const data = await getJsonFromRepo(dataPath('rss-lists.json')) as { lists?: unknown[] } | null;
-  if (!data) return null;
-  return { lists: Array.isArray(data.lists) ? data.lists : [] };
+  const { data, error } = await getJsonFromRepo(dataPath('rss-lists.json'));
+  if (error || !data) return null;
+  const parsed = data as { lists?: unknown[] };
+  return { lists: Array.isArray(parsed.lists) ? parsed.lists : [] };
 }
 
 /** Пуш списков RSS в репо. */

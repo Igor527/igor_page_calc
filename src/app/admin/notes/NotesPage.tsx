@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { sanitizeHtml } from '@/lib/security';
-import { schedulePush, pushNotes, getNotesFromRepo, getSyncConfig } from '@/lib/githubSync';
+import { schedulePush, pushNotes, fetchNotesFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -119,9 +119,9 @@ export function applyNotesFromRepoData(data: { notes: unknown[]; folders: unknow
 }
 
 /** Загрузить заметки из репо по API (GitHub) и применить к localStorage. Возвращает успех и данные для обновления UI. */
-export async function loadNotesFromRepo(): Promise<{ ok: boolean; notes?: Note[]; folders?: NoteFolder[] }> {
-  const data = await getNotesFromRepo();
-  if (!data) return { ok: false };
+export async function loadNotesFromRepo(): Promise<{ ok: boolean; notes?: Note[]; folders?: NoteFolder[]; error?: string }> {
+  const data = await fetchNotesFromRepo();
+  if (!data.ok) return { ok: false, error: data.error };
   applyNotesFromRepoData(data);
   const notes = (data.notes as Note[]).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
   const folders = data.folders as NoteFolder[];
@@ -816,7 +816,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
         setNotes(result.notes);
         setFolders(result.folders);
       } else {
-        setPullError('Не удалось загрузить данные из репо (файл отсутствует или ошибка).');
+        setPullError(result.error ?? 'Не удалось загрузить данные из репо (файл отсутствует или ошибка).');
       }
     } catch (e) {
       setPullError(e instanceof Error ? e.message : 'Ошибка загрузки');

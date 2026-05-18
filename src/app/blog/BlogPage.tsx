@@ -5,9 +5,10 @@ import {
   schedulePushWithDelay,
   cancelScheduledPush,
   pushPosts,
-  getPostsFromRepo,
+  fetchPostsFromRepo,
   mergePosts,
 } from '@/lib/githubSync';
+import { ADMIN_LOGIN_PATH, ADMIN_SESSION_EXPIRED_TITLE } from '@/lib/syncAuthMessages';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -594,7 +595,10 @@ function genId(): string {
   return Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
 }
 
-const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
+const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = ({
+  isAdmin,
+  adminSessionExpired = false,
+}) => {
   const [posts, setPosts] = useState<BlogPost[]>(() => loadPosts());
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -634,9 +638,14 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const runPullMergePush = useCallback(async () => {
     setSyncStatus('loading');
     setSyncError(null);
-    const remote = await getPostsFromRepo();
+    const remoteR = await fetchPostsFromRepo();
+    if (!remoteR.ok) {
+      setSyncStatus('error');
+      setSyncError(remoteR.error);
+      return;
+    }
     setSyncStatus('sending');
-    const merged = mergePosts(remote ?? [], posts) as BlogPost[];
+    const merged = mergePosts(remoteR.posts, posts) as BlogPost[];
     const ids = new Set(modifiedPostIdsRef.current);
     modifiedPostIdsRef.current.clear();
     const result = await pushPosts(merged, ids);
@@ -680,9 +689,9 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
     cancelScheduledPush('blog');
     setSyncStatus('loading');
     setSyncError(null);
-    const remote = await getPostsFromRepo();
-    if (remote && remote.length >= 0) {
-      const merged = mergePosts(remote, posts) as BlogPost[];
+    const remoteR = await fetchPostsFromRepo();
+    if (remoteR.ok) {
+      const merged = mergePosts(remoteR.posts, posts) as BlogPost[];
       const normalized = merged.map((p) => ({
         ...p,
         tags: p.tags ?? [],
@@ -696,7 +705,8 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       setSyncStatus('ok');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } else {
-      setSyncStatus('idle');
+      setSyncStatus('error');
+      setSyncError(remoteR.error);
     }
   }, [posts]);
 
@@ -795,6 +805,12 @@ const BlogList: React.FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       <article>
         <header className="text-center mb-6">
           <h1 className="text-2xl font-semibold mb-2">Блог</h1>
+          {adminSessionExpired && !isAdmin && (
+            <p style={{ margin: '0 0 12px', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--pico-del-color)', fontSize: 13 }}>
+              <strong>{ADMIN_SESSION_EXPIRED_TITLE}.</strong>{' '}
+              <a href={ADMIN_LOGIN_PATH} style={{ color: 'var(--color-accent)' }}>Войти снова</a>, чтобы редактировать и синхронизировать с репо.
+            </p>
+          )}
           <p className="text-sm" style={{ color: 'var(--pico-muted-color)' }}>
             Новости, статьи и заметки о проекте.
           </p>

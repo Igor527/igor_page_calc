@@ -2,19 +2,24 @@ import React, { useState, useCallback } from 'react';
 import PageLayout from '@/components/PageLayout';
 import SyncSettings from '@/components/SyncSettings';
 import { getSyncConfig } from '@/lib/githubSync';
+import { ADMIN_LOGIN_PATH, ADMIN_SESSION_EXPIRED_TITLE } from '@/lib/syncAuthMessages';
 
 const WelcomePage: React.FC<{
   isAdmin?: boolean;
   isLimitedGuest?: boolean;
   dataVersion?: number;
-  onPullAllFromRepo?: () => Promise<void>;
-}> = ({ isAdmin = false, isLimitedGuest = false, dataVersion, onPullAllFromRepo }) => {
+  onPullAllFromRepo?: () => Promise<{ ok: boolean; error?: string }>;
+  adminSessionExpired?: boolean;
+}> = ({ isAdmin = false, isLimitedGuest = false, dataVersion, onPullAllFromRepo, adminSessionExpired = false }) => {
   const [pullLoading, setPullLoading] = useState(false);
+  const [pullError, setPullError] = useState<string | null>(null);
   const handlePullAll = useCallback(async () => {
     if (!onPullAllFromRepo) return;
     setPullLoading(true);
+    setPullError(null);
     try {
-      await onPullAllFromRepo();
+      const result = await onPullAllFromRepo();
+      if (!result.ok && result.error) setPullError(result.error);
     } finally {
       setPullLoading(false);
     }
@@ -28,6 +33,12 @@ const WelcomePage: React.FC<{
       dataVersion={dataVersion}
       footer={
         <div className="text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
+          {adminSessionExpired && !isAdmin ? (
+            <p style={{ marginBottom: 12, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--pico-del-color)', fontSize: 13 }}>
+              <strong>{ADMIN_SESSION_EXPIRED_TITLE}.</strong>{' '}
+              <a href={ADMIN_LOGIN_PATH} className="underline">Войти снова</a>
+            </p>
+          ) : null}
           {isAdmin ? (
             <>
               <p className="mb-2">Режим админа. Быстрые ссылки:</p>
@@ -52,6 +63,9 @@ const WelcomePage: React.FC<{
                   >
                     {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
                   </button>
+                  {pullError && (
+                    <span style={{ display: 'block', marginTop: 8, fontSize: 12, color: 'var(--pico-del-color)' }}>{pullError}</span>
+                  )}
                 </p>
               )}
               <a href="/?admin=0" className="inline-block mt-1 text-xs underline hover:no-underline">
