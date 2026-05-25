@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSyncConfig, setSyncConfig, setSyncConfigSafe, testConnection, type GitHubSyncConfig } from '@/lib/githubSync';
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 
 function getEnv(name: string): string {
   try {
@@ -42,7 +43,9 @@ const SyncSettings: React.FC = () => {
       token: token.startsWith('••••') ? (getSyncConfig()?.token ?? '') : token.trim(),
     };
     if (!payload.owner || !payload.repo || !payload.token) {
-      setTestResult('Укажите owner, repo и token');
+      const msg = 'Укажите owner, repo и token';
+      setTestResult(msg);
+      toastInfo(msg);
       return;
     }
     const result = setSyncConfigSafe(payload);
@@ -54,21 +57,30 @@ const SyncSettings: React.FC = () => {
     }
 
     if (result.ok) {
-      setTestResult('Настройки и API-ключи успешно сохранены. Нажмите «Проверить» для теста GitHub.');
+      const msg = 'Настройки и API-ключи успешно сохранены. Нажмите «Проверить» для теста GitHub.';
+      setTestResult(msg);
+      toastSuccess(msg);
     } else {
-      setTestResult(result.error || 'Не удалось сохранить.');
+      const msg = result.error || 'Не удалось сохранить.';
+      setTestResult(msg);
+      toastError(msg);
     }
   };
 
   const handleTest = async () => {
     const c = getSyncConfig();
     if (!c || !c.token) {
-      setTestResult('Сначала сохраните настройки с токеном');
+      const msg = 'Сначала сохраните настройки с токеном';
+      setTestResult(msg);
+      toastInfo(msg);
       return;
     }
     setTestResult('Проверка...');
     const r = await testConnection();
-    setTestResult(r.ok ? 'Подключение успешно.' : (r.error || 'Ошибка'));
+    const msg = r.ok ? 'Подключение успешно.' : (r.error || 'Ошибка');
+    setTestResult(msg);
+    if (r.ok) toastSuccess(msg);
+    else toastError(msg);
   };
 
   return (

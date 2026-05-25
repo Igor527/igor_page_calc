@@ -8,6 +8,7 @@ import {
   pushNotesMerged,
   getSyncConfig,
 } from '@/lib/githubSync';
+import { toastError } from '@/lib/toast';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -594,10 +595,16 @@ const NotePreviewTile: React.FC<{
   onSelect: () => void;
 }> = ({ note, isSelected, onSelect }) => {
   const excerpt = useMemo(() => htmlToPlainExcerpt(note.content), [note.content]);
+  const previewLabel = useMemo(() => {
+    const title = note.title || note.id;
+    const date = new Date(note.updatedAt).toLocaleDateString('ru-RU');
+    return `Заметка: ${title}, обновлена ${date}`;
+  }, [note.title, note.id, note.updatedAt]);
   return (
     <div
       role="button"
       tabIndex={0}
+      aria-label={previewLabel}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
@@ -658,10 +665,12 @@ const NoteCard: React.FC<{
 }> = ({ note, folders, isEditing, editTitle, editContent, editTags, editColor, editTodos, onStartEdit, onSave, onCancel, onDelete, onArchive, onTogglePin, onDuplicate, onMove, onExport, onEditTitleChange, onEditContentChange, onEditTagsChange, onEditColorChange, onEditTodosChange, cardRef }) => {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const closeOverflow = () => {
     const d = overflowRef.current;
     if (d) d.open = false;
+    setOverflowOpen(false);
     setConfirmDelete(false);
   };
 
@@ -705,8 +714,21 @@ const NoteCard: React.FC<{
           <>
             <button type="button" onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать">✎</button>
             <button type="button" onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'}>{note.pinned ? '📌' : '📍'}</button>
-            <details ref={overflowRef} className="note-card__overflow">
-              <summary title="Ещё действия">⋯</summary>
+            <details
+              ref={overflowRef}
+              className="note-card__overflow"
+              open={overflowOpen}
+              onToggle={(e) => setOverflowOpen((e.target as HTMLDetailsElement).open)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  closeOverflow();
+                }
+              }}
+            >
+              <summary title="Ещё действия" aria-expanded={overflowOpen} aria-haspopup="menu">
+                ⋯
+              </summary>
               <div className="note-card__overflow-panel">
                 <button type="button" onClick={() => { onDuplicate(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title="Дублировать">📋 Дублировать</button>
                 <button type="button" onClick={() => { onExport(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title="Скачать">⬇ Скачать</button>
@@ -878,8 +900,10 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     setSyncError(null);
     const remoteR = await fetchNotesFromRepo();
     if (!remoteR.ok) {
+      const err = remoteR.error ?? 'Ошибка загрузки из репозитория';
       setSyncStatus('error');
-      setSyncError(remoteR.error);
+      setSyncError(err);
+      toastError(err);
       return;
     }
     setSyncStatus('sending');
@@ -900,7 +924,9 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       setTimeout(() => setSyncStatus('idle'), 3000);
     } else {
       setSyncStatus('error');
-      setSyncError(result.error ?? 'Ошибка');
+      const err = result.error ?? 'Ошибка сохранения в репозиторий';
+      setSyncError(err);
+      toastError(err);
     }
   }, [notes, folders]);
 
@@ -939,8 +965,10 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       setSyncStatus('ok');
       setTimeout(() => setSyncStatus('idle'), 2000);
     } else {
+      const err = remoteR.error ?? 'Ошибка загрузки из репозитория';
       setSyncStatus('error');
-      setSyncError(remoteR.error);
+      setSyncError(err);
+      toastError(err);
     }
   }, [notes, folders]);
 
@@ -1326,7 +1354,10 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
                 Изменения с телефона и с компьютера объединяются по времени; удаления сохраняются в репо.
               </p>
               {(syncStatus !== 'idle' || syncError) && (
-                <div style={{ marginBottom: 6, fontSize: 11, color: syncStatus === 'error' ? 'var(--pico-del-color)' : 'var(--pico-muted-color)' }}>
+                <div
+                  aria-live="polite"
+                  style={{ marginBottom: 6, fontSize: 11, color: syncStatus === 'error' ? 'var(--pico-del-color)' : 'var(--pico-muted-color)' }}
+                >
                   {syncStatus === 'pending' && `Через ${NOTES_PUSH_DELAY_MS / 1000} сек сохранение в репо (сначала загрузка из репо и объединение).`}
                   {syncStatus === 'loading' && 'Загрузка из репо…'}
                   {syncStatus === 'sending' && 'Сохранение в репо…'}

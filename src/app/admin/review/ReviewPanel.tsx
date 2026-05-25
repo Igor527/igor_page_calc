@@ -13,6 +13,7 @@ import {
   type CalculatorStatus 
 } from '@/lib/calculatorStorage';
 import PublicCalculator from '@/app/public/PublicCalculator';
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 
 const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [statusFilter, setStatusFilter] = useState<CalculatorStatus>('review');
@@ -42,13 +43,13 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         if (updated) setSelectedCalc(updated);
       }
     } else {
-      alert(`Ошибка: ${result.error}`);
+      toastError(`Ошибка: ${result.error}`);
     }
   };
 
   const handleAddComment = (calcId: string) => {
     if (!commentText.trim()) {
-      alert('Введите комментарий');
+      toastInfo('Введите комментарий');
       return;
     }
     const result = addComment(calcId, commentText, reviewerName);
@@ -58,7 +59,7 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       const updated = loadCalculator(calcId);
       if (updated) setSelectedCalc(updated);
     } else {
-      alert(`Ошибка: ${result.error}`);
+      toastError(`Ошибка: ${result.error}`);
     }
   };
 
@@ -82,10 +83,10 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                 const jsonStr = JSON.stringify(bundle, null, 2);
                 const allStatuses = getAllCalculatorsMinimal();
                 const res = await pushCalculators(jsonStr, allStatuses);
-                if (res.ok) alert('Синхронизация успешно завершена!');
-                else alert('Ошибка синхронизации: ' + res.error);
+                if (res.ok) toastSuccess('Синхронизация успешно завершена');
+                else toastError('Ошибка синхронизации: ' + res.error);
               } catch (e) {
-                alert('Не удалось синхронизировать: ' + (e as Error).message);
+                toastError('Не удалось синхронизировать: ' + (e as Error).message);
               } finally {
                 setIsSyncing(false);
               }
@@ -204,7 +205,7 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                       type="button"
                       onClick={() => {
                         const url = typeof window !== 'undefined' ? `${window.location.origin}/calculators/${selectedCalc.slug || selectedCalc.id}` : `/calculators/${selectedCalc.slug || selectedCalc.id}`;
-                        navigator.clipboard?.writeText(url).then(() => alert('Ссылка скопирована')).catch(() => {});
+                        navigator.clipboard?.writeText(url).then(() => toastSuccess('Ссылка скопирована')).catch(() => toastError('Не удалось скопировать ссылку'));
                       }}
                       style={{ padding: '4px 10px', fontSize: 12, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-background-color)', cursor: 'pointer' }}
                     >
@@ -236,7 +237,7 @@ const ReviewPanel: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                             setSlugEdit('');
                             setRefreshKey((k) => k + 1);
                           } else {
-                            alert(result.error);
+                            toastError(result.error ?? 'Не удалось сохранить адрес');
                           }
                         }}
                         style={{ padding: '4px 10px', fontSize: 12, border: 'none', borderRadius: 4, background: 'var(--pico-primary)', color: '#fff', cursor: slugSaving ? 'wait' : 'pointer' }}

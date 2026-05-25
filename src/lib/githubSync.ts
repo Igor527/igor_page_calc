@@ -192,7 +192,7 @@ export async function fetchFile(path: string): Promise<GitHubFileResult> {
         ),
       };
     }
-    return { content, sha: data.sha };
+    return { ok: true, content, sha: data.sha };
   } catch (e) {
     const detail = e instanceof Error ? e.message : '';
     return {
@@ -444,8 +444,11 @@ export async function fetchNotesFromRepo(): Promise<
   const notesPath = dataPath('notes.json');
   const { data, error } = await getJsonFromRepo(notesPath);
   if (error) return { ok: false, error };
-  if (data == null || typeof data !== 'object') {
-    return { ok: false, error: formatRepoFileError(notesPath, 'пустой или неверный JSON в репозитории') };
+  if (data == null) {
+    return { ok: false, error: formatRepoFileError(notesPath, 'в файле только null — ожидается объект { version, notes, folders }') };
+  }
+  if (typeof data !== 'object' || Array.isArray(data)) {
+    return { ok: false, error: formatRepoFileError(notesPath, 'ожидается объект JSON, а не массив или примитив') };
   }
   const parsed = data as { notes?: unknown[]; folders?: unknown[] };
   return {

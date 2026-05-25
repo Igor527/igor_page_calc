@@ -1,6 +1,6 @@
 # UX improvement roadmap
 
-План по результатам UX-аудита. **Спринт 1** реализован; спринты 2–3 — только документация (не внедрять без отдельного запроса).
+План по результатам UX-аудита. **Спринты 1–2** реализованы; **спринт 3** — только документация (не внедрять без отдельного запроса).
 
 Единый отступ контента от шапки: `var(--content-offset-from-header)` (= `calc(var(--site-header-height) * 2)`), см. `UI_RULES.md` и `src/index.css`.
 
@@ -18,9 +18,19 @@
 
 ---
 
-## Спринт 2 — обратная связь и a11y (1–2 дня)
+## Спринт 2 — выполнен (2026-05-26)
 
-### 6. Toast и inline-ошибки
+| # | Задача | Файлы |
+|---|--------|-------|
+| 6 | Toast / inline-ошибки | `Toast.tsx`, `toast.ts`, `editor/page.tsx`, `ReviewPanel.tsx`, `SyncSettings.tsx`, `NotesPage.tsx` |
+| 7 | «Нет доступа» + CTA «Войти» | `AdminAccessDenied.tsx`, `main.tsx` |
+| 8 | Баннер редактора на узком экране | `editor/page.tsx`, `index.css` |
+| 9 | Заметки: a11y плитки и меню ⋯ | `NotesPage.tsx`, `index.css` |
+| 10 | PWA manifest под тёмную тему | `manifest.json`, `docs/PWA_INDEXING.md` |
+
+---
+
+### 6. Toast и inline-ошибки (выполнено)
 
 **Файлы:** `src/components/Toast.tsx` (новый), `src/app/admin/editor/page.tsx`, `src/app/admin/review/ReviewPanel.tsx`, при необходимости `src/lib/githubSync.ts` / `SyncSettings.tsx`.
 
@@ -33,7 +43,7 @@
 
 ---
 
-### 7. Страницы «нет доступа» — CTA «Войти»
+### 7. Страницы «нет доступа» — CTA «Войти» (выполнено)
 
 **Файлы:** `src/components/AdminAccessDenied.tsx`, `src/main.tsx` (блоки «Доступ по входу» для planner/weather/rss).
 
@@ -46,7 +56,7 @@
 
 ---
 
-### 8. Редактор: баннер на узком экране
+### 8. Редактор: баннер на узком экране (выполнено)
 
 **Файлы:** `src/app/admin/editor/page.tsx`, при необходимости `src/index.css`.
 
@@ -59,7 +69,7 @@
 
 ---
 
-### 9. Заметки: a11y плитки и меню
+### 9. Заметки: a11y плитки и меню (выполнено)
 
 **Файлы:** `src/app/admin/notes/NotesPage.tsx`, `src/index.css`.
 
@@ -72,7 +82,7 @@
 
 ---
 
-### 10. PWA manifest: цвета под тёмную тему
+### 10. PWA manifest: цвета под тёмную тему (выполнено)
 
 **Файлы:** `public/manifest.json`, при необходимости `index.html` (`theme-color` meta).
 
@@ -166,8 +176,8 @@
 
 ```mermaid
 flowchart LR
-  S1[Sprint 1 done] --> S2[Sprint 2: 6-10]
+  S1[Sprint 1 done] --> S2[Sprint 2 done]
   S2 --> S3[Sprint 3: 11-15]
 ```
 
-Рекомендуемый старт спринта 2: **6 → 7 → 8** (обратная связь и ожидания на мобильном редакторе).
+Рекомендуемый старт спринта 3: **11** (компактное меню), затем **12–13** (блог и заметки на мобильном).
