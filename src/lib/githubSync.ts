@@ -247,7 +247,7 @@ export function schedulePushWithDelay(
 }
 
 /** Объединить заметки и папки: по id берётся версия с большим updatedAt; папки — по id, при дубликате локальные поверх. */
-function mergeNotes(
+export function mergeNotes(
   remoteNotes: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
   remoteFolders: Array<{ id?: string; [k: string]: unknown }>,
   localNotes: Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
@@ -278,6 +278,13 @@ function mergeNotes(
   return { notes, folders };
 }
 
+/** Записать уже объединённые заметки в репо (без повторного merge). */
+export async function pushNotesMerged(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
+  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
+  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes, folders }, null, 2);
+  return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
+}
+
 /** Авто-пуш заметок: перед отправкой загружаем репо и мержим по id + updatedAt. */
 export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
@@ -287,8 +294,7 @@ export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<S
   const remoteNotes = (remote?.notes ?? []) as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>;
   const remoteFolders = (remote?.folders ?? []) as Array<{ id?: string; [k: string]: unknown }>;
   const { notes: mergedNotes, folders: mergedFolders } = mergeNotes(remoteNotes, remoteFolders, localNotes, localFolders);
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes: mergedNotes, folders: mergedFolders }, null, 2);
-  return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');
+  return pushNotesMerged(mergedNotes, mergedFolders);
 }
 
 type BlogPostRepo = { id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown };

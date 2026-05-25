@@ -216,10 +216,11 @@ function App() {
   useEffect(() => {
     // При настроенной синхронизации словарь грузим только из репо (pullAllFromRepo), иначе статический файл перезатрёт данные из репо после обновления страницы
     const dictLoad = getSyncConfig() ? Promise.resolve() : loadDictionaryBundle();
+    const notesLoad = getSyncConfig() ? Promise.resolve() : loadNotesBundle();
     Promise.all([
       loadPublishedBundle(),
       loadBlogBundle(),
-      loadNotesBundle(),
+      notesLoad,
       loadLayoutsBundle(),
       dictLoad,
     ]).then(() => {

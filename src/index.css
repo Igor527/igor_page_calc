@@ -945,6 +945,63 @@ pre:hover .code-copy-btn,
 .note-card__overflow-panel select.notes-touch-btn {
   max-width: 100%;
 }
+.notes-inline-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--pico-border-color);
+  margin-top: 4px;
+}
+.notes-inline-confirm p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--pico-color);
+}
+.notes-inline-confirm__actions {
+  display: flex;
+  gap: 6px;
+}
+.notes-inline-confirm__actions .notes-touch-btn {
+  flex: 1;
+  font-size: 11px;
+  min-height: 36px;
+}
+.notes-banner {
+  margin: 0 0 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  border-radius: 6px;
+  line-height: 1.35;
+}
+.notes-banner--ok {
+  background: var(--pico-primary-background);
+  color: var(--pico-color);
+}
+.notes-banner--err {
+  background: color-mix(in srgb, var(--pico-del-color) 12%, transparent);
+  color: var(--pico-del-color);
+}
+.notes-new-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.notes-new-folder input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+.notes-new-folder__actions {
+  display: flex;
+  gap: 6px;
+}
+.notes-new-folder__actions .notes-touch-btn {
+  flex: 1;
+  font-size: 11px;
+}
 .note-card__body {
   padding: 12px 18px 16px;
 }

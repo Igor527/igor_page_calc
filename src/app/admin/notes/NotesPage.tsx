@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { sanitizeHtml } from '@/lib/security';
-import { schedulePush, pushNotes, fetchNotesFromRepo, getSyncConfig } from '@/lib/githubSync';
+import {
+  schedulePushWithDelay,
+  cancelScheduledPush,
+  fetchNotesFromRepo,
+  mergeNotes,
+  pushNotesMerged,
+  getSyncConfig,
+} from '@/lib/githubSync';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
@@ -30,6 +37,19 @@ interface Note {
   todos?: NoteTodoItem[];
   createdAt: number;
   updatedAt: number;
+  /** Мягкое удаление: при синхронизации с репо удаление не теряется при пушах с другого устройства */
+  deleted?: boolean;
+}
+
+function normalizeNote(n: Note): Note {
+  return {
+    ...n,
+    tags: n.tags ?? [],
+    color: n.color ?? 'none',
+    archived: n.archived ?? false,
+    todos: n.todos ?? [],
+    deleted: n.deleted ?? false,
+  };
 }
 
 type SortMode = 'date' | 'title' | 'color';
@@ -65,6 +85,21 @@ function htmlToPlainExcerpt(html: string): string {
   return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+const NotesInlineConfirm: React.FC<{
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ message, confirmLabel = 'Удалить', onConfirm, onCancel }) => (
+  <div className="notes-inline-confirm" role="group" aria-label={message}>
+    <p>{message}</p>
+    <div className="notes-inline-confirm__actions">
+      <button type="button" className="notes-touch-btn" style={{ fontSize: 11 }} onClick={onConfirm}>{confirmLabel}</button>
+      <button type="button" className="notes-touch-btn secondary" style={{ fontSize: 11 }} onClick={onCancel}>Отмена</button>
+    </div>
+  </div>
+);
+
 /* ═══════════════════ Storage ═══════════════════ */
 
 const NOTES_KEY = 'igor-notes-v2';
@@ -87,8 +122,17 @@ function load<T>(key: string, fallback: T): T {
     return raw ? JSON.parse(raw) : fallback;
   } catch { return fallback; }
 }
-function save(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
+function save(key: string, value: unknown): string | null {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return null;
+  } catch (e) {
+    const name = e instanceof DOMException ? e.name : '';
+    if (name === 'QuotaExceededError') {
+      return 'Недостаточно места в хранилище браузера. Удалите картинки из заметок или очистите данные сайта.';
+    }
+    return e instanceof Error ? e.message : 'Не удалось сохранить заметки локально';
+  }
 }
 
 /** Загружает data/notes.json из репо (статический файл сайта) и подставляет в localStorage. */
@@ -109,10 +153,7 @@ export function loadNotesBundle(): Promise<boolean> {
 
 /** Подставить данные из репо в localStorage (нормализация полей). Вызывается при «загрузить с репо» и при глобальном pull. */
 export function applyNotesFromRepoData(data: { notes: unknown[]; folders: unknown[] }): void {
-  const notes = (data.notes ?? []).map((n) => {
-    const note = n as Note;
-    return { ...note, tags: note.tags ?? [], color: note.color ?? 'none', archived: note.archived ?? false, todos: note.todos ?? [] };
-  });
+  const notes = (data.notes ?? []).map((n) => normalizeNote(n as Note));
   const folders = (data.folders ?? []) as NoteFolder[];
   save(NOTES_KEY, notes);
   save(FOLDERS_KEY, folders);
@@ -123,7 +164,7 @@ export async function loadNotesFromRepo(): Promise<{ ok: boolean; notes?: Note[]
   const data = await fetchNotesFromRepo();
   if (!data.ok) return { ok: false, error: data.error };
   applyNotesFromRepoData(data);
-  const notes = (data.notes as Note[]).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
+  const notes = (data.notes as Note[]).map((n) => normalizeNote(n));
   const folders = data.folders as NoteFolder[];
   return { ok: true, notes, folders };
 }
@@ -350,12 +391,13 @@ const FolderTree: React.FC<{
 }> = ({ folders, notes, selectedFolder, expandedFolders, editingId, onSelectFolder, onToggle, onRename, onDeleteFolder, onScrollToNote, onMoveNote, onMoveFolder }) => {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
+  const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null); // folder id or '__root__'
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (renamingId) inputRef.current?.focus(); }, [renamingId]);
 
   const childFolders = (pid: string | null) => folders.filter(f => f.parentId === pid);
-  const notesInFolder = (fid: string | null) => notes.filter(n => n.folderId === fid);
+  const notesInFolder = (fid: string | null) => notes.filter(n => !n.deleted && n.folderId === fid);
 
   // Prevent dropping a folder into itself or any of its descendants
   const isDescendant = useCallback((parentId: string, childId: string): boolean => {
@@ -458,9 +500,19 @@ const FolderTree: React.FC<{
               📁 {f.name} {totalCount > 0 && <span style={{ opacity: 0.4 }}>({totalCount})</span>}
             </span>
           )}
-          <button onClick={e => { e.stopPropagation(); onDeleteFolder(f.id); }}
-            style={{ background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', fontSize: 10, opacity: 0.3, color: 'inherit' }}>✕</button>
+          <button type="button" title={confirmDeleteFolderId === f.id ? 'Отменить удаление' : 'Удалить папку'}
+            onClick={e => { e.stopPropagation(); setConfirmDeleteFolderId(confirmDeleteFolderId === f.id ? null : f.id); }}
+            style={{ background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', fontSize: 10, opacity: confirmDeleteFolderId === f.id ? 0.8 : 0.3, color: confirmDeleteFolderId === f.id ? 'var(--pico-del-color)' : 'inherit' }}>✕</button>
         </div>
+        {confirmDeleteFolderId === f.id && (
+          <div onClick={e => e.stopPropagation()} style={{ paddingLeft: depth * 14 + 22, paddingRight: 4, paddingBottom: 4 }}>
+            <NotesInlineConfirm
+              message={`Удалить папку «${f.name}»? Заметки переместятся в родительскую папку.`}
+              onConfirm={() => { onDeleteFolder(f.id); setConfirmDeleteFolderId(null); }}
+              onCancel={() => setConfirmDeleteFolderId(null)}
+            />
+          </div>
+        )}
         {expanded && (
           <>
             {kids.map(c => renderFolder(c, depth + 1))}
@@ -606,9 +658,11 @@ const NoteCard: React.FC<{
 }> = ({ note, folders, isEditing, editTitle, editContent, editTags, editColor, editTodos, onStartEdit, onSave, onCancel, onDelete, onArchive, onTogglePin, onDuplicate, onMove, onExport, onEditTitleChange, onEditContentChange, onEditTagsChange, onEditColorChange, onEditTodosChange, cardRef }) => {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const closeOverflow = () => {
     const d = overflowRef.current;
     if (d) d.open = false;
+    setConfirmDelete(false);
   };
 
   const wordCount = useMemo(() => {
@@ -671,7 +725,15 @@ const NoteCard: React.FC<{
                   {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
                 <button type="button" onClick={() => { onArchive(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title={note.archived ? 'Разархивировать' : 'Архивировать'}>📦 {note.archived ? 'Разархивировать' : 'В архив'}</button>
-                <button type="button" onClick={() => { onDelete(); closeOverflow(); }} className="notes-touch-btn outline secondary" style={{ fontSize: 12 }} title="Удалить">✕ Удалить</button>
+                {confirmDelete ? (
+                  <NotesInlineConfirm
+                    message="Удалить эту заметку?"
+                    onConfirm={() => { onDelete(); closeOverflow(); }}
+                    onCancel={() => setConfirmDelete(false)}
+                  />
+                ) : (
+                  <button type="button" onClick={() => setConfirmDelete(true)} className="notes-touch-btn outline secondary" style={{ fontSize: 12 }} title="Удалить">✕ Удалить</button>
+                )}
               </div>
             </details>
           </>
@@ -743,11 +805,10 @@ const NoteCard: React.FC<{
 
 /* ═══════════════════ Main NotesPage ═══════════════════ */
 
+const NOTES_PUSH_DELAY_MS = 6000;
+
 const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
-  const [notes, setNotes] = useState<Note[]>(() => {
-    const arr = load<Note[]>(NOTES_KEY, []);
-    return arr.map(n => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
-  });
+  const [notes, setNotes] = useState<Note[]>(() => load<Note[]>(NOTES_KEY, []).map(normalizeNote));
   const [folders, setFolders] = useState<NoteFolder[]>(() => load(FOLDERS_KEY, []));
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => new Set());
@@ -761,16 +822,41 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [showArchived, setShowArchived] = useState(false);
   const [filterTag, setFilterTag] = useState<string | null>(null);
-  const [pullLoading, setPullLoading] = useState(false);
-  const [pullError, setPullError] = useState<string | null>(null);
   const [notesViewMode, setNotesViewModeState] = useState<NotesViewMode>(() => loadNotesViewMode());
   const [gridFocusId, setGridFocusId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'loading' | 'sending' | 'ok' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [banner, setBanner] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const newFolderInputRef = useRef<HTMLInputElement>(null);
 
   const importInputRef = useRef<HTMLInputElement>(null);
   const folderImportRef = useRef<HTMLInputElement>(null);
   const feedRef = useRef<HTMLDivElement>(null);
   const detailPaneRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const pendingSyncRef = useRef(false);
+  const justPushedRef = useRef(false);
+
+  const markDirty = useCallback(() => {
+    pendingSyncRef.current = true;
+  }, []);
+
+  const showBanner = useCallback((kind: 'ok' | 'err', text: string) => {
+    setBanner({ kind, text });
+  }, []);
+
+  useEffect(() => {
+    if (!banner) return;
+    const t = setTimeout(() => setBanner(null), 5000);
+    return () => clearTimeout(t);
+  }, [banner]);
+
+  useEffect(() => {
+    if (newFolderOpen) newFolderInputRef.current?.focus();
+  }, [newFolderOpen]);
 
   const setNotesViewMode = useCallback((m: NotesViewMode) => {
     setNotesViewModeState(m);
@@ -781,19 +867,96 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     }
   }, []);
 
-  useEffect(() => { save(NOTES_KEY, notes); }, [notes]);
+  useEffect(() => {
+    const err = save(NOTES_KEY, notes);
+    setSaveError(err);
+  }, [notes]);
   useEffect(() => { save(FOLDERS_KEY, folders); }, [folders]);
 
-  useEffect(() => {
-    if (getSyncConfig()) schedulePush('notes', () => pushNotes(notes, folders));
+  const runPullMergePush = useCallback(async () => {
+    setSyncStatus('loading');
+    setSyncError(null);
+    const remoteR = await fetchNotesFromRepo();
+    if (!remoteR.ok) {
+      setSyncStatus('error');
+      setSyncError(remoteR.error);
+      return;
+    }
+    setSyncStatus('sending');
+    const merged = mergeNotes(
+      remoteR.notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+      remoteR.folders as Array<{ id?: string; [k: string]: unknown }>,
+      notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+      folders as Array<{ id?: string; [k: string]: unknown }>
+    );
+    const result = await pushNotesMerged(merged.notes, merged.folders);
+    if (result.ok) {
+      const normalized = (merged.notes as Note[]).map(normalizeNote);
+      setNotes(normalized);
+      setFolders(merged.folders as NoteFolder[]);
+      pendingSyncRef.current = false;
+      justPushedRef.current = true;
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } else {
+      setSyncStatus('error');
+      setSyncError(result.error ?? 'Ошибка');
+    }
   }, [notes, folders]);
 
-  // При первом открытии подгрузить data/notes.json из репо
   useEffect(() => {
+    if (justPushedRef.current) {
+      justPushedRef.current = false;
+      return;
+    }
+    if (!getSyncConfig() || !pendingSyncRef.current) return;
+    setSyncStatus('pending');
+    schedulePushWithDelay('notes', NOTES_PUSH_DELAY_MS, runPullMergePush);
+  }, [notes, folders, runPullMergePush]);
+
+  const handleSyncNow = useCallback(() => {
+    cancelScheduledPush('notes');
+    setSyncStatus('pending');
+    void runPullMergePush();
+  }, [runPullMergePush]);
+
+  const handlePullFromRepo = useCallback(async () => {
+    cancelScheduledPush('notes');
+    setSyncStatus('loading');
+    setSyncError(null);
+    const remoteR = await fetchNotesFromRepo();
+    if (remoteR.ok) {
+      const merged = mergeNotes(
+        remoteR.notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+        remoteR.folders as Array<{ id?: string; [k: string]: unknown }>,
+        notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
+        folders as Array<{ id?: string; [k: string]: unknown }>
+      );
+      const normalized = (merged.notes as Note[]).map(normalizeNote);
+      justPushedRef.current = true;
+      setNotes(normalized);
+      setFolders(merged.folders as NoteFolder[]);
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 2000);
+    } else {
+      setSyncStatus('error');
+      setSyncError(remoteR.error);
+    }
+  }, [notes, folders]);
+
+  const handleCancelPush = useCallback(() => {
+    cancelScheduledPush('notes');
+    setSyncStatus('idle');
+    setSyncError(null);
+  }, []);
+
+  // При первом открытии подгрузить data/notes.json (только без настроенной синхронизации)
+  useEffect(() => {
+    if (getSyncConfig()) return;
     loadNotesBundle().then((seeded) => {
       if (seeded) {
-        const loaded = load<Note[]>(NOTES_KEY, []).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
-        setNotes(loaded);
+        justPushedRef.current = true;
+        setNotes(load<Note[]>(NOTES_KEY, []).map(normalizeNote));
         setFolders(load(FOLDERS_KEY, []));
       }
     });
@@ -802,28 +965,11 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   // После загрузки бандла в main — подтянуть данные из localStorage
   useEffect(() => {
     if (dataVersion == null) return;
-    const loaded = load<Note[]>(NOTES_KEY, []).map((n) => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: n.archived ?? false, todos: n.todos ?? [] }));
-    setNotes(loaded);
+    justPushedRef.current = true;
+    setNotes(load<Note[]>(NOTES_KEY, []).map(normalizeNote));
     setFolders(load(FOLDERS_KEY, []));
+    pendingSyncRef.current = false;
   }, [dataVersion]);
-
-  const handlePullFromRepo = useCallback(async () => {
-    setPullError(null);
-    setPullLoading(true);
-    try {
-      const result = await loadNotesFromRepo();
-      if (result.ok && result.notes != null && result.folders != null) {
-        setNotes(result.notes);
-        setFolders(result.folders);
-      } else {
-        setPullError(result.error ?? 'Не удалось загрузить данные из репо (файл отсутствует или ошибка).');
-      }
-    } catch (e) {
-      setPullError(e instanceof Error ? e.message : 'Ошибка загрузки');
-    } finally {
-      setPullLoading(false);
-    }
-  }, []);
 
   // Migrate old v1
   useEffect(() => {
@@ -832,23 +978,25 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       try {
         const arr: Note[] = JSON.parse(old);
         if (Array.isArray(arr) && arr.length > 0) {
-          setNotes(prev => { const ids = new Set(prev.map(n => n.id)); return [...prev, ...arr.filter(n => !ids.has(n.id)).map(n => ({ ...n, tags: n.tags ?? [], color: n.color ?? 'none', archived: false }))]; });
+          setNotes(prev => { const ids = new Set(prev.map(n => n.id)); return [...prev, ...arr.filter(n => !ids.has(n.id)).map(n => normalizeNote({ ...n, archived: false }))]; });
         }
       } catch { /* skip */ }
       localStorage.removeItem('igor-notes');
     }
   }, []);
 
+  const activeNotes = useMemo(() => notes.filter((n) => !n.deleted), [notes]);
+
   // All tags
   const allTags = useMemo(() => {
     const set = new Set<string>();
-    for (const n of notes) for (const t of (n.tags ?? [])) set.add(t);
+    for (const n of activeNotes) for (const t of (n.tags ?? [])) set.add(t);
     return [...set].sort();
-  }, [notes]);
+  }, [activeNotes]);
 
   // Filtered + sorted notes
   const visibleNotes = useMemo(() => {
-    let list = notes;
+    let list = activeNotes;
     if (!showArchived) list = list.filter(n => !n.archived);
     else list = list.filter(n => n.archived);
     if (selectedFolder !== null) list = list.filter(n => n.folderId === selectedFolder);
@@ -864,7 +1012,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       if (sortMode === 'color') return (a.color ?? '').localeCompare(b.color ?? '') || b.updatedAt - a.updatedAt;
       return b.updatedAt - a.updatedAt;
     });
-  }, [notes, selectedFolder, search, sortMode, showArchived, filterTag]);
+  }, [activeNotes, selectedFolder, search, sortMode, showArchived, filterTag]);
 
   useEffect(() => {
     if (notesViewMode !== 'grid') return;
@@ -874,11 +1022,12 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     });
   }, [notesViewMode, visibleNotes]);
 
-  const treeNotes = useMemo(() => notes.filter(n => !n.archived), [notes]);
+  const treeNotes = useMemo(() => activeNotes.filter(n => !n.archived), [activeNotes]);
 
   // CRUD
   const createNote = useCallback((initialContent = '') => {
     const note: Note = { id: makeNoteId(), title: '', content: initialContent, folderId: selectedFolder, createdAt: Date.now(), updatedAt: Date.now(), tags: [], color: 'none', todos: [] };
+    markDirty();
     setNotes(prev => [note, ...prev]);
     setEditingId(note.id);
     setEditTitle(''); setEditContent(initialContent); setEditTags([]); setEditColor('none'); setEditTodos([]);
@@ -890,13 +1039,14 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
         cardRefs.current.get(note.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 80);
-  }, [selectedFolder, notesViewMode]);
+  }, [selectedFolder, notesViewMode, markDirty]);
 
   const saveEdit = useCallback(() => {
     if (!editingId) return;
     const autoTags = extractTags(editContent);
     const finalTags = mergeTags(editTags, autoTags);
     const todosToSave = editTodos.filter(t => (t.text || '').trim()).map(t => ({ ...t, text: t.text.trim() }));
+    markDirty();
     setNotes(prev => prev.map(n => n.id === editingId ? { ...n, title: editTitle.trim() || 'Без заголовка', content: editContent, tags: finalTags, color: editColor, todos: todosToSave.length > 0 ? todosToSave : undefined, updatedAt: Date.now() } : n));
     setEditingId(null);
   }, [editingId, editTitle, editContent, editTags, editColor, editTodos]);
@@ -910,36 +1060,42 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const cancelEdit = useCallback(() => { setEditingId(null); }, []);
 
   const deleteNote = useCallback((id: string) => {
-    if (!window.confirm('Удалить заметку навсегда?')) return;
-    setNotes(prev => prev.filter(n => n.id !== id));
+    markDirty();
+    const now = Date.now();
+    setNotes(prev => prev.map(n => (n.id === id ? { ...n, deleted: true, updatedAt: now } : n)));
     if (editingId === id) setEditingId(null);
-  }, [editingId]);
+  }, [editingId, markDirty]);
 
   const archiveNote = useCallback((id: string) => {
+    markDirty();
     setNotes(prev => prev.map(n => n.id === id ? { ...n, archived: !n.archived, updatedAt: Date.now() } : n));
-  }, []);
+  }, [markDirty]);
 
   const togglePin = useCallback((id: string) => {
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned: !n.pinned } : n));
-  }, []);
+    markDirty();
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, pinned: !n.pinned, updatedAt: Date.now() } : n));
+  }, [markDirty]);
 
   const duplicateNote = useCallback((id: string) => {
     const src = notes.find(n => n.id === id);
     if (!src) return;
-    const copy: Note = { ...src, id: makeNoteId() + '_dup', title: src.title + ' (копия)', createdAt: Date.now(), updatedAt: Date.now(), pinned: false, todos: src.todos?.length ? src.todos.map(t => ({ ...t, id: makeTodoId() })) : undefined };
+    const copy: Note = { ...src, id: makeNoteId() + '_dup', title: src.title + ' (копия)', createdAt: Date.now(), updatedAt: Date.now(), pinned: false, deleted: false, todos: src.todos?.length ? src.todos.map(t => ({ ...t, id: makeTodoId() })) : undefined };
+    markDirty();
     setNotes(prev => [copy, ...prev]);
-  }, [notes]);
+  }, [notes, markDirty]);
 
   const moveToFolder = useCallback((noteId: string, folderId: string | null) => {
+    markDirty();
     setNotes(prev => prev.map(n => n.id === noteId ? { ...n, folderId, updatedAt: Date.now() } : n));
-  }, []);
+  }, [markDirty]);
 
   const moveFolderTo = useCallback((folderId: string, targetParentId: string | null) => {
+    markDirty();
     setFolders(prev => prev.map(f => f.id === folderId ? { ...f, parentId: targetParentId } : f));
     if (targetParentId) {
       setExpandedFolders(prev => { const s = new Set(prev); s.add(targetParentId); return s; });
     }
-  }, []);
+  }, [markDirty]);
 
   const exportNote = useCallback((note: Note) => {
     const text = note.content.replace(/<[^>]*>/g, '');
@@ -980,19 +1136,32 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   }, [editingId, createNote]);
 
   // Folders
-  const createFolder = () => {
-    const name = window.prompt('Название папки');
-    if (!name?.trim()) return;
-    const folder: NoteFolder = { id: makeFolderId(), name: name.trim(), parentId: selectedFolder };
+  const submitNewFolder = useCallback(() => {
+    const name = newFolderName.trim();
+    if (!name) {
+      setNewFolderOpen(false);
+      setNewFolderName('');
+      return;
+    }
+    markDirty();
+    const folder: NoteFolder = { id: makeFolderId(), name, parentId: selectedFolder };
     setFolders(prev => [...prev, folder]);
     setExpandedFolders(prev => { const s = new Set(prev); s.add(folder.id); return s; });
-  };
+    setNewFolderOpen(false);
+    setNewFolderName('');
+  }, [newFolderName, selectedFolder, markDirty]);
 
-  const renameFolder = (id: string, name: string) => { setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); };
+  const cancelNewFolder = useCallback(() => {
+    setNewFolderOpen(false);
+    setNewFolderName('');
+  }, []);
+
+  const renameFolder = (id: string, name: string) => { markDirty(); setFolders(prev => prev.map(f => f.id === id ? { ...f, name } : f)); };
 
   const deleteFolder = (id: string) => {
     const f = folders.find(x => x.id === id);
-    if (!f || !window.confirm(`Удалить папку «${f.name}»?`)) return;
+    if (!f) return;
+    markDirty();
     setNotes(prev => prev.map(n => n.folderId === id ? { ...n, folderId: f.parentId } : n));
     setFolders(prev => prev.map(x => x.parentId === id ? { ...x, parentId: f.parentId } : x).filter(x => x.id !== id));
     if (selectedFolder === id) setSelectedFolder(f.parentId);
@@ -1010,7 +1179,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     for (const file of files) {
       const text = await file.text();
       if (file.name.endsWith('.json')) {
-        try { imported.push(...parseTelegramExport(text)); } catch { alert(`Ошибка: ${file.name}`); }
+        try { imported.push(...parseTelegramExport(text)); } catch { showBanner('err', `Ошибка импорта: ${file.name}`); }
       } else {
         const now = Date.now();
         imported.push({ id: makeNoteId() + '_' + Math.random().toString(36).slice(2, 5), title: file.name.replace(/\.(md|txt)$/i, ''), content: `<p>${text.replace(/\n/g, '</p><p>')}</p>`, folderId: selectedFolder, tags: [], createdAt: now, updatedAt: now });
@@ -1018,8 +1187,9 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     }
     if (imported.length > 0) {
       for (const n of imported) n.folderId = selectedFolder;
+      markDirty();
       setNotes(prev => [...imported, ...prev]);
-      alert(`Импортировано: ${imported.length} заметок`);
+      showBanner('ok', `Импортировано: ${imported.length} заметок`);
     }
     e.target.value = '';
   };
@@ -1031,17 +1201,18 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     try {
       const result = await importFolderFiles(files, selectedFolder, folders);
       if (result.folders.length > 0 || result.notes.length > 0) {
+        markDirty();
         setFolders(prev => [...prev, ...result.folders]);
         setNotes(prev => [...result.notes, ...prev]);
         const newExpanded = new Set(expandedFolders);
         for (const f of result.folders) newExpanded.add(f.id);
         setExpandedFolders(newExpanded);
-        alert(`Импортировано: ${result.folders.length} папок, ${result.notes.length} заметок`);
+        showBanner('ok', `Импортировано: ${result.folders.length} папок, ${result.notes.length} заметок`);
       } else {
-        alert('Не найдено подходящих файлов (.md, .txt, .json)');
+        showBanner('err', 'Не найдено подходящих файлов (.md, .txt, .json)');
       }
     } catch {
-      alert('Ошибка при импорте папки');
+      showBanner('err', 'Ошибка при импорте папки');
     }
     e.target.value = '';
   };
@@ -1116,9 +1287,31 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           <input type="search" placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)}
             style={{ width: '100%', marginBottom: 6, padding: '8px 10px', fontSize: 12 }} />
           <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-            <button onClick={() => createNote()} className="notes-touch-btn" style={{ flex: 1, fontSize: 12 }}>+ Заметка</button>
-            <button onClick={createFolder} className="notes-touch-btn secondary" style={{ flex: 1, fontSize: 12 }}>+ Папка</button>
+            <button type="button" onClick={() => createNote()} className="notes-touch-btn" style={{ flex: 1, fontSize: 12 }}>+ Заметка</button>
+            <button type="button" onClick={() => { setNewFolderOpen(true); setNewFolderName(''); }} className="notes-touch-btn secondary" style={{ flex: 1, fontSize: 12 }} disabled={newFolderOpen}>+ Папка</button>
           </div>
+          {newFolderOpen && (
+            <div className="notes-new-folder">
+              <input
+                ref={newFolderInputRef}
+                type="text"
+                placeholder="Название папки"
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') submitNewFolder();
+                  if (e.key === 'Escape') cancelNewFolder();
+                }}
+              />
+              <div className="notes-new-folder__actions">
+                <button type="button" className="notes-touch-btn" onClick={submitNewFolder}>Создать</button>
+                <button type="button" className="notes-touch-btn secondary" onClick={cancelNewFolder}>Отмена</button>
+              </div>
+            </div>
+          )}
+          {banner && (
+            <p className={`notes-banner notes-banner--${banner.kind}`} role="status">{banner.text}</p>
+          )}
           <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
             <button onClick={() => importInputRef.current?.click()} className="notes-touch-btn outline" style={{ flex: 1, fontSize: 11 }}>
               Импорт файлов
@@ -1129,15 +1322,32 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           </div>
           {getSyncConfig() && (
             <>
-              <button onClick={handlePullFromRepo} disabled={pullLoading} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Выгрузить последний сохранённый вариант из репо">
-                {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
-              </button>
-              <button onClick={() => pushNotes(notes, folders).catch(() => {})} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Сохранить текущие заметки в репо">
-                Загрузить в репо
-              </button>
-              {pullError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-del-color)' }}>{pullError}</p>}
+              <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-muted-color)' }}>
+                Изменения с телефона и с компьютера объединяются по времени; удаления сохраняются в репо.
+              </p>
+              {(syncStatus !== 'idle' || syncError) && (
+                <div style={{ marginBottom: 6, fontSize: 11, color: syncStatus === 'error' ? 'var(--pico-del-color)' : 'var(--pico-muted-color)' }}>
+                  {syncStatus === 'pending' && `Через ${NOTES_PUSH_DELAY_MS / 1000} сек сохранение в репо (сначала загрузка из репо и объединение).`}
+                  {syncStatus === 'loading' && 'Загрузка из репо…'}
+                  {syncStatus === 'sending' && 'Сохранение в репо…'}
+                  {syncStatus === 'ok' && 'Сохранено в репо.'}
+                  {syncStatus === 'error' && syncError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
+                {syncStatus === 'pending' && (
+                  <>
+                    <button type="button" onClick={handleSyncNow} className="notes-touch-btn" style={{ flex: 1, fontSize: 11 }}>Сохранить в репо</button>
+                    <button type="button" onClick={handleCancelPush} className="notes-touch-btn secondary" style={{ flex: 1, fontSize: 11 }}>Отменить</button>
+                  </>
+                )}
+                <button type="button" onClick={() => void handlePullFromRepo()} disabled={syncStatus === 'loading'} className="notes-touch-btn outline" style={{ flex: 1, fontSize: 11 }} title="Загрузить из репо и объединить с локальными">
+                  {syncStatus === 'loading' ? 'Загрузка…' : 'Загрузить из репо'}
+                </button>
+              </div>
             </>
           )}
+          {saveError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-del-color)' }}>{saveError}</p>}
           <button onClick={downloadNotesBundle} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Скачать notes.json для public/data/">
             Экспорт для GitHub
           </button>
