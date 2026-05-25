@@ -17,7 +17,11 @@ import { pushCalculators, getCalculatorsJsonFromRepo, getSyncConfig } from '@/li
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
 import ValidationErrors from '@/components/editor/ValidationErrors';
+import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 import aiCalculatorPrompt from '../../../../AI_CALCULATOR_PROMPT.md?raw';
+
+const EDITOR_NARROW_BANNER_KEY = 'igor-editor-narrow-banner-dismissed';
+const EDITOR_NARROW_MQ = '(max-width: 1024px)';
 
 // Демонстрационный набор блоков (загружается из JSON)
 const testBlocks = parkingDemo as Block[];
@@ -40,6 +44,10 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const [pasteJsonText, setPasteJsonText] = useState('');
   const [listKey, setListKey] = useState(0);
   const [pullCalcLoading, setPullCalcLoading] = useState(false);
+  const [narrowScreen, setNarrowScreen] = useState(false);
+  const [narrowBannerDismissed, setNarrowBannerDismissed] = useState(
+    () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem(EDITOR_NARROW_BANNER_KEY) === '1'
+  );
   const reportRef = useRef<ReportPanelHandle>(null);
   const saveDraftRef = useRef<() => void>(() => {});
   /** После «Пустой» / «Сбросить на демо» — при следующем сохранении всегда создаём новый калькулятор (новый id) */
@@ -78,7 +86,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     if (!canSubmitReview) {
       const details = validation.errors.slice(0, 3).map((e) => `• ${e.blockId}: ${e.message}`).join('\n');
       const more = validation.errors.length > 3 ? `\n... и еще ${validation.errors.length - 3} ошибок` : '';
-      alert(`Нельзя опубликовать. Исправьте ошибки:\n${details}${more}`);
+      toastError(`Нельзя опубликовать. Исправьте ошибки:\n${details}${more}`);
       return;
     }
     const title = window.prompt('Название калькулятора', 'Калькулятор');
@@ -95,7 +103,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
 
     const result = saveCalculator(calcId, title, blocks, values, 'published', undefined, reportHtml, slug);
     if (!result.success) {
-      alert(result.error || 'Не удалось опубликовать');
+      toastError(result.error || 'Не удалось опубликовать');
       return;
     }
     localStorage.setItem(storageKey, calcId);
@@ -129,7 +137,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
   const handleLoadCalculator = (id: string) => {
     const calc = loadCalculator(id);
     if (!calc) {
-      alert('Калькулятор не найден');
+      toastError('Калькулятор не найден');
       return;
     }
     forceNewCalculatorRef.current = false; // сохранять в выбранный калькулятор, не создавать новый
@@ -172,7 +180,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       if (Array.isArray(parsed)) {
         const validation = validateImportedBlocks(raw);
         if (!validation.valid || !validation.blocks) {
-          alert(validation.error || 'Некорректный JSON');
+          toastError(validation.error || 'Некорректный JSON');
           return;
         }
         nextBlocks = validation.blocks;
@@ -181,17 +189,17 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         if (Array.isArray(parsed.blocks)) {
           const validation = validateBlocks(parsed.blocks as Block[]);
           if (!validation.valid) {
-            alert('Ошибки валидации блоков');
+            toastError('Ошибки валидации блоков');
             return;
           }
           nextBlocks = parsed.blocks as Block[];
         }
         if (nextBlocks === null && !nextReportHtml) {
-          alert('Вставьте массив блоков или объект с полями blocks и/или reportHtml');
+          toastError('Вставьте массив блоков или объект с полями blocks и/или reportHtml');
           return;
         }
       } else {
-        alert('Вставьте массив блоков или объект { blocks?: [...], reportHtml?: "..." }');
+        toastError('Вставьте массив блоков или объект { blocks?: [...], reportHtml?: "..." }');
         return;
       }
 
@@ -204,7 +212,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
       setPasteJsonOpen(false);
       setPasteJsonText('');
     } catch (e) {
-      alert('Не удалось разобрать JSON. Проверьте формат.');
+      toastError('Не удалось разобрать JSON. Проверьте формат.');
     }
   };
 
@@ -215,7 +223,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     const json = JSON.stringify(payload, null, 2);
     navigator.clipboard?.writeText(json).then(
       () => { setSaveMessage('JSON скопирован'); setTimeout(() => setSaveMessage(null), 2000); },
-      () => alert('Не удалось скопировать в буфер')
+      () => toastError('Не удалось скопировать в буфер')
     );
   };
 
@@ -224,11 +232,19 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     const json = JSON.stringify({ reportHtml }, null, 2);
     navigator.clipboard?.writeText(json).then(
       () => { setSaveMessage('Отчёт скопирован'); setTimeout(() => setSaveMessage(null), 2000); },
-      () => alert('Не удалось скопировать в буфер')
+      () => toastError('Не удалось скопировать в буфер')
     );
   };
 
   saveDraftRef.current = handleSaveDraft;
+
+  useEffect(() => {
+    const mq = window.matchMedia(EDITOR_NARROW_MQ);
+    const update = () => setNarrowScreen(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   // Инициализация тестовых блоков в Zustand store (один раз)
   useEffect(() => {
@@ -286,6 +302,25 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
         overflow: 'hidden',
       }}
     >
+      {narrowScreen && !narrowBannerDismissed && (
+        <div className="editor-narrow-banner" role="status">
+          <p className="editor-narrow-banner__text">
+            Редактор удобен на планшете или ПК. На узком экране панели сжаты, но все действия доступны.
+          </p>
+          <button
+            type="button"
+            className="editor-narrow-banner__dismiss"
+            onClick={() => {
+              setNarrowBannerDismissed(true);
+              try {
+                sessionStorage.setItem(EDITOR_NARROW_BANNER_KEY, '1');
+              } catch {}
+            }}
+          >
+            Скрыть
+          </button>
+        </div>
+      )}
       {/* Верхняя панель: навигация и действия */}
       <div style={{ padding: '12px 16px', background: 'var(--pico-card-background-color)', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -473,7 +508,12 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
                   if (json) {
                     loadPublishedBundleFromContent(json);
                     setListKey((k) => k + 1);
+                    toastSuccess('Калькуляторы загружены из репозитория');
+                  } else {
+                    toastInfo('В репозитории нет файла калькуляторов');
                   }
+                } catch {
+                  toastError('Не удалось загрузить калькуляторы из репозитория');
                 } finally {
                   setPullCalcLoading(false);
                 }

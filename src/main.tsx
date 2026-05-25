@@ -7,6 +7,7 @@ import CalculatorsListPage from './app/calculators/CalculatorsListPage';
 import { AdminLogin } from './components/AdminLogin';
 import AdminSessionBanner from './components/AdminSessionBanner';
 import AdminAccessDenied from './components/AdminAccessDenied';
+import { ToastProvider } from './components/Toast';
 import { PageLoadingFallback, loadingVariantForPath } from './components/PageLoadingFallback';
 
 const EditorPage = React.lazy(() => import('./app/admin/editor/page'));
@@ -313,11 +314,11 @@ function App() {
   if (path.startsWith('/planner')) {
     if (!isAdmin && !isLimitedGuest) {
       return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ по входу</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Планировщик (списки дел) доступен после входа (админ или гостевой аккаунт).</p>
-          {linkToHome}
-        </div>
+        <AdminAccessDenied
+          resourceLabel="Планировщик"
+          accessMode="login-required"
+          sessionExpired={adminSessionExpired}
+        />
       );
     }
     return <PageSuspense><PlannerPage /></PageSuspense>;
@@ -338,23 +339,23 @@ function App() {
   if (path === '/weather') {
     if (!isAdmin && !isLimitedGuest) {
       return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ по входу</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>Метеостанция доступна после входа (админ или гостевой аккаунт).</p>
-          {linkToHome}
-        </div>
+        <AdminAccessDenied
+          resourceLabel="Метеостанция"
+          accessMode="login-required"
+          sessionExpired={adminSessionExpired}
+        />
       );
     }
     return <PageSuspense><WeatherPage /></PageSuspense>;
   }
   if (path === '/rss') {
     if (!isAdmin) {
-      return (
-        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-          <h2>Доступ по входу</h2>
-          <p style={{ color: 'var(--color-muted-text)' }}>RSS подписки доступны только в режиме админа.</p>
-          {linkToHome}
-        </div>
+      return withSessionBanner(
+        <AdminAccessDenied
+          resourceLabel="RSS"
+          accessMode="admin-only"
+          sessionExpired={adminSessionExpired}
+        />
       );
     }
     return <PageSuspense><RssPage /></PageSuspense>;
@@ -465,9 +466,11 @@ const root = document.getElementById('root');
 if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
-      <AppErrorBoundary>
-        <App />
-      </AppErrorBoundary>
+      <ToastProvider>
+        <AppErrorBoundary>
+          <App />
+        </AppErrorBoundary>
+      </ToastProvider>
     </React.StrictMode>
   );
 }
