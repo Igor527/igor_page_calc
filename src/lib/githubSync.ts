@@ -95,38 +95,62 @@ type GitHubContentMeta = {
   git_url?: string | null;
 };
 
-/** Текст файла: base64 из Contents API или download_url / git blob (файлы > ~1 МБ без content). */
-async function readFileBody(cfg: GitHubSyncConfig, meta: GitHubContentMeta, path: string): Promise<string | null> {
-  if (meta.content && meta.sha) {
+/** Сырой текст файла через Contents API (тот же origin, без CORS raw.githubusercontent.com). */
+async function fetchContentsRaw(cfg: GitHubSyncConfig, contentsUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(contentsUrl, {
+      headers: githubAuthHeaders(cfg, 'application/vnd.github.v3.raw'),
+    });
+    if (!res.ok) return null;
+    const text = await res.text();
+    if (text.startsWith('{') && text.includes('"documentation_url"')) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+/** Текст файла: base64 из Contents API; для крупных файлов — raw Accept / git blob (не download_url: CORS). */
+async function readFileBody(
+  cfg: GitHubSyncConfig,
+  meta: GitHubContentMeta,
+  contentsUrl: string
+): Promise<string | null> {
+  if (meta.content?.trim() && meta.sha) {
     try {
       return typeof atob !== 'undefined'
         ? base64ToUtf8(meta.content)
         : Buffer.from(meta.content, 'base64').toString('utf8');
     } catch {
-      return null;
+      /* fallback below */
     }
   }
   if (!meta.sha) return null;
 
-  if (meta.download_url) {
-    try {
-      const res = await fetch(meta.download_url, { headers: githubAuthHeaders(cfg, 'application/vnd.github.v3.raw') });
-      if (res.ok) return await res.text();
-    } catch {
-      /* try git_url */
-    }
-  }
+  const raw = await fetchContentsRaw(cfg, contentsUrl);
+  if (raw != null) return raw;
 
   if (meta.git_url) {
     try {
       const res = await fetch(meta.git_url, { headers: githubAuthHeaders(cfg) });
       if (!res.ok) return null;
       const blob = (await res.json()) as { content?: string; encoding?: string };
-      if (blob.content && blob.encoding === 'base64') {
-        return base64ToUtf8(blob.content);
+      if (blob.content) {
+        return blob.encoding === 'base64' || !blob.encoding
+          ? base64ToUtf8(blob.content)
+          : blob.content;
       }
     } catch {
-      return null;
+      /* ignore */
+    }
+  }
+
+  if (meta.download_url) {
+    try {
+      const res = await fetch(meta.download_url, { headers: githubAuthHeaders(cfg, 'application/vnd.github.v3.raw') });
+      if (res.ok) return await res.text();
+    } catch {
+      /* CORS на private raw — ожидаемо в браузере */
     }
   }
 
@@ -157,7 +181,7 @@ export async function fetchFile(path: string): Promise<GitHubFileResult> {
     if (!data.sha) {
       return { ok: false, error: formatRepoFileError(path, 'GitHub не вернул идентификатор файла') };
     }
-    const content = await readFileBody(cfg, data, path);
+    const content = await readFileBody(cfg, data, url);
     if (content == null) {
       const sizeHint = typeof data.size === 'number' ? ` (${Math.round(data.size / 1024)} КБ)` : '';
       return {
@@ -417,9 +441,12 @@ export async function fetchNotesFromRepo(): Promise<
   | { ok: true; notes: unknown[]; folders: unknown[] }
   | { ok: false; error: string }
 > {
-  const { data, error } = await getJsonFromRepo(dataPath('notes.json'));
+  const notesPath = dataPath('notes.json');
+  const { data, error } = await getJsonFromRepo(notesPath);
   if (error) return { ok: false, error };
-  if (!data) return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
+  if (data == null || typeof data !== 'object') {
+    return { ok: false, error: formatRepoFileError(notesPath, 'пустой или неверный JSON в репозитории') };
+  }
   const parsed = data as { notes?: unknown[]; folders?: unknown[] };
   return {
     ok: true,

@@ -265,8 +265,12 @@ function App() {
       ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));
       return { ok: true };
-    } catch {
-      return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      return {
+        ok: false,
+        error: detail ? `Сбой выгрузки: ${detail}` : GITHUB_REPO_FETCH_FAILED,
+      };
     }
   }, []);
 
