@@ -4,7 +4,12 @@
  * Токен — GitHub Personal Access Token с правами repo (contents: read/write).
  */
 
-import { formatGitHubApiError, GITHUB_REPO_FETCH_FAILED, GITHUB_SYNC_NOT_CONFIGURED } from './syncAuthMessages';
+import {
+  formatGitHubApiError,
+  formatRepoFileError,
+  GITHUB_REPO_FETCH_FAILED,
+  GITHUB_SYNC_NOT_CONFIGURED,
+} from './syncAuthMessages';
 
 const CONFIG_KEY = 'igor-github-sync-config';
 
@@ -65,6 +70,11 @@ export type GitHubFileResult =
   | { ok: true; content: string; sha: string }
   | { ok: false; status?: number; error: string };
 
+/** GitHub Contents API: кодируем сегменты пути, слэши оставляем (encodeURIComponent('a/b') → 404). */
+function encodeRepoPath(path: string): string {
+  return path.split('/').map((seg) => encodeURIComponent(seg)).join('/');
+}
+
 /** Декодировать base64 в UTF-8 (в браузере atob даёт бинарную строку в Latin-1, кириллица ломается). */
 function base64ToUtf8(base64: string): string {
   const binary = atob(base64.replace(/\s/g, ''));
@@ -73,34 +83,98 @@ function base64ToUtf8(base64: string): string {
   return new TextDecoder('utf-8').decode(bytes);
 }
 
+function githubAuthHeaders(cfg: GitHubSyncConfig, accept = 'application/vnd.github.v3+json'): HeadersInit {
+  return { Accept: accept, Authorization: `Bearer ${cfg.token}` };
+}
+
+type GitHubContentMeta = {
+  content?: string;
+  sha?: string;
+  size?: number;
+  download_url?: string | null;
+  git_url?: string | null;
+};
+
+/** Текст файла: base64 из Contents API или download_url / git blob (файлы > ~1 МБ без content). */
+async function readFileBody(cfg: GitHubSyncConfig, meta: GitHubContentMeta, path: string): Promise<string | null> {
+  if (meta.content && meta.sha) {
+    try {
+      return typeof atob !== 'undefined'
+        ? base64ToUtf8(meta.content)
+        : Buffer.from(meta.content, 'base64').toString('utf8');
+    } catch {
+      return null;
+    }
+  }
+  if (!meta.sha) return null;
+
+  if (meta.download_url) {
+    try {
+      const res = await fetch(meta.download_url, { headers: githubAuthHeaders(cfg, 'application/vnd.github.v3.raw') });
+      if (res.ok) return await res.text();
+    } catch {
+      /* try git_url */
+    }
+  }
+
+  if (meta.git_url) {
+    try {
+      const res = await fetch(meta.git_url, { headers: githubAuthHeaders(cfg) });
+      if (!res.ok) return null;
+      const blob = (await res.json()) as { content?: string; encoding?: string };
+      if (blob.content && blob.encoding === 'base64') {
+        return base64ToUtf8(blob.content);
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Получить содержимое файла из репо с описанием ошибки (в т.ч. 401/403 — просроченный токен).
  */
 export async function fetchFile(path: string): Promise<GitHubFileResult> {
   const cfg = getSyncConfig();
   if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(cfg.branch)}`;
-  const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}?ref=${encodeURIComponent(cfg.branch)}`;
+  try {
+    const res = await fetch(url, { headers: githubAuthHeaders(cfg) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return {
+        ok: false,
+        status: res.status,
+        error: formatRepoFileError(path, formatGitHubApiError(res.status, (err as { message?: string }).message)),
+      };
+    }
+    const data = (await res.json()) as GitHubContentMeta | GitHubContentMeta[];
+    if (Array.isArray(data)) {
+      return { ok: false, error: formatRepoFileError(path, 'путь указывает на папку, а не на файл') };
+    }
+    if (!data.sha) {
+      return { ok: false, error: formatRepoFileError(path, 'GitHub не вернул идентификатор файла') };
+    }
+    const content = await readFileBody(cfg, data, path);
+    if (content == null) {
+      const sizeHint = typeof data.size === 'number' ? ` (${Math.round(data.size / 1024)} КБ)` : '';
+      return {
+        ok: false,
+        error: formatRepoFileError(
+          path,
+          `не удалось получить содержимое${sizeHint}. Для больших файлов нужен download_url или git blob.`
+        ),
+      };
+    }
+    return { content, sha: data.sha };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : '';
     return {
       ok: false,
-      status: res.status,
-      error: formatGitHubApiError(res.status, (err as { message?: string }).message),
+      error: formatRepoFileError(path, detail ? `сеть: ${detail}` : GITHUB_REPO_FETCH_FAILED),
     };
-  }
-  const data = await res.json();
-  if (!data.content || !data.sha) return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
-  try {
-    const content =
-      typeof atob !== 'undefined'
-        ? base64ToUtf8(data.content)
-        : Buffer.from(data.content, 'base64').toString('utf8');
-    return { content, sha: data.sha };
-  } catch {
-    return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
   }
 }
 
@@ -120,7 +194,7 @@ export async function putFile(path: string, content: string, message: string): P
   let sha: string | undefined;
   const existing = await getFile(path);
   if (existing) sha = existing.sha;
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}`;
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}`;
   const body: { message: string; content: string; branch: string; sha?: string } = {
     message,
     content: encoded,
@@ -131,7 +205,7 @@ export async function putFile(path: string, content: string, message: string): P
     method: 'PUT',
     headers: {
       Accept: 'application/vnd.github.v3+json',
-      Authorization: `token ${cfg.token}`,
+      Authorization: `Bearer ${cfg.token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -149,9 +223,9 @@ export async function putFile(path: string, content: string, message: string): P
 export async function listFiles(path: string): Promise<Array<{name: string; path: string; sha: string; download_url: string | null}> | null> {
   const cfg = getSyncConfig();
   if (!cfg) return null;
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(cfg.branch)}`;
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}?ref=${encodeURIComponent(cfg.branch)}`;
   const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
+    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `Bearer ${cfg.token}` },
   });
   if (!res.ok) {
     if (res.status === 404) return []; // Папка еще не существует
@@ -175,7 +249,7 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
   const cfg = getSyncConfig();
   if (!cfg) return { ok: false, error: 'Не настроена синхронизация с GitHub' };
   
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeURIComponent(path)}`;
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}`;
   const body = {
     message,
     sha,
@@ -186,7 +260,7 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
     method: 'DELETE',
     headers: {
       Accept: 'application/vnd.github.v3+json',
-      Authorization: `token ${cfg.token}`,
+      Authorization: `Bearer ${cfg.token}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -206,7 +280,7 @@ export async function testConnection(): Promise<SyncResult> {
   if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}`;
   const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `token ${cfg.token}` },
+    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `Bearer ${cfg.token}` },
   });
   if (res.ok) return { ok: true };
   const err = await res.json().catch(() => ({}));
@@ -307,11 +381,12 @@ export async function fetchPostsFromRepo(): Promise<
   const file = await fetchFile(dataPath('posts.json'));
   if (!file.ok) return { ok: false, error: file.error };
   try {
-    const data = JSON.parse(file.content) as { posts?: unknown[] };
+    const data = JSON.parse(file.content.replace(/^\uFEFF/, '').trim()) as { posts?: unknown[] };
     const list = Array.isArray(data?.posts) ? data.posts : [];
     return { ok: true, posts: list as BlogPostRepo[] };
-  } catch {
-    return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : 'невалидный JSON';
+    return { ok: false, error: formatRepoFileError(dataPath('posts.json'), detail) };
   }
 }
 
@@ -325,10 +400,15 @@ export async function getPostsFromRepo(): Promise<BlogPostRepo[] | null> {
 async function getJsonFromRepo(path: string): Promise<{ data: unknown | null; error?: string }> {
   const file = await fetchFile(path);
   if (!file.ok) return { data: null, error: file.error };
+  const trimmed = file.content.replace(/^\uFEFF/, '').trim();
+  if (!trimmed) {
+    return { data: null, error: formatRepoFileError(path, 'файл пустой') };
+  }
   try {
-    return { data: JSON.parse(file.content) };
-  } catch {
-    return { data: null, error: GITHUB_REPO_FETCH_FAILED };
+    return { data: JSON.parse(trimmed) };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : 'невалидный JSON';
+    return { data: null, error: formatRepoFileError(path, detail) };
   }
 }
 

@@ -382,7 +382,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
             : '— Разделитель';
 
   return (
-    <main className="max-w-[750px] mx-auto pt-20 pb-20 px-4">
+    <main className="max-w-[750px] mx-auto pb-20 px-4">
       {/* ─── Edit-mode top bar ─── */}
       {editing && (
         <div

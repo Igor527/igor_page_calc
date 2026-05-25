@@ -7,6 +7,7 @@ import CalculatorsListPage from './app/calculators/CalculatorsListPage';
 import { AdminLogin } from './components/AdminLogin';
 import AdminSessionBanner from './components/AdminSessionBanner';
 import AdminAccessDenied from './components/AdminAccessDenied';
+import { PageLoadingFallback, loadingVariantForPath } from './components/PageLoadingFallback';
 
 const EditorPage = React.lazy(() => import('./app/admin/editor/page'));
 const PublicCalculator = React.lazy(() => import('./app/public/PublicCalculator'));
@@ -37,7 +38,7 @@ import {
   cancelScheduledPush,
   testConnection,
 } from './lib/githubSync';
-import { GITHUB_SYNC_NOT_CONFIGURED } from './lib/syncAuthMessages';
+import { GITHUB_REPO_FETCH_FAILED, GITHUB_SYNC_NOT_CONFIGURED } from './lib/syncAuthMessages';
 import { setRssListsFromBundle } from './app/rss/RssPage';
 import {
   subscribeToAuth,
@@ -56,6 +57,11 @@ const ADMIN_REDIRECT_PROVIDER_KEY = 'adminLoginRedirectProvider';
 const linkStyle = { color: 'var(--color-accent)', textDecoration: 'underline' };
 const linkToEditor = <a href="/editor" style={{ ...linkStyle, marginTop: 16, display: 'inline-block' }}>Вернуться в редактор</a>;
 const linkToHome = <a href="/" style={linkStyle}>На главную</a>;
+
+function PageSuspense({ children }: { children: React.ReactNode }) {
+  const variant = loadingVariantForPath(window.location.pathname);
+  return <React.Suspense fallback={<PageLoadingFallback variant={variant} />}>{children}</React.Suspense>;
+}
 
 function getIsAdmin(firebaseUser: unknown): boolean {
   // Если залогинен админ через Firebase — безусловный успех
@@ -230,34 +236,38 @@ function App() {
 
   const pullAllFromRepo = useCallback(async (): Promise<{ ok: boolean; error?: string }> => {
     if (!getSyncConfig()) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
-    const conn = await testConnection();
-    if (!conn.ok) return { ok: false, error: conn.error };
+    try {
+      const conn = await testConnection();
+      if (!conn.ok) return { ok: false, error: conn.error };
 
-    const notesR = await fetchNotesFromRepo();
-    if (!notesR.ok) return { ok: false, error: notesR.error };
-    applyNotesFromRepoData(notesR);
+      const notesR = await fetchNotesFromRepo();
+      if (!notesR.ok) return { ok: false, error: `Заметки: ${notesR.error}` };
+      applyNotesFromRepoData(notesR);
 
-    const cv = await getCvFromRepo();
-    if (typeof cv === 'string') {
-      try { localStorage.setItem('igor-cv-html', cv); } catch {}
+      const cv = await getCvFromRepo();
+      if (typeof cv === 'string') {
+        try { localStorage.setItem('igor-cv-html', cv); } catch {}
+      }
+      const postsR = await fetchPostsFromRepo();
+      if (!postsR.ok) return { ok: false, error: `Блог: ${postsR.error}` };
+      try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
+
+      const dict = await getDictionaryFromRepo();
+      if (dict) setDictionaryFromBundle(dict);
+      const layouts = await getLayoutsFromRepo();
+      if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
+      const planner = await getPlannerFromRepo();
+      if (planner) applyPlannerFromRepoData(planner);
+      const calcJson = await getCalculatorsJsonFromRepo();
+      if (calcJson) loadPublishedBundleFromContent(calcJson);
+      const rssData = await getRssListsFromRepo();
+      if (rssData) setRssListsFromBundle(rssData);
+      ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
+      startTransition(() => setBundleTick((n) => n + 1));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: GITHUB_REPO_FETCH_FAILED };
     }
-    const postsR = await fetchPostsFromRepo();
-    if (!postsR.ok) return { ok: false, error: postsR.error };
-    try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
-
-    const dict = await getDictionaryFromRepo();
-    if (dict) setDictionaryFromBundle(dict);
-    const layouts = await getLayoutsFromRepo();
-    if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
-    const planner = await getPlannerFromRepo();
-    if (planner) applyPlannerFromRepoData(planner);
-    const calcJson = await getCalculatorsJsonFromRepo();
-    if (calcJson) loadPublishedBundleFromContent(calcJson);
-    const rssData = await getRssListsFromRepo();
-    if (rssData) setRssListsFromBundle(rssData);
-    ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
-    startTransition(() => setBundleTick((n) => n + 1));
-    return { ok: true };
   }, []);
 
   useEffect(() => {
@@ -276,7 +286,7 @@ function App() {
       );
     }
     return withSessionBanner(
-      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><NotesPage dataVersion={bundleTick} /></React.Suspense>
+      <PageSuspense><NotesPage dataVersion={bundleTick} /></PageSuspense>
     );
   }
   if (path.startsWith('/admin/drawing')) {
@@ -286,7 +296,7 @@ function App() {
       );
     }
     return withSessionBanner(
-      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><DrawingPage /></React.Suspense>
+      <PageSuspense><DrawingPage /></PageSuspense>
     );
   }
   if (path.startsWith('/admin/review')) {
@@ -294,7 +304,7 @@ function App() {
     return null;
   }
   if (path.startsWith('/editor')) {
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><EditorPage isAdmin={true} /></React.Suspense>;
+    return <PageSuspense><EditorPage isAdmin={true} /></PageSuspense>;
   }
   if (path.startsWith('/planner')) {
     if (!isAdmin && !isLimitedGuest) {
@@ -306,7 +316,7 @@ function App() {
         </div>
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><PlannerPage /></React.Suspense>;
+    return <PageSuspense><PlannerPage /></PageSuspense>;
   }
   if (path === '/dictionary') {
     if (!isAdmin) {
@@ -315,11 +325,11 @@ function App() {
       );
     }
     return withSessionBanner(
-      <React.Suspense fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Загрузка...</div>}><DictionaryPage dataVersion={bundleTick} /></React.Suspense>
+      <PageSuspense><DictionaryPage dataVersion={bundleTick} /></PageSuspense>
     );
   }
   if (path === '/cv') {
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><CvPage isAdmin={isAdmin} /></React.Suspense>;
+    return <PageSuspense><CvPage isAdmin={isAdmin} /></PageSuspense>;
   }
   if (path === '/weather') {
     if (!isAdmin && !isLimitedGuest) {
@@ -331,7 +341,7 @@ function App() {
         </div>
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><WeatherPage /></React.Suspense>;
+    return <PageSuspense><WeatherPage /></PageSuspense>;
   }
   if (path === '/rss') {
     if (!isAdmin) {
@@ -343,7 +353,7 @@ function App() {
         </div>
       );
     }
-    return <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}><RssPage /></React.Suspense>;
+    return <PageSuspense><RssPage /></PageSuspense>;
   }
   if (path === '/blog') {
     return withSessionBanner(<BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />);
@@ -371,13 +381,14 @@ function App() {
     const calculatorId = calculator?.id ?? idOrSlug;
     if (calculator && calculator.status === 'published') {
       return (
-        <React.Suspense fallback={<div style={{padding:'40px',textAlign:'center'}}>Загрузка...</div>}>
+        <PageSuspense>
           <PublicCalculator
             calculatorId={calculator.id}
+            title={calculator.title}
             blocks={calculator.blocks}
             reportHtml={calculator.reportHtml}
           />
-        </React.Suspense>
+        </PageSuspense>
       );
     }
     if (calculator) {

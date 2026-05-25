@@ -11,6 +11,8 @@ import type { Block, GroupBlock, InputBlock, SelectFromTableBlock, DataTableBloc
 
 interface PublicCalculatorProps {
   calculatorId?: string;
+  /** Заголовок из сохранённого калькулятора */
+  title?: string;
   blocks?: Block[];
   /** Режим превью: не трогает глобальный store, использует локальное состояние (для панели ревью) */
   previewMode?: boolean;
@@ -378,7 +380,8 @@ function renderBlock(
   );
 }
 
-const PublicCalculator: React.FC<PublicCalculatorProps> = ({ calculatorId, blocks: initialBlocks, previewMode = false, initialValues: propInitialValues, reportHtml: reportHtmlProp }) => {
+const PublicCalculator: React.FC<PublicCalculatorProps> = ({ calculatorId, title, blocks: initialBlocks, previewMode = false, initialValues: propInitialValues, reportHtml: reportHtmlProp }) => {
+  const pageTitle = (title && title.trim()) || 'Калькулятор';
   const storeBlocks = useCalcStore((s) => s.blocks);
   const storeValues = useCalcStore((s) => s.values);
   const setBlocks = useCalcStore((s) => s.setBlocks);
@@ -502,7 +505,12 @@ const PublicCalculator: React.FC<PublicCalculatorProps> = ({ calculatorId, block
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', padding: '20px', color: 'var(--pico-color)', background: 'var(--pico-background-color)' }}>
-      <h1 style={{ marginBottom: 24, fontSize: 24, fontWeight: 600, color: 'var(--pico-color)' }}>Калькулятор</h1>
+      <p style={{ marginBottom: 16 }}>
+        <a href="/calculators" style={{ color: 'var(--color-accent)', textDecoration: 'none', fontSize: 14 }}>
+          ← К списку
+        </a>
+      </p>
+      <h1 style={{ marginBottom: 24, fontSize: 24, fontWeight: 600, color: 'var(--pico-color)' }}>{pageTitle}</h1>
       {blocksToShow.map((b) => renderBlock(b, values, blocks, handleValueChange, handlePasteFill))}
       {reportHtmlProcessed && (
         <div

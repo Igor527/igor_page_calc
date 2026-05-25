@@ -836,17 +836,20 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
         </div>
         {allTags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 16, justifyContent: 'center' }}>
-            <span
+            <button
+              type="button"
               className="tag-chip"
               onClick={() => setFilterTag(null)}
               style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}
-            >Все</span>
+            >Все</button>
             {allTags.map(t => (
-              <span
-                key={t} className="tag-chip"
+              <button
+                key={t}
+                type="button"
+                className="tag-chip"
                 onClick={() => setFilterTag(filterTag === t ? null : t)}
                 style={filterTag === t ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}
-              >#{t}</span>
+              >#{t}</button>
             ))}
           </div>
         )}

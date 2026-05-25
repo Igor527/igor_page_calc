@@ -1370,11 +1370,11 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
         {/* Tag cloud */}
         {allTags.length > 0 && (
           <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-            <span className="tag-chip" onClick={() => setFilterTag(null)}
-              style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>все</span>
+            <button type="button" className="tag-chip" onClick={() => setFilterTag(null)}
+              style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>все</button>
             {allTags.map(t => (
-              <span key={t} className="tag-chip" onClick={() => setFilterTag(filterTag === t ? null : t)}
-                style={filterTag === t ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>#{t}</span>
+              <button key={t} type="button" className="tag-chip" onClick={() => setFilterTag(filterTag === t ? null : t)}
+                style={filterTag === t ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>#{t}</button>
             ))}
           </div>
         )}

@@ -13,6 +13,10 @@ export const GITHUB_SYNC_NOT_CONFIGURED = 'Синхронизация с GitHub 
 export const GITHUB_REPO_FETCH_FAILED =
   'Не удалось загрузить данные из репо. Проверьте токен в настройках синхронизации или подключение к сети.';
 
+export function formatRepoFileError(path: string, reason: string): string {
+  return `Не удалось прочитать ${path}: ${reason}`;
+}
+
 export function formatGitHubApiError(status: number, apiMessage?: string): string {
   if (status === 401 || status === 403) return GITHUB_TOKEN_INVALID;
   if (status === 404) return 'Файл не найден в репозитории (404).';
