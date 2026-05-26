@@ -375,7 +375,22 @@ const TagInput: React.FC<{ tags: string[]; onChange: (tags: string[]) => void }>
   );
 };
 
-/* ═══════════════════ FolderTree (with notes inline) ═══════════════════ */
+/* ═══════════════════ FolderTree (with notes inline on desktop) ═══════════════════ */
+
+function useFinePointerDrag(): boolean {
+  const [enabled, setEnabled] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const onChange = () => setEnabled(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return enabled;
+}
+
+const treeDepthStyle = (depth: number): React.CSSProperties => ({ ['--tree-depth' as string]: depth });
 
 const FolderTree: React.FC<{
   folders: NoteFolder[];
@@ -391,17 +406,17 @@ const FolderTree: React.FC<{
   onMoveNote: (noteId: string, targetFolderId: string | null) => void;
   onMoveFolder: (folderId: string, targetParentId: string | null) => void;
 }> = ({ folders, notes, selectedFolder, expandedFolders, editingId, onSelectFolder, onToggle, onRename, onDeleteFolder, onScrollToNote, onMoveNote, onMoveFolder }) => {
+  const dragEnabled = useFinePointerDrag();
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<string | null>(null); // folder id or '__root__'
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => { if (renamingId) inputRef.current?.focus(); }, [renamingId]);
 
   const childFolders = (pid: string | null) => folders.filter(f => f.parentId === pid);
   const notesInFolder = (fid: string | null) => notes.filter(n => !n.deleted && n.folderId === fid);
 
-  // Prevent dropping a folder into itself or any of its descendants
   const isDescendant = useCallback((parentId: string, childId: string): boolean => {
     let cur: string | null = childId;
     while (cur) {
@@ -412,22 +427,27 @@ const FolderTree: React.FC<{
     return false;
   }, [folders]);
 
+  const isDropTarget = (id: string | null) => dropTarget === (id ?? '__root__');
+
   const handleDragStart = useCallback((e: React.DragEvent, type: 'note' | 'folder', id: string) => {
+    if (!dragEnabled) return;
     e.dataTransfer.setData('text/plain', JSON.stringify({ type, id }));
     e.dataTransfer.effectAllowed = 'move';
-  }, []);
+  }, [dragEnabled]);
 
   const handleDragOver = useCallback((e: React.DragEvent, targetId: string | null) => {
+    if (!dragEnabled) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDropTarget(targetId ?? '__root__');
-  }, []);
+  }, [dragEnabled]);
 
   const handleDragLeave = useCallback(() => {
     setDropTarget(null);
   }, []);
 
   const handleDrop = useCallback((e: React.DragEvent, targetFolderId: string | null) => {
+    if (!dragEnabled) return;
     e.preventDefault();
     setDropTarget(null);
     try {
@@ -440,32 +460,23 @@ const FolderTree: React.FC<{
         onMoveFolder(data.id, targetFolderId);
       }
     } catch { /* invalid drag data */ }
-  }, [onMoveNote, onMoveFolder, isDescendant]);
-
-  const dropHighlight = (id: string | null): React.CSSProperties => {
-    const key = id ?? '__root__';
-    if (dropTarget !== key) return {};
-    return { outline: '2px dashed var(--pico-primary)', outlineOffset: -2, borderRadius: 4 };
-  };
+  }, [dragEnabled, onMoveNote, onMoveFolder, isDescendant]);
 
   const renderNote = (n: Note, depth: number): React.ReactNode => (
-    <div key={n.id}
-      draggable
+    <div
+      key={n.id}
+      role="treeitem"
+      className={`notes-tree-note${editingId === n.id ? ' is-active' : ''}`}
+      style={{
+        ...treeDepthStyle(depth),
+        borderLeftColor: n.color && n.color !== 'none' ? colorCss(n.color) : 'transparent',
+      }}
+      draggable={dragEnabled}
       onDragStart={e => handleDragStart(e, 'note', n.id)}
       onClick={() => onScrollToNote(n.id)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 4,
-        paddingLeft: depth * 14 + 4 + 14,
-        paddingTop: 2, paddingBottom: 2, paddingRight: 4,
-        cursor: 'grab', fontSize: 12, whiteSpace: 'nowrap',
-        opacity: editingId === n.id ? 1 : 0.7,
-        borderLeft: n.color && n.color !== 'none' ? `3px solid ${colorCss(n.color)}` : '3px solid transparent',
-        borderRadius: 3,
-      }}>
-      <span style={{ fontSize: 11, flexShrink: 0 }}>{n.pinned ? '📌' : '📄'}</span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {n.title || n.id}
-      </span>
+    >
+      <span className="notes-tree-icon" aria-hidden>{n.pinned ? '📌' : '📄'}</span>
+      <span className="notes-tree-label">{n.title || n.id}</span>
     </div>
   );
 
@@ -475,39 +486,69 @@ const FolderTree: React.FC<{
     const kids = childFolders(f.id);
     const fNotes = notesInFolder(f.id);
     const totalCount = fNotes.length;
+    const hasChildren = kids.length > 0 || fNotes.length > 0;
     return (
-      <div key={f.id}>
+      <div key={f.id} className={`notes-tree-branch${depth > 0 ? ' notes-tree-branch--nested' : ''}`} role="treeitem" aria-expanded={hasChildren ? expanded : undefined}>
         <div
-          draggable
+          role="button"
+          tabIndex={0}
+          className={`notes-tree-row notes-tree-row--folder${selected ? ' is-selected' : ''}${isDropTarget(f.id) ? ' is-drop-target' : ''}`}
+          style={treeDepthStyle(depth)}
+          draggable={dragEnabled}
           onDragStart={e => handleDragStart(e, 'folder', f.id)}
           onDragOver={e => handleDragOver(e, f.id)}
           onDragLeave={handleDragLeave}
           onDrop={e => { handleDrop(e, f.id); if (!expandedFolders.has(f.id)) onToggle(f.id); }}
-          onClick={() => { onSelectFolder(f.id); onToggle(f.id); }}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 4, paddingLeft: depth * 14 + 4, paddingTop: 3, paddingBottom: 3, cursor: 'grab',
-            background: selected ? 'var(--pico-primary-background)' : 'transparent', borderRadius: 4,
-            ...dropHighlight(f.id),
-          }}>
-          <span style={{ width: 14, textAlign: 'center', fontSize: 10, opacity: 0.5 }}>{(kids.length > 0 || fNotes.length > 0) ? (expanded ? '▼' : '▶') : '·'}</span>
+          onClick={() => { onSelectFolder(f.id); if (hasChildren) onToggle(f.id); }}
+          onKeyDown={e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSelectFolder(f.id);
+              if (hasChildren) onToggle(f.id);
+            }
+          }}
+        >
+          <span
+            className={`notes-tree-chevron${expanded ? ' is-expanded' : ''}${!hasChildren ? ' notes-tree-chevron--empty' : ''}`}
+            aria-hidden
+          >
+            {hasChildren ? '▸' : '·'}
+          </span>
+          <span className="notes-tree-icon" aria-hidden>📁</span>
           {renamingId === f.id ? (
-            <input ref={inputRef} value={renameVal} onChange={e => setRenameVal(e.target.value)}
+            <input
+              ref={inputRef}
+              className="notes-tree-rename"
+              value={renameVal}
+              onChange={e => setRenameVal(e.target.value)}
               onBlur={() => { if (renameVal.trim()) onRename(f.id, renameVal.trim()); setRenamingId(null); }}
-              onKeyDown={e => { if (e.key === 'Enter') { if (renameVal.trim()) onRename(f.id, renameVal.trim()); setRenamingId(null); } if (e.key === 'Escape') setRenamingId(null); }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { if (renameVal.trim()) onRename(f.id, renameVal.trim()); setRenamingId(null); }
+                if (e.key === 'Escape') setRenamingId(null);
+              }}
               onClick={e => e.stopPropagation()}
-              style={{ fontSize: 12, padding: '1px 4px', flex: 1, background: 'transparent', border: '1px solid var(--pico-border-color)' }} />
+            />
           ) : (
-            <span style={{ fontSize: 12, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              onDoubleClick={e => { e.stopPropagation(); setRenamingId(f.id); setRenameVal(f.name); }}>
-              📁 {f.name} {totalCount > 0 && <span style={{ opacity: 0.4 }}>({totalCount})</span>}
+            <span
+              className="notes-tree-label"
+              onDoubleClick={e => { e.stopPropagation(); setRenamingId(f.id); setRenameVal(f.name); }}
+            >
+              {f.name}
+              {totalCount > 0 && <span className="notes-tree-count"> ({totalCount})</span>}
             </span>
           )}
-          <button type="button" title={confirmDeleteFolderId === f.id ? 'Отменить удаление' : 'Удалить папку'}
+          <button
+            type="button"
+            className={`notes-tree-delete${confirmDeleteFolderId === f.id ? ' is-armed' : ''}`}
+            title={confirmDeleteFolderId === f.id ? 'Отменить удаление' : 'Удалить папку'}
+            aria-label={confirmDeleteFolderId === f.id ? 'Отменить удаление папки' : `Удалить папку ${f.name}`}
             onClick={e => { e.stopPropagation(); setConfirmDeleteFolderId(confirmDeleteFolderId === f.id ? null : f.id); }}
-            style={{ background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', fontSize: 10, opacity: confirmDeleteFolderId === f.id ? 0.8 : 0.3, color: confirmDeleteFolderId === f.id ? 'var(--pico-del-color)' : 'inherit' }}>✕</button>
+          >
+            ✕
+          </button>
         </div>
         {confirmDeleteFolderId === f.id && (
-          <div onClick={e => e.stopPropagation()} style={{ paddingLeft: depth * 14 + 22, paddingRight: 4, paddingBottom: 4 }}>
+          <div className="notes-tree-confirm" style={treeDepthStyle(depth)} onClick={e => e.stopPropagation()}>
             <NotesInlineConfirm
               message={`Удалить папку «${f.name}»? Заметки переместятся в родительскую папку.`}
               onConfirm={() => { onDeleteFolder(f.id); setConfirmDeleteFolderId(null); }}
@@ -516,10 +557,10 @@ const FolderTree: React.FC<{
           </div>
         )}
         {expanded && (
-          <>
+          <div className="notes-tree-children">
             {kids.map(c => renderFolder(c, depth + 1))}
             {fNotes.map(n => renderNote(n, depth + 1))}
-          </>
+          </div>
         )}
       </div>
     );
@@ -527,23 +568,24 @@ const FolderTree: React.FC<{
 
   const rootNotes = notesInFolder(null);
   return (
-    <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
-      <div
+    <nav className="notes-tree" role="tree" aria-label="Папки заметок">
+      <button
+        type="button"
+        className={`notes-tree-row notes-tree-row--root${selectedFolder === null ? ' is-selected' : ''}${isDropTarget(null) ? ' is-drop-target' : ''}`}
+        style={treeDepthStyle(0)}
         onDragOver={e => handleDragOver(e, null)}
         onDragLeave={handleDragLeave}
         onDrop={e => handleDrop(e, null)}
         onClick={() => onSelectFolder(null)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 4, padding: '3px 4px', cursor: 'pointer',
-          background: selectedFolder === null ? 'var(--pico-primary-background)' : 'transparent',
-          borderRadius: 4, fontSize: 13, fontWeight: 500,
-          ...dropHighlight(null),
-        }}>
-        📋 Все заметки <span style={{ opacity: 0.4 }}>({notes.length})</span>
-      </div>
+      >
+        <span className="notes-tree-icon" aria-hidden>📋</span>
+        <span className="notes-tree-label">
+          Все заметки <span className="notes-tree-count">({notes.length})</span>
+        </span>
+      </button>
       {childFolders(null).map(f => renderFolder(f, 0))}
       {rootNotes.map(n => renderNote(n, 0))}
-    </div>
+    </nav>
   );
 };
 
@@ -1341,16 +1383,21 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
         id="notes-sidebar-panel"
         className={`notes-sidebar notes-sidebar-width${sidebarOpen ? ' is-open' : ''}`}
       >
-        <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid var(--pico-border-color)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div className="notes-sidebar-header">
+          <div className="notes-sidebar-header__top">
             <a href="/" style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>← Главная</a>
-            <strong style={{ fontSize: 13 }}>Заметки</strong>
+            <strong className="notes-sidebar-header__title">Заметки</strong>
           </div>
-          <input type="search" placeholder="Поиск..." value={search} onChange={e => setSearch(e.target.value)}
-            style={{ width: '100%', marginBottom: 6, padding: '8px 10px', fontSize: 12 }} />
-          <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-            <button type="button" onClick={() => createNote()} className="notes-touch-btn" style={{ flex: 1, fontSize: 12 }}>+ Заметка</button>
-            <button type="button" onClick={() => { setNewFolderOpen(true); setNewFolderName(''); }} className="notes-touch-btn secondary" style={{ flex: 1, fontSize: 12 }} disabled={newFolderOpen}>+ Папка</button>
+          <input
+            type="search"
+            className="notes-sidebar-header__search"
+            placeholder="Поиск..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <div className="notes-sidebar-header__primary">
+            <button type="button" onClick={() => createNote()} className="notes-touch-btn">+ Заметка</button>
+            <button type="button" onClick={() => { setNewFolderOpen(true); setNewFolderName(''); }} className="notes-touch-btn secondary" disabled={newFolderOpen}>+ Папка</button>
           </div>
           {newFolderOpen && (
             <div className="notes-new-folder">
@@ -1374,67 +1421,78 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           {banner && (
             <p className={`notes-banner notes-banner--${banner.kind}`} role="status">{banner.text}</p>
           )}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-            <button onClick={() => importInputRef.current?.click()} className="notes-touch-btn outline" style={{ flex: 1, fontSize: 11 }}>
-              Импорт файлов
-            </button>
-            <button onClick={() => folderImportRef.current?.click()} className="notes-touch-btn outline" style={{ flex: 1, fontSize: 11 }}>
-              Импорт папки
-            </button>
-          </div>
-          {getSyncConfig() && (
-            <>
-              <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-muted-color)' }}>
-                Изменения с телефона и с компьютера объединяются по времени; удаления сохраняются в репо.
-              </p>
-              {(syncStatus !== 'idle' || syncError) && (
-                <div
-                  aria-live="polite"
-                  style={{ marginBottom: 6, fontSize: 11, color: syncStatus === 'error' ? 'var(--pico-del-color)' : 'var(--pico-muted-color)' }}
-                >
-                  {syncStatus === 'pending' && `Через ${NOTES_PUSH_DELAY_MS / 1000} сек сохранение в репо (сначала загрузка из репо и объединение).`}
-                  {syncStatus === 'loading' && 'Загрузка из репо…'}
-                  {syncStatus === 'sending' && 'Сохранение в репо…'}
-                  {syncStatus === 'ok' && 'Сохранено в репо.'}
-                  {syncStatus === 'error' && syncError}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
-                {syncStatus === 'pending' && (
-                  <>
-                    <button type="button" onClick={handleSyncNow} className="notes-touch-btn" style={{ flex: 1, fontSize: 11 }}>Сохранить в репо</button>
-                    <button type="button" onClick={handleCancelPush} className="notes-touch-btn secondary" style={{ flex: 1, fontSize: 11 }}>Отменить</button>
-                  </>
-                )}
-                <button type="button" onClick={() => void handlePullFromRepo()} disabled={syncStatus === 'loading'} className="notes-touch-btn outline" style={{ flex: 1, fontSize: 11 }} title="Загрузить из репо и объединить с локальными">
-                  {syncStatus === 'loading' ? 'Загрузка…' : 'Загрузить из репо'}
-                </button>
-              </div>
-            </>
-          )}
-          {saveError && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--pico-del-color)' }}>{saveError}</p>}
-          <button onClick={downloadNotesBundle} className="notes-touch-btn outline" style={{ width: '100%', marginBottom: 4, fontSize: 11 }} title="Скачать notes.json для public/data/">
-            Экспорт для GitHub
-          </button>
-          <input ref={importInputRef} type="file" accept=".md,.txt,.json" multiple onChange={handleImport} style={{ display: 'none' }} />
-          <input ref={folderImportRef} type="file" onChange={handleFolderImport} style={{ display: 'none' }}
-            {...{ webkitdirectory: '', directory: '' } as any} />
-          <div style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 11 }}>
-            <select value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)} style={{ flex: 1, padding: '2px 4px', fontSize: 11 }}>
+          <div className="notes-sidebar-header__sort">
+            <select value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)} aria-label="Сортировка заметок">
               <option value="date">По дате</option>
               <option value="title">По заголовку</option>
               <option value="color">По цвету</option>
             </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', whiteSpace: 'nowrap' }} title="Показать архив">
               <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} style={{ width: 14, height: 14 }} />
               📦
             </label>
           </div>
         </div>
 
-        {/* Tag cloud */}
+        <details className="notes-sidebar-more">
+          <summary className="notes-sidebar-more__summary">Импорт и синхронизация</summary>
+          <div className="notes-sidebar-more__body">
+            <div className="notes-sidebar-more__row">
+              <button type="button" onClick={() => importInputRef.current?.click()} className="notes-touch-btn outline">
+                Импорт файлов
+              </button>
+              <button type="button" onClick={() => folderImportRef.current?.click()} className="notes-touch-btn outline">
+                Импорт папки
+              </button>
+            </div>
+            {getSyncConfig() && (
+              <>
+                <p className="notes-sidebar-more__hint">
+                  Изменения с телефона и компьютера объединяются по времени; удаления сохраняются в репо.
+                </p>
+                {(syncStatus !== 'idle' || syncError) && (
+                  <div
+                    className={`notes-sidebar-more__status${syncStatus === 'error' ? ' notes-sidebar-more__status--error' : ''}`}
+                    aria-live="polite"
+                  >
+                    {syncStatus === 'pending' && `Через ${NOTES_PUSH_DELAY_MS / 1000} сек сохранение в репо (сначала загрузка из репо и объединение).`}
+                    {syncStatus === 'loading' && 'Загрузка из репо…'}
+                    {syncStatus === 'sending' && 'Сохранение в репо…'}
+                    {syncStatus === 'ok' && 'Сохранено в репо.'}
+                    {syncStatus === 'error' && syncError}
+                  </div>
+                )}
+                <div className="notes-sidebar-more__row">
+                  {syncStatus === 'pending' && (
+                    <>
+                      <button type="button" onClick={handleSyncNow} className="notes-touch-btn">Сохранить в репо</button>
+                      <button type="button" onClick={handleCancelPush} className="notes-touch-btn secondary">Отменить</button>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handlePullFromRepo()}
+                    disabled={syncStatus === 'loading'}
+                    className="notes-touch-btn outline"
+                    title="Загрузить из репо и объединить с локальными"
+                  >
+                    {syncStatus === 'loading' ? 'Загрузка…' : 'Загрузить из репо'}
+                  </button>
+                </div>
+              </>
+            )}
+            {saveError && <p className="notes-sidebar-more__status notes-sidebar-more__status--error">{saveError}</p>}
+            <button type="button" onClick={downloadNotesBundle} className="notes-touch-btn outline" style={{ width: '100%' }} title="Скачать notes.json для public/data/">
+              Экспорт для GitHub
+            </button>
+          </div>
+        </details>
+        <input ref={importInputRef} type="file" accept=".md,.txt,.json" multiple onChange={handleImport} style={{ display: 'none' }} />
+        <input ref={folderImportRef} type="file" onChange={handleFolderImport} style={{ display: 'none' }}
+          {...{ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>} />
+
         {allTags.length > 0 && (
-          <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--pico-border-color)', display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <div className="notes-tag-cloud">
             <button type="button" className="tag-chip" onClick={() => setFilterTag(null)}
               style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>все</button>
             {allTags.map(t => (
@@ -1444,10 +1502,11 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           </div>
         )}
 
-        {/* Folder tree with inline notes */}
-        <FolderTree folders={folders} notes={treeNotes} selectedFolder={selectedFolder} expandedFolders={expandedFolders}
-          editingId={editingId} onSelectFolder={selectFolder} onToggle={toggleFolder} onRename={renameFolder} onDeleteFolder={deleteFolder}
-          onScrollToNote={scrollToNote} onMoveNote={moveToFolder} onMoveFolder={moveFolderTo} />
+        <div className="notes-tree-panel">
+          <FolderTree folders={folders} notes={treeNotes} selectedFolder={selectedFolder} expandedFolders={expandedFolders}
+            editingId={editingId} onSelectFolder={selectFolder} onToggle={toggleFolder} onRename={renameFolder} onDeleteFolder={deleteFolder}
+            onScrollToNote={scrollToNote} onMoveNote={moveToFolder} onMoveFolder={moveFolderTo} />
+        </div>
       </div>
 
       {/* Main: list or grid + detail */}
