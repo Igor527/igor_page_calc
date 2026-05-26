@@ -1,7 +1,30 @@
 {
   "version": 1,
-  "exportedAt": 1779756867391,
+  "exportedAt": 1779791466527,
   "notes": [
+    {
+      "id": "2026-05-26_13-31-00",
+      "title": "",
+      "content": "",
+      "folderId": "f_ak0utn",
+      "createdAt": 1779791460481,
+      "updatedAt": 1779791460481,
+      "tags": [],
+      "color": "none",
+      "todos": []
+    },
+    {
+      "id": "2026-05-26_13-30-46",
+      "title": "",
+      "content": "",
+      "folderId": null,
+      "createdAt": 1779791446584,
+      "updatedAt": 1779791452391,
+      "tags": [],
+      "color": "none",
+      "todos": [],
+      "deleted": true
+    },
     {
       "id": "2026-05-13_17-26-22",
       "title": "Общие советы",
@@ -229,6 +252,11 @@
     {
       "id": "f_ujrlle",
       "name": "Table_tennis",
+      "parentId": null
+    },
+    {
+      "id": "f_ak0utn",
+      "name": "ПЗУ",
       "parentId": null
     }
   ]
