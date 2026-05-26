@@ -1,7 +1,41 @@
 {
   "version": 1,
-  "exportedAt": 1779754111187,
+  "exportedAt": 1779754171863,
   "notes": [
+    {
+      "id": "2026-05-26_03-09-25",
+      "title": "",
+      "content": "",
+      "folderId": "f_ujrlle",
+      "createdAt": 1779754165220,
+      "updatedAt": 1779754165220,
+      "tags": [],
+      "color": "none",
+      "todos": []
+    },
+    {
+      "id": "2026-05-26_03-09-07",
+      "title": "Форхэнд",
+      "content": "",
+      "folderId": "f_ujrlle",
+      "createdAt": 1779754147207,
+      "updatedAt": 1779754161294,
+      "tags": [],
+      "color": "none"
+    },
+    {
+      "id": "2026-03-06_02-10-42",
+      "title": "",
+      "content": "",
+      "folderId": null,
+      "createdAt": 1772752242765,
+      "updatedAt": 1779754119309,
+      "tags": [],
+      "color": "none",
+      "todos": [],
+      "archived": false,
+      "deleted": true
+    },
     {
       "id": "2026-03-03_20-39-56",
       "title": "Экспорт",
@@ -143,17 +177,6 @@
       "updatedAt": 1772752463196,
       "tags": [],
       "color": "blue"
-    },
-    {
-      "id": "2026-03-06_02-10-42",
-      "title": "",
-      "content": "",
-      "folderId": null,
-      "createdAt": 1772752242765,
-      "updatedAt": 1772752242765,
-      "tags": [],
-      "color": "none",
-      "todos": []
     },
     {
       "id": "2026-03-05_03-31-15",
