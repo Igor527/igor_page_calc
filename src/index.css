@@ -87,6 +87,9 @@
     min-height: 100vh;
     box-sizing: border-box;
   }
+  #root:has(.notes-layout) {
+    overflow: hidden;
+  }
 
   /* Глобальные стили для таблиц (редактор, блог, markdown) */
   table {
@@ -697,11 +700,15 @@ pre:hover .code-copy-btn,
   }
 }
 
-/* Notes: sidebar + feed on mobile */
+/* Notes: sidebar + feed — высота с учётом фиксированной шапки/подвала (#root padding) */
 .notes-layout {
   display: flex;
   flex-direction: row;
-  height: 100vh;
+  height: calc(100vh - var(--content-offset-from-header) - var(--site-footer-height));
+  height: calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height));
+  min-height: 0;
+  max-height: calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height));
+  box-sizing: border-box;
   overflow: hidden;
 }
 .notes-sidebar {
@@ -738,7 +745,8 @@ pre:hover .code-copy-btn,
 }
 @media (min-width: 769px) {
   .notes-feed-toolbar {
-    padding: 8px 16px 0;
+    padding: 6px 16px 0;
+    min-height: 0;
   }
   .notes-feed-toolbar .notes-view-toggle {
     padding: 0;
@@ -748,8 +756,10 @@ pre:hover .code-copy-btn,
 @media (max-width: 768px) {
   .notes-layout {
     flex-direction: row;
-    height: 100vh;
-    min-height: 100vh;
+    height: calc(100vh - var(--content-offset-from-header) - var(--site-footer-height));
+    height: calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height));
+    min-height: 0;
+    max-height: calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height));
     position: relative;
   }
   .notes-folders-btn {
@@ -976,6 +986,7 @@ pre:hover .code-copy-btn,
     display: none;
   }
   .notes-sidebar-more__body {
+    display: flex !important;
     padding-top: 8px;
   }
   .notes-sidebar-more {
@@ -1227,9 +1238,14 @@ pre:hover .code-copy-btn,
   box-sizing: border-box;
 }
 #header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
   flex-wrap: nowrap;
   min-height: var(--site-header-height, 56px);
+  box-sizing: border-box;
 }
 .site-nav {
   display: flex;
