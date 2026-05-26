@@ -74,6 +74,27 @@ export const SiteHeader: React.FC<{
   }, [path, closeMenu]);
 
   useEffect(() => {
+    const header = document.querySelector('#header-container header');
+    if (!header) return;
+    const apply = () => {
+      const h = Math.ceil(header.getBoundingClientRect().height);
+      document.documentElement.style.setProperty('--site-header-height', `${h}px`);
+      document.documentElement.style.setProperty(
+        '--content-offset-from-header',
+        `${h + 8}px`
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(header);
+    window.addEventListener('resize', apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', apply);
+    };
+  }, [menuOpen, extraNav.length]);
+
+  useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeMenu();
@@ -83,6 +104,10 @@ export const SiteHeader: React.FC<{
   }, [menuOpen, closeMenu]);
 
   const showSyncBadge = isAdmin && !!getSyncConfig();
+  const extraActive = extraNav.some((item) => {
+    const section = getActiveSection(item.href === '/' ? '/' : item.href);
+    return active === section || isActivePath(path, item.href);
+  });
 
   const renderLink = (item: NavItem) => {
     const section = getActiveSection(item.href === '/' ? '/' : item.href);
@@ -119,9 +144,19 @@ export const SiteHeader: React.FC<{
         >
           {publicNav.map(renderLink)}
           {extraNav.length > 0 && (
-            <span className="site-nav__divider" aria-hidden />
+            <>
+              <details className={`site-nav__more${extraActive ? ' is-active' : ''}`}>
+                <summary className="site-nav__more-summary">Ещё</summary>
+                <div className="site-nav__more-panel" role="group" aria-label="Дополнительные разделы">
+                  {extraNav.map(renderLink)}
+                </div>
+              </details>
+              <span className="site-nav__flat-extra">
+                <span className="site-nav__divider" aria-hidden />
+                {extraNav.map(renderLink)}
+              </span>
+            </>
           )}
-          {extraNav.map(renderLink)}
         </div>
       </nav>
       <div className="site-header__actions">

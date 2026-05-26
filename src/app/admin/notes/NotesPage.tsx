@@ -407,6 +407,7 @@ const FolderTree: React.FC<{
   onMoveFolder: (folderId: string, targetParentId: string | null) => void;
 }> = ({ folders, notes, selectedFolder, expandedFolders, editingId, onSelectFolder, onToggle, onRename, onDeleteFolder, onScrollToNote, onMoveNote, onMoveFolder }) => {
   const dragEnabled = useFinePointerDrag();
+  const showNotesInTree = dragEnabled;
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState('');
   const [confirmDeleteFolderId, setConfirmDeleteFolderId] = useState<string | null>(null);
@@ -486,9 +487,11 @@ const FolderTree: React.FC<{
     const kids = childFolders(f.id);
     const fNotes = notesInFolder(f.id);
     const totalCount = fNotes.length;
-    const hasChildren = kids.length > 0 || fNotes.length > 0;
+    const hasSubfolders = kids.length > 0;
+    const hasTreeNotes = showNotesInTree && fNotes.length > 0;
+    const expandable = hasSubfolders || hasTreeNotes;
     return (
-      <div key={f.id} className={`notes-tree-branch${depth > 0 ? ' notes-tree-branch--nested' : ''}`} role="treeitem" aria-expanded={hasChildren ? expanded : undefined}>
+      <div key={f.id} className={`notes-tree-branch${depth > 0 ? ' notes-tree-branch--nested' : ''}`} role="treeitem" aria-expanded={expandable ? expanded : undefined}>
         <div
           role="button"
           tabIndex={0}
@@ -499,20 +502,20 @@ const FolderTree: React.FC<{
           onDragOver={e => handleDragOver(e, f.id)}
           onDragLeave={handleDragLeave}
           onDrop={e => { handleDrop(e, f.id); if (!expandedFolders.has(f.id)) onToggle(f.id); }}
-          onClick={() => { onSelectFolder(f.id); if (hasChildren) onToggle(f.id); }}
+          onClick={() => { onSelectFolder(f.id); if (expandable) onToggle(f.id); }}
           onKeyDown={e => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               onSelectFolder(f.id);
-              if (hasChildren) onToggle(f.id);
+              if (expandable) onToggle(f.id);
             }
           }}
         >
           <span
-            className={`notes-tree-chevron${expanded ? ' is-expanded' : ''}${!hasChildren ? ' notes-tree-chevron--empty' : ''}`}
+            className={`notes-tree-chevron${expanded ? ' is-expanded' : ''}${!expandable ? ' notes-tree-chevron--empty' : ''}`}
             aria-hidden
           >
-            {hasChildren ? '▸' : '·'}
+            {expandable ? '▸' : '·'}
           </span>
           <span className="notes-tree-icon" aria-hidden>📁</span>
           {renamingId === f.id ? (
@@ -556,10 +559,10 @@ const FolderTree: React.FC<{
             />
           </div>
         )}
-        {expanded && (
+        {expanded && expandable && (
           <div className="notes-tree-children">
             {kids.map(c => renderFolder(c, depth + 1))}
-            {fNotes.map(n => renderNote(n, depth + 1))}
+            {showNotesInTree && fNotes.map(n => renderNote(n, depth + 1))}
           </div>
         )}
       </div>
@@ -584,7 +587,7 @@ const FolderTree: React.FC<{
         </span>
       </button>
       {childFolders(null).map(f => renderFolder(f, 0))}
-      {rootNotes.map(n => renderNote(n, 0))}
+      {showNotesInTree && rootNotes.map(n => renderNote(n, 0))}
     </nav>
   );
 };
@@ -755,8 +758,12 @@ const NoteCard: React.FC<{
           </>
         ) : (
           <>
-            <button type="button" onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать">✎</button>
-            <button type="button" onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'}>{note.pinned ? '📌' : '📍'}</button>
+            <button type="button" onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать" aria-label="Редактировать">
+              <span aria-hidden>✎</span><span className="note-card__btn-text">Правка</span>
+            </button>
+            <button type="button" onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'} aria-label={note.pinned ? 'Открепить' : 'Закрепить'}>
+              <span aria-hidden>{note.pinned ? '📌' : '📍'}</span><span className="note-card__btn-text">{note.pinned ? 'Откреп.' : 'Закреп.'}</span>
+            </button>
             <details
               ref={overflowRef}
               className="note-card__overflow"
@@ -769,8 +776,8 @@ const NoteCard: React.FC<{
                 }
               }}
             >
-              <summary title="Ещё действия" aria-expanded={overflowOpen} aria-haspopup="menu">
-                ⋯
+              <summary title="Ещё действия" aria-label="Ещё действия" aria-expanded={overflowOpen} aria-haspopup="menu">
+                <span aria-hidden>⋯</span><span className="note-card__btn-text">Ещё</span>
               </summary>
               <div className="note-card__overflow-panel">
                 <button type="button" onClick={() => { onDuplicate(); closeOverflow(); }} className="notes-touch-btn outline" style={{ fontSize: 12 }} title="Дублировать">📋 Дублировать</button>
@@ -1385,8 +1392,16 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       >
         <div className="notes-sidebar-header">
           <div className="notes-sidebar-header__top">
-            <a href="/" style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>← Главная</a>
+            <a href="/" className="notes-sidebar-header__home">← Главная</a>
             <strong className="notes-sidebar-header__title">Заметки</strong>
+            <button
+              type="button"
+              className="notes-sidebar-close"
+              aria-label="Закрыть панель папок"
+              onClick={closeSidebar}
+            >
+              ✕
+            </button>
           </div>
           <input
             type="search"
@@ -1421,18 +1436,25 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           {banner && (
             <p className={`notes-banner notes-banner--${banner.kind}`} role="status">{banner.text}</p>
           )}
-          <div className="notes-sidebar-header__sort">
-            <select value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)} aria-label="Сортировка заметок">
-              <option value="date">По дате</option>
-              <option value="title">По заголовку</option>
-              <option value="color">По цвету</option>
-            </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', whiteSpace: 'nowrap' }} title="Показать архив">
-              <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} style={{ width: 14, height: 14 }} />
-              📦
-            </label>
-          </div>
         </div>
+
+        <details className="notes-sidebar-filters">
+          <summary className="notes-sidebar-filters__summary">Сортировка и фильтры</summary>
+          <div className="notes-sidebar-filters__body">
+            <div className="notes-sidebar-header__sort">
+              <select value={sortMode} onChange={e => setSortMode(e.target.value as SortMode)} aria-label="Сортировка заметок">
+                <option value="date">По дате</option>
+                <option value="title">По заголовку</option>
+                <option value="color">По цвету</option>
+              </select>
+              <label className="notes-archive-toggle notes-sidebar-header__archive" title="Показать архив">
+                <input type="checkbox" checked={showArchived} onChange={e => setShowArchived(e.target.checked)} aria-label="Показать архивные заметки" />
+                <span aria-hidden>📦</span>
+                <span className="notes-archive-toggle__label">Архив</span>
+              </label>
+            </div>
+          </div>
+        </details>
 
         <details className="notes-sidebar-more">
           <summary className="notes-sidebar-more__summary">Импорт и синхронизация</summary>
@@ -1492,14 +1514,17 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           {...{ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement>} />
 
         {allTags.length > 0 && (
-          <div className="notes-tag-cloud">
-            <button type="button" className="tag-chip" onClick={() => setFilterTag(null)}
-              style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>все</button>
-            {allTags.map(t => (
-              <button key={t} type="button" className="tag-chip" onClick={() => setFilterTag(filterTag === t ? null : t)}
-                style={filterTag === t ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>#{t}</button>
-            ))}
-          </div>
+          <details className="notes-tag-cloud-details">
+            <summary className="notes-tag-cloud-details__summary">Теги ({allTags.length})</summary>
+            <div className="notes-tag-cloud">
+              <button type="button" className="tag-chip" onClick={() => setFilterTag(null)}
+                style={filterTag === null ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>все</button>
+              {allTags.map(t => (
+                <button key={t} type="button" className="tag-chip" onClick={() => setFilterTag(filterTag === t ? null : t)}
+                  style={filterTag === t ? { background: 'var(--pico-primary)', color: 'var(--pico-primary-inverse)' } : {}}>#{t}</button>
+              ))}
+            </div>
+          </details>
         )}
 
         <div className="notes-tree-panel">
@@ -1511,7 +1536,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
 
       {/* Main: list or grid + detail */}
       <div ref={feedRef} className="notes-feed-bg">
-        <div className="notes-mobile-toolbar">
+        <div className="notes-feed-toolbar">
           <button
             type="button"
             className="notes-touch-btn outline notes-folders-btn"
@@ -1521,8 +1546,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           >
             Папки
           </button>
-        </div>
-        <div className="notes-view-toggle">
+          <div className="notes-view-toggle">
           <span className="notes-view-toggle-label">Вид</span>
           <button type="button" className={notesViewMode === 'list' ? 'is-active' : ''} onClick={() => { if (editingId) saveEdit(); setNotesViewMode('list'); }}>
             Список
@@ -1530,6 +1554,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
           <button type="button" className={notesViewMode === 'grid' ? 'is-active' : ''} onClick={() => { if (editingId) saveEdit(); setNotesViewMode('grid'); }}>
             Плитка
           </button>
+          </div>
         </div>
 
         {visibleNotes.length === 0 ? (
