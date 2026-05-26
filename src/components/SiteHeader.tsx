@@ -74,25 +74,28 @@ export const SiteHeader: React.FC<{
   }, [path, closeMenu]);
 
   useEffect(() => {
-    const header = document.querySelector('#header-container header');
-    if (!header) return;
+    const bar = document.getElementById('header-inner');
+    if (!bar) return;
+    const MIN = 48;
+    const MAX = 72;
+    let last = 0;
     const apply = () => {
-      const h = Math.ceil(header.getBoundingClientRect().height);
+      const raw = Math.ceil(bar.getBoundingClientRect().height);
+      const h = Math.min(MAX, Math.max(MIN, raw));
+      if (h === last) return;
+      last = h;
       document.documentElement.style.setProperty('--site-header-height', `${h}px`);
-      document.documentElement.style.setProperty(
-        '--content-offset-from-header',
-        `${h + 8}px`
-      );
+      document.documentElement.style.setProperty('--content-offset-from-header', `${h + 8}px`);
     };
     apply();
     const ro = new ResizeObserver(apply);
-    ro.observe(header);
+    ro.observe(bar);
     window.addEventListener('resize', apply);
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', apply);
     };
-  }, [menuOpen, extraNav.length]);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -122,6 +125,28 @@ export const SiteHeader: React.FC<{
     );
   };
 
+  const menuLayer =
+    menuOpen &&
+    createPortal(
+      <>
+        <div
+          id="site-nav-menu"
+          className="site-nav__links is-open"
+          role="navigation"
+          aria-label="Разделы сайта"
+        >
+          {allNav.map(renderLink)}
+        </div>
+        <button
+          type="button"
+          className="site-nav__backdrop is-visible"
+          aria-label="Закрыть меню"
+          onClick={closeMenu}
+        />
+      </>,
+      document.body
+    );
+
   return (
     <>
       <nav className="site-nav" aria-label="Основная навигация">
@@ -135,13 +160,6 @@ export const SiteHeader: React.FC<{
         >
           {menuOpen ? '✕' : '☰'}
         </button>
-        <div
-          id="site-nav-menu"
-          className={`site-nav__links${menuOpen ? ' is-open' : ''}`}
-          hidden={!menuOpen}
-        >
-          {allNav.map(renderLink)}
-        </div>
       </nav>
       <div className="site-header__actions">
         {showSyncBadge && <SyncBadge />}
@@ -167,14 +185,7 @@ export const SiteHeader: React.FC<{
           {isDark ? '🌙' : '☀️'}
         </button>
       </div>
-      <button
-        type="button"
-        className={`site-nav__backdrop${menuOpen ? ' is-visible' : ''}`}
-        aria-label="Закрыть меню"
-        aria-hidden={!menuOpen}
-        tabIndex={menuOpen ? 0 : -1}
-        onClick={closeMenu}
-      />
+      {menuLayer}
     </>
   );
 };

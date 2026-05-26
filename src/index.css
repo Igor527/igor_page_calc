@@ -1236,6 +1236,8 @@ pre:hover .code-copy-btn,
 /* Site header nav */
 #header-container header {
   box-sizing: border-box;
+  overflow: hidden;
+  max-height: 72px;
 }
 #header-inner {
   display: flex;
@@ -1244,7 +1246,8 @@ pre:hover .code-copy-btn,
   gap: 12px;
   width: 100%;
   flex-wrap: nowrap;
-  min-height: var(--site-header-height, 56px);
+  min-height: 48px;
+  max-height: 72px;
   box-sizing: border-box;
 }
 .site-nav {
@@ -1288,7 +1291,8 @@ pre:hover .code-copy-btn,
   overflow-y: auto;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
-.site-nav__links.is-open {
+.site-nav__links.is-open,
+#site-nav-menu.site-nav__links {
   display: flex;
 }
 .site-nav__link {
@@ -1348,7 +1352,7 @@ pre:hover .code-copy-btn,
   cursor: pointer;
   pointer-events: none;
 }
-.site-nav__backdrop.is-visible {
+body > .site-nav__backdrop.is-visible {
   display: block;
   pointer-events: auto;
 }
