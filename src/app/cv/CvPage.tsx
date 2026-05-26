@@ -151,14 +151,14 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
+    <div className="cv-page-public" style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
       <p style={{ marginBottom: 16 }}>
         <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>← На главную</a>
       </p>
       {safeHtml ? (
         <div
           ref={containerRef}
-          className="cv-view rte-body"
+          className="cv-view"
           dangerouslySetInnerHTML={{ __html: safeHtml }}
           style={{ lineHeight: 1.5 }}
         />
@@ -297,7 +297,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
         )}
         {pushStatus != null && <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>{pushStatus}</span>}
       </header>
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
+      <div className="cv-admin-layout" style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <div
           style={{
             flex: '1 1 400px',
@@ -321,6 +321,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
           </div>
         </div>
         <div
+          className="cv-admin-mistral"
           style={{
             width: 360,
             minWidth: 280,

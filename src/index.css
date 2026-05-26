@@ -352,14 +352,16 @@ button.secondary {
 
 /* ─── Notes / Blog rendered content ─── */
 .note-content img,
-.blog-content img {
+.blog-content img,
+.cv-view img {
   max-width: 100%;
   height: auto;
   border-radius: 6px;
   margin: 8px 0;
 }
 .note-content pre,
-.blog-content pre {
+.blog-content pre,
+.cv-view pre {
   background: #1e1e2e;
   color: #cdd6f4;
   border: 1px solid var(--pico-border-color);
@@ -373,7 +375,8 @@ button.secondary {
   tab-size: 2;
 }
 .note-content pre code,
-.blog-content pre code {
+.blog-content pre code,
+.cv-view pre code {
   background: none;
   padding: 0;
   border-radius: 0;
@@ -381,7 +384,8 @@ button.secondary {
   font-size: inherit;
 }
 .note-content code,
-.blog-content code {
+.blog-content code,
+.cv-view code {
   font-size: 0.88em;
   background: var(--pico-code-background-color);
   padding: 2px 6px;
@@ -389,7 +393,8 @@ button.secondary {
   font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
 }
 .note-content blockquote,
-.blog-content blockquote {
+.blog-content blockquote,
+.cv-view blockquote {
   border-left: 3px solid var(--pico-primary);
   padding-left: 12px;
   margin-left: 0;
@@ -693,10 +698,33 @@ pre:hover .code-copy-btn,
     --blog-card-padding: 1rem;
   }
   .blog-content,
-  .note-content {
+  .note-content,
+  .cv-view {
     font-size: 15px !important;
     line-height: 1.65 !important;
     word-break: break-word;
+  }
+  .cv-page-public {
+    padding: 16px 12px !important;
+  }
+  .cv-view img {
+    float: none !important;
+    display: block;
+    width: auto !important;
+    max-width: 100% !important;
+    margin: 1rem auto !important;
+  }
+  .cv-admin-layout {
+    flex-direction: column !important;
+  }
+  .cv-admin-mistral {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    border-left: none !important;
+    border-top: 1px solid var(--pico-border-color);
+    flex: 0 0 auto !important;
+    max-height: 45vh;
   }
 }
 
@@ -1953,8 +1981,8 @@ body > .site-nav__backdrop.is-visible {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
 }
 
-/* Явная рамка для всех картинок внутри редактора TipTap */
-.rte-body img {
+/* Явная рамка для картинок только в редакторе TipTap (не на публичной странице CV) */
+.tiptap.rte-body img {
   min-height: 48px;
   min-width: 160px;
   border: 2px dashed var(--pico-muted-color);
@@ -1967,7 +1995,7 @@ body > .site-nav__backdrop.is-visible {
 }
 
 /* Хак для Chrome/Safari: псевдоэлементы ::after показываются для картинок, если не удалось загрузить само изображение, либо если у него нет alt текста. Выводим путь .src, чтобы было видно, что именно вставлено */
-.rte-body img::after {
+.tiptap.rte-body img::after {
   content: "🖼️ " attr(src);
   display: flex;
   position: absolute;
