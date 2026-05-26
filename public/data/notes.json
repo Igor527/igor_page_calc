@@ -1,7 +1,20 @@
 {
   "version": 1,
-  "exportedAt": 1779753919545,
+  "exportedAt": 1779753983245,
   "notes": [
+    {
+      "id": "2026-03-27_13-09-13",
+      "title": "",
+      "content": "",
+      "folderId": null,
+      "createdAt": 1774606153373,
+      "updatedAt": 1779753980796,
+      "tags": [],
+      "color": "none",
+      "todos": [],
+      "archived": false,
+      "deleted": true
+    },
     {
       "id": "2026-05-13_17-26-14",
       "title": "",
@@ -47,17 +60,6 @@
       "folderId": null,
       "createdAt": 1778682349493,
       "updatedAt": 1778682349493,
-      "tags": [],
-      "color": "none",
-      "todos": []
-    },
-    {
-      "id": "2026-03-27_13-09-13",
-      "title": "",
-      "content": "",
-      "folderId": null,
-      "createdAt": 1774606153373,
-      "updatedAt": 1774606153373,
       "tags": [],
       "color": "none",
       "todos": []
