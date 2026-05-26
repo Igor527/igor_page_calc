@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1779791466527,
+  "exportedAt": 1779796215266,
   "notes": [
     {
       "id": "2026-05-26_13-31-00",
@@ -8,10 +8,12 @@
       "content": "",
       "folderId": "f_ak0utn",
       "createdAt": 1779791460481,
-      "updatedAt": 1779791460481,
+      "updatedAt": 1779796209219,
       "tags": [],
       "color": "none",
-      "todos": []
+      "todos": [],
+      "archived": false,
+      "deleted": true
     },
     {
       "id": "2026-05-26_13-30-46",
