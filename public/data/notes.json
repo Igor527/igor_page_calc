@@ -1,18 +1,40 @@
 {
   "version": 1,
-  "exportedAt": 1779797675971,
+  "exportedAt": 1779797884842,
   "notes": [
     {
       "id": "2026-05-26_14-51-03",
-      "title": "11222222222",
-      "content": "<p>111111111111111</p>",
+      "title": "2 СПОЗУ",
+      "content": "<p></p>",
       "folderId": "f_ak0utn",
       "createdAt": 1779796263612,
-      "updatedAt": 1779797669941,
+      "updatedAt": 1779797878756,
       "tags": [],
-      "color": "none",
+      "color": "red",
       "archived": false,
-      "deleted": false
+      "deleted": false,
+      "todos": [
+        {
+          "id": "todo_mdkegdbp_mpmlos3k",
+          "text": "Опоры"
+        },
+        {
+          "id": "todo_fcbq47gg_mpmlosoa",
+          "text": "Гидранты"
+        },
+        {
+          "id": "todo_n8eskp74_mpmlot2i",
+          "text": "Размеры"
+        },
+        {
+          "id": "todo_unux2e61_mpmlp2md",
+          "text": "Проезды"
+        },
+        {
+          "id": "todo_13w5ju9d_mpmlp66t",
+          "text": "Площадки"
+        }
+      ]
     },
     {
       "id": "2026-05-26_13-31-00",
