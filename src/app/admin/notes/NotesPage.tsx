@@ -707,16 +707,15 @@ const NoteCard: React.FC<{
   onEditTagsChange: (v: string[]) => void;
   onEditColorChange: (v: string) => void;
   onEditTodosChange: (v: NoteTodoItem[]) => void;
+  overflowOpen: boolean;
+  onOverflowOpenChange: (open: boolean) => void;
   cardRef?: React.Ref<HTMLDivElement | null>;
-}> = ({ note, folders, isEditing, editTitle, editContent, editTags, editColor, editTodos, onStartEdit, onSave, onCancel, onDelete, onArchive, onTogglePin, onDuplicate, onMove, onExport, onEditTitleChange, onEditContentChange, onEditTagsChange, onEditColorChange, onEditTodosChange, cardRef }) => {
+}> = ({ note, folders, isEditing, editTitle, editContent, editTags, editColor, editTodos, onStartEdit, onSave, onCancel, onDelete, onArchive, onTogglePin, onDuplicate, onMove, onExport, onEditTitleChange, onEditContentChange, onEditTagsChange, onEditColorChange, onEditTodosChange, overflowOpen, onOverflowOpenChange, cardRef }) => {
   const contentRef = useRef<HTMLDivElement | null>(null);
   const overflowRef = useRef<HTMLDetailsElement | null>(null);
-  const [overflowOpen, setOverflowOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const closeOverflow = () => {
-    const d = overflowRef.current;
-    if (d) d.open = false;
-    setOverflowOpen(false);
+    onOverflowOpenChange(false);
     setConfirmDelete(false);
   };
 
@@ -758,17 +757,17 @@ const NoteCard: React.FC<{
           </>
         ) : (
           <>
-            <button type="button" onClick={onStartEdit} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать" aria-label="Редактировать">
+            <button type="button" onClick={() => { closeOverflow(); onStartEdit(); }} className="outline notes-touch-btn" style={{ fontSize: 12 }} title="Редактировать" aria-label="Редактировать">
               <span aria-hidden>✎</span><span className="note-card__btn-text">Правка</span>
             </button>
-            <button type="button" onClick={onTogglePin} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'} aria-label={note.pinned ? 'Открепить' : 'Закрепить'}>
+            <button type="button" onClick={() => { closeOverflow(); onTogglePin(); }} className="outline notes-touch-btn" style={{ fontSize: 12 }} title={note.pinned ? 'Открепить' : 'Закрепить'} aria-label={note.pinned ? 'Открепить' : 'Закрепить'}>
               <span aria-hidden>{note.pinned ? '📌' : '📍'}</span><span className="note-card__btn-text">{note.pinned ? 'Откреп.' : 'Закреп.'}</span>
             </button>
             <details
               ref={overflowRef}
               className="note-card__overflow"
               open={overflowOpen}
-              onToggle={(e) => setOverflowOpen((e.target as HTMLDetailsElement).open)}
+              onToggle={(e) => onOverflowOpenChange((e.target as HTMLDetailsElement).open)}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   e.preventDefault();
@@ -892,6 +891,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [editTodos, setEditTodos] = useState<NoteTodoItem[]>([]);
   const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [overflowMenuNoteId, setOverflowMenuNoteId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [showArchived, setShowArchived] = useState(false);
   const [filterTag, setFilterTag] = useState<string | null>(null);
@@ -1341,12 +1341,22 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     }, 50);
   }, [editingId, saveEdit, notes, selectedFolder, showArchived, notesViewMode, closeSidebar]);
 
+  const handleOverflowOpenChange = useCallback((noteId: string, open: boolean) => {
+    setOverflowMenuNoteId((prev) => (open ? noteId : prev === noteId ? null : prev));
+  }, []);
+
+  useEffect(() => {
+    setOverflowMenuNoteId(null);
+  }, [editingId]);
+
   const renderNoteCard = (note: Note) => (
     <NoteCard
       key={note.id}
       note={note}
       folders={folders}
       isEditing={editingId === note.id}
+      overflowOpen={overflowMenuNoteId === note.id}
+      onOverflowOpenChange={(open) => handleOverflowOpenChange(note.id, open)}
       editTitle={editTitle}
       editContent={editContent}
       editTags={editTags}

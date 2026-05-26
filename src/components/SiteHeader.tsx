@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import SyncBadge from '@/components/SyncBadge';
 import { getSyncConfig } from '@/lib/githubSync';
@@ -31,6 +31,8 @@ export const SiteHeader: React.FC<{
   isLimitedGuest: boolean;
 }> = ({ path, isAdmin, isLimitedGuest }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const burgerRef = useRef<HTMLButtonElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | undefined>(undefined);
   const [isDark, setIsDark] = useState(() =>
     typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : true
   );
@@ -106,6 +108,38 @@ export const SiteHeader: React.FC<{
     return () => window.removeEventListener('keydown', onKey);
   }, [menuOpen, closeMenu]);
 
+  const updateMenuAnchor = useCallback(() => {
+    const btn = burgerRef.current;
+    if (!btn || !window.matchMedia('(min-width: 769px)').matches) {
+      setMenuStyle(undefined);
+      return;
+    }
+    const rect = btn.getBoundingClientRect();
+    const width = Math.min(280, window.innerWidth - 16);
+    const left = Math.max(8, Math.min(rect.left, window.innerWidth - width - 8));
+    setMenuStyle({
+      position: 'fixed',
+      top: rect.bottom + 6,
+      left,
+      right: 'auto',
+      width,
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuStyle(undefined);
+      return;
+    }
+    updateMenuAnchor();
+    window.addEventListener('resize', updateMenuAnchor);
+    window.addEventListener('scroll', updateMenuAnchor, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuAnchor);
+      window.removeEventListener('scroll', updateMenuAnchor, true);
+    };
+  }, [menuOpen, updateMenuAnchor]);
+
   const showSyncBadge = isAdmin && !!getSyncConfig();
   const allNav = useMemo(() => [...publicNav, ...extraNav], [publicNav, extraNav]);
 
@@ -131,7 +165,8 @@ export const SiteHeader: React.FC<{
       <>
         <div
           id="site-nav-menu"
-          className="site-nav__links is-open"
+          className={`site-nav__links is-open${menuStyle ? ' site-nav__links--anchored' : ''}`}
+          style={menuStyle}
           role="navigation"
           aria-label="Разделы сайта"
         >
@@ -151,6 +186,7 @@ export const SiteHeader: React.FC<{
     <>
       <nav className="site-nav" aria-label="Основная навигация">
         <button
+          ref={burgerRef}
           type="button"
           className="site-nav__burger"
           aria-expanded={menuOpen}
