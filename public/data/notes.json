@@ -1,7 +1,20 @@
 {
   "version": 1,
-  "exportedAt": 1779754057505,
+  "exportedAt": 1779754111187,
   "notes": [
+    {
+      "id": "2026-03-03_20-39-56",
+      "title": "Экспорт",
+      "content": "<p>1</p>",
+      "folderId": null,
+      "createdAt": 1772566796993,
+      "updatedAt": 1779754107885,
+      "tags": [],
+      "color": "none",
+      "archived": false,
+      "todos": [],
+      "deleted": true
+    },
     {
       "id": "2026-05-13_17-25-49",
       "title": "",
@@ -172,18 +185,6 @@
       "updatedAt": 1772667249969,
       "tags": [],
       "color": "red"
-    },
-    {
-      "id": "2026-03-03_20-39-56",
-      "title": "Экспорт",
-      "content": "<p>1</p>",
-      "folderId": null,
-      "createdAt": 1772566796993,
-      "updatedAt": 1772566807402,
-      "tags": [],
-      "color": "none",
-      "archived": false,
-      "todos": []
     }
   ],
   "folders": [
