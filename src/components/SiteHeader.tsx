@@ -104,10 +104,7 @@ export const SiteHeader: React.FC<{
   }, [menuOpen, closeMenu]);
 
   const showSyncBadge = isAdmin && !!getSyncConfig();
-  const extraActive = extraNav.some((item) => {
-    const section = getActiveSection(item.href === '/' ? '/' : item.href);
-    return active === section || isActivePath(path, item.href);
-  });
+  const allNav = useMemo(() => [...publicNav, ...extraNav], [publicNav, extraNav]);
 
   const renderLink = (item: NavItem) => {
     const section = getActiveSection(item.href === '/' ? '/' : item.href);
@@ -141,22 +138,9 @@ export const SiteHeader: React.FC<{
         <div
           id="site-nav-menu"
           className={`site-nav__links${menuOpen ? ' is-open' : ''}`}
+          hidden={!menuOpen}
         >
-          {publicNav.map(renderLink)}
-          {extraNav.length > 0 && (
-            <>
-              <details className={`site-nav__more${extraActive ? ' is-active' : ''}`}>
-                <summary className="site-nav__more-summary">Ещё</summary>
-                <div className="site-nav__more-panel" role="group" aria-label="Дополнительные разделы">
-                  {extraNav.map(renderLink)}
-                </div>
-              </details>
-              <span className="site-nav__flat-extra">
-                <span className="site-nav__divider" aria-hidden />
-                {extraNav.map(renderLink)}
-              </span>
-            </>
-          )}
+          {allNav.map(renderLink)}
         </div>
       </nav>
       <div className="site-header__actions">
@@ -183,14 +167,14 @@ export const SiteHeader: React.FC<{
           {isDark ? '🌙' : '☀️'}
         </button>
       </div>
-      {menuOpen && (
-        <button
-          type="button"
-          className="site-nav__backdrop"
-          aria-label="Закрыть меню"
-          onClick={closeMenu}
-        />
-      )}
+      <button
+        type="button"
+        className={`site-nav__backdrop${menuOpen ? ' is-visible' : ''}`}
+        aria-label="Закрыть меню"
+        aria-hidden={!menuOpen}
+        tabIndex={menuOpen ? 0 : -1}
+        onClick={closeMenu}
+      />
     </>
   );
 };
