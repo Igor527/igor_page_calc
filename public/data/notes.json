@@ -1,7 +1,20 @@
 {
   "version": 1,
-  "exportedAt": 1779753856648,
+  "exportedAt": 1779753919545,
   "notes": [
+    {
+      "id": "2026-05-13_17-26-14",
+      "title": "",
+      "content": "",
+      "folderId": null,
+      "createdAt": 1778682374972,
+      "updatedAt": 1779753897877,
+      "tags": [],
+      "color": "none",
+      "todos": [],
+      "archived": false,
+      "deleted": true
+    },
     {
       "id": "2026-03-05_16-57-24",
       "title": "CV",
@@ -26,17 +39,6 @@
       "color": "red",
       "pinned": true,
       "archived": false
-    },
-    {
-      "id": "2026-05-13_17-26-14",
-      "title": "",
-      "content": "",
-      "folderId": null,
-      "createdAt": 1778682374972,
-      "updatedAt": 1778682374972,
-      "tags": [],
-      "color": "none",
-      "todos": []
     },
     {
       "id": "2026-05-13_17-25-49",
