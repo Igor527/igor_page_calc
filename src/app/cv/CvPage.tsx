@@ -173,11 +173,28 @@ interface CvPageProps {
   isAdmin: boolean;
 }
 
+const CV_NARROW_MQ = '(max-width: 768px)';
+
 const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   const [content, setContent] = useState('');
   const [initialized, setInitialized] = useState(false);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(CV_NARROW_MQ).matches
+  );
+  const [mistralOpen, setMistralOpen] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(CV_NARROW_MQ);
+    const onChange = () => {
+      setIsNarrow(mq.matches);
+      if (!mq.matches) setMistralOpen(true);
+    };
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,93 +268,61 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
     return <CvView content={content} initialized={initialized} />;
   }
 
+  const showMistral = !isNarrow || mistralOpen;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-      <header
-        style={{
-          flexShrink: 0,
-          position: 'sticky',
-          top: 0,
-          zIndex: 10,
-          padding: '12px 20px',
-          borderBottom: '1px solid var(--pico-border-color)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          flexWrap: 'wrap',
-          background: 'var(--pico-background-color)',
-        }}
-      >
-        <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>← Главная</a>
-        <span style={{ fontWeight: 600 }}>CV — режим редактирования</span>
-        <button
-          type="button"
-          onClick={handleSave}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: 32,
-            padding: '0 12px',
-            background: 'var(--color-success-bg)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 4,
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
-          Сохранить (Ctrl+S)
+    <div
+      className="cv-admin-page"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height))',
+        maxHeight: 'calc(100dvh - var(--content-offset-from-header) - var(--site-footer-height))',
+        overflow: 'hidden',
+        minHeight: 0,
+      }}
+    >
+      <header className="cv-admin-header">
+        <a href="/" className="cv-admin-home">← Главная</a>
+        <span className="cv-admin-title">CV — режим редактирования</span>
+        <button type="button" onClick={handleSave} className="cv-admin-save">
+          <span className="cv-save-long">Сохранить (Ctrl+S)</span>
+          <span className="cv-save-short">Сохранить</span>
         </button>
-        {saveMessage != null && <span style={{ fontSize: 12, color: 'var(--pico-primary)' }}>{saveMessage}</span>}
+        {saveMessage != null && <span className="cv-admin-status">{saveMessage}</span>}
         {getSyncConfig() && (
-          <button type="button" onClick={handlePushToRepo} className="secondary" style={{ marginLeft: 'auto', fontSize: 13, padding: '6px 12px' }}>
+          <button type="button" onClick={handlePushToRepo} className="secondary cv-admin-push">
             Выгрузить в репо
           </button>
         )}
-        {pushStatus != null && <span style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>{pushStatus}</span>}
+        {pushStatus != null && <span className="cv-admin-status cv-admin-status--muted">{pushStatus}</span>}
       </header>
       <div className="cv-admin-layout" style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-        <div
-          style={{
-            flex: '1 1 400px',
-            minWidth: 0,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 16,
-            overflow: 'auto',
-          }}
-        >
-          <div style={{ minHeight: 'min-content' }}>
-            <RichTextEditor
-              value={initialized ? content : ''}
-              onChange={handleChange}
-              placeholder="Введите резюме. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б."
-              minHeight={360}
-              cvMode
-              stickyToolbar
-            />
+        <div className="cv-admin-editor">
+          <RichTextEditor
+            value={initialized ? content : ''}
+            onChange={handleChange}
+            placeholder="Введите резюме. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б."
+            minHeight={360}
+            cvMode
+            stickyToolbar
+          />
+        </div>
+        {isNarrow && (
+          <button
+            type="button"
+            className="cv-admin-mistral-toggle"
+            onClick={() => setMistralOpen((v) => !v)}
+            aria-expanded={mistralOpen}
+          >
+            {mistralOpen ? 'Скрыть Mistral AI ▲' : 'Mistral AI ▼'}
+          </button>
+        )}
+        {showMistral && (
+          <div className="cv-admin-mistral">
+            <MistralPanel />
           </div>
-        </div>
-        <div
-          className="cv-admin-mistral"
-          style={{
-            width: 360,
-            minWidth: 280,
-            maxWidth: '100%',
-            flexShrink: 0,
-            padding: 16,
-            borderLeft: '1px solid var(--pico-border-color)',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: 0,
-            overflow: 'hidden',
-            background: 'var(--pico-background-color)',
-          }}
-        >
-          <MistralPanel />
-        </div>
+        )}
       </div>
     </div>
   );

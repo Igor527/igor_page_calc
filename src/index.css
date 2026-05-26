@@ -87,7 +87,8 @@
     min-height: 100vh;
     box-sizing: border-box;
   }
-  #root:has(.notes-layout) {
+  #root:has(.notes-layout),
+  #root:has(.cv-admin-page) {
     overflow: hidden;
   }
 
@@ -714,6 +715,21 @@ pre:hover .code-copy-btn,
     max-width: 100% !important;
     margin: 1rem auto !important;
   }
+  .cv-admin-header {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+  .cv-admin-title {
+    display: none;
+  }
+  .cv-admin-push {
+    margin-left: 0 !important;
+  }
+  .cv-admin-editor {
+    padding: 8px !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+  }
   .cv-admin-layout {
     flex-direction: column !important;
   }
@@ -724,7 +740,130 @@ pre:hover .code-copy-btn,
     border-left: none !important;
     border-top: 1px solid var(--pico-border-color);
     flex: 0 0 auto !important;
-    max-height: 45vh;
+    max-height: min(42dvh, 360px);
+    padding: 8px !important;
+  }
+  .cv-admin-page .tiptap.rte-body img {
+    max-width: 100%;
+  }
+  .cv-admin-page .tippy-box {
+    max-width: calc(100vw - 24px) !important;
+  }
+  .cv-admin-page .tippy-content > div {
+    max-width: calc(100vw - 32px);
+  }
+}
+
+/* ─── CV admin editor ─── */
+.cv-admin-page {
+  box-sizing: border-box;
+}
+.cv-admin-header {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pico-border-color);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--pico-background-color);
+}
+.cv-admin-home {
+  color: var(--pico-primary);
+  text-decoration: underline;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.cv-admin-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.cv-admin-save {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 12px;
+  background: var(--color-success-bg);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cv-save-short {
+  display: none;
+}
+.cv-admin-push {
+  margin-left: auto;
+  font-size: 13px;
+  padding: 6px 12px;
+  min-height: 44px;
+}
+.cv-admin-status {
+  font-size: 12px;
+  color: var(--pico-primary);
+}
+.cv-admin-status--muted {
+  color: var(--pico-muted-color);
+}
+.cv-admin-editor {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  overflow: hidden;
+}
+.cv-admin-editor > div {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cv-admin-mistral {
+  width: 360px;
+  min-width: 280px;
+  max-width: 100%;
+  flex-shrink: 0;
+  padding: 12px;
+  border-left: 1px solid var(--pico-border-color);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--pico-background-color);
+  box-sizing: border-box;
+}
+.cv-admin-mistral-toggle {
+  display: none;
+  flex-shrink: 0;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: none;
+  border-top: 1px solid var(--pico-border-color);
+  background: var(--pico-card-background-color);
+  color: var(--pico-color);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+@media (max-width: 768px) {
+  .cv-save-long {
+    display: none;
+  }
+  .cv-save-short {
+    display: inline;
+  }
+  .cv-admin-mistral-toggle {
+    display: block;
   }
 }
 
