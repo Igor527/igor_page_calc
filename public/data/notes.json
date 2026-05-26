@@ -1,17 +1,18 @@
 {
   "version": 1,
-  "exportedAt": 1779796269645,
+  "exportedAt": 1779797579013,
   "notes": [
     {
       "id": "2026-05-26_14-51-03",
-      "title": "",
+      "title": "1",
       "content": "",
       "folderId": "f_ak0utn",
       "createdAt": 1779796263612,
-      "updatedAt": 1779796263612,
+      "updatedAt": 1779797572693,
       "tags": [],
       "color": "none",
-      "todos": []
+      "archived": false,
+      "deleted": false
     },
     {
       "id": "2026-05-26_13-31-00",
