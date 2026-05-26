@@ -3,6 +3,7 @@ import { sanitizeHtml } from '@/lib/security';
 import {
   getSyncConfig,
   schedulePushWithDelay,
+  setSyncBadgeResult,
   cancelScheduledPush,
   pushPosts,
   fetchPostsFromRepo,
@@ -610,6 +611,7 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
   const [polls, setPolls] = useState<BlogPoll[]>([]);
   const [todos, setTodos] = useState<BlogTodoItem[]>([]);
   const [filterTag, setFilterTag] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const [sortAsc, setSortAsc] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -642,7 +644,8 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
     if (!remoteR.ok) {
       setSyncStatus('error');
       setSyncError(remoteR.error);
-      return;
+      setSyncBadgeResult(false, remoteR.error);
+      return { ok: false, error: remoteR.error };
     }
     setSyncStatus('sending');
     const merged = mergePosts(remoteR.posts, posts) as BlogPost[];
@@ -662,10 +665,14 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
       justPushedRef.current = true;
       setSyncStatus('ok');
       setTimeout(() => setSyncStatus('idle'), 3000);
-    } else {
-      setSyncStatus('error');
-      setSyncError(result.error ?? 'Ошибка');
+      setSyncBadgeResult(true);
+      return result;
     }
+    setSyncStatus('error');
+    const err = result.error ?? 'Ошибка';
+    setSyncError(err);
+    setSyncBadgeResult(false, err);
+    return result;
   }, [posts]);
 
   // Планируем пуш через 6 с после изменений. Не отменяем при unmount — иначе при уходе со страницы (в т.ч. с телефона) пуш не выполнится.
@@ -728,8 +735,17 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
   const visiblePosts = useMemo(() => {
     let list = isAdmin ? posts.filter((p) => !p.deleted) : displayPosts.filter((p) => p.published);
     if (filterTag) list = list.filter((p) => p.tags?.includes(filterTag));
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.content.replace(/<[^>]*>/g, ' ').toLowerCase().includes(q) ||
+          p.tags?.some((t) => t.toLowerCase().includes(q))
+      );
+    }
     return list.sort((a, b) => sortAsc ? a.createdAt - b.createdAt : b.createdAt - a.createdAt);
-  }, [posts, displayPosts, isAdmin, filterTag, sortAsc]);
+  }, [posts, displayPosts, isAdmin, filterTag, search, sortAsc]);
 
   const startNew = () => {
     setEditing('__new__');
@@ -826,8 +842,16 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
           </p>
         </header>
 
-        {/* Sort + Tag filter */}
-        <div className="blog-toolbar-wrap" style={{ marginBottom: 16, justifyContent: 'center', alignItems: 'center' }}>
+        {/* Search + sort */}
+        <div className="blog-toolbar-wrap" style={{ marginBottom: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <input
+            type="search"
+            placeholder="Поиск..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="blog-search-input"
+            style={{ flex: '1 1 200px', maxWidth: 320, padding: '8px 12px', fontSize: 13 }}
+          />
           <button onClick={() => setSortAsc(!sortAsc)} className="outline blog-touch-btn"
             style={{ fontSize: 12, borderRadius: 12 }}
             title={sortAsc ? 'Сначала старые' : 'Сначала новые'}>
@@ -996,7 +1020,11 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
 
         {visiblePosts.length === 0 && (
           <p style={{ textAlign: 'center', padding: '32px 0', color: 'var(--pico-muted-color)' }}>
-            {isAdmin ? 'Нет постов. Создайте первый.' : 'Пока нет публикаций.'}
+            {search.trim()
+              ? 'Ничего не найдено'
+              : isAdmin
+                ? 'Нет постов. Создайте первый.'
+                : 'Пока нет публикаций.'}
           </p>
         )}
 

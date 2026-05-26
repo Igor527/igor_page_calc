@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { sanitizeHtml } from '@/lib/security';
 import {
   schedulePushWithDelay,
+  setSyncBadgeResult,
   cancelScheduledPush,
   fetchNotesFromRepo,
   mergeNotes,
@@ -841,6 +842,7 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   const [editColor, setEditColor] = useState('none');
   const [editTodos, setEditTodos] = useState<NoteTodoItem[]>([]);
   const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [showArchived, setShowArchived] = useState(false);
   const [filterTag, setFilterTag] = useState<string | null>(null);
@@ -904,7 +906,8 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       setSyncStatus('error');
       setSyncError(err);
       toastError(err);
-      return;
+      setSyncBadgeResult(false, err);
+      return { ok: false, error: err };
     }
     setSyncStatus('sending');
     const merged = mergeNotes(
@@ -922,12 +925,15 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       justPushedRef.current = true;
       setSyncStatus('ok');
       setTimeout(() => setSyncStatus('idle'), 3000);
-    } else {
-      setSyncStatus('error');
-      const err = result.error ?? 'Ошибка сохранения в репозиторий';
-      setSyncError(err);
-      toastError(err);
+      setSyncBadgeResult(true);
+      return result;
     }
+    setSyncStatus('error');
+    const err = result.error ?? 'Ошибка сохранения в репозиторий';
+    setSyncError(err);
+    toastError(err);
+    setSyncBadgeResult(false, err);
+    return result;
   }, [notes, folders]);
 
   useEffect(() => {
@@ -1051,6 +1057,22 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
   }, [notesViewMode, visibleNotes]);
 
   const treeNotes = useMemo(() => activeNotes.filter(n => !n.archived), [activeNotes]);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeSidebar();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [sidebarOpen, closeSidebar]);
+
+  const selectFolder = useCallback((folderId: string | null) => {
+    setSelectedFolder(folderId);
+    closeSidebar();
+  }, [closeSidebar]);
 
   // CRUD
   const createNote = useCallback((initialContent = '') => {
@@ -1263,11 +1285,12 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       }, 50);
       return;
     }
+    closeSidebar();
     setTimeout(() => {
       const el = cardRefs.current.get(id) ?? document.getElementById(`note-${id}`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
-  }, [editingId, saveEdit, notes, selectedFolder, showArchived, notesViewMode]);
+  }, [editingId, saveEdit, notes, selectedFolder, showArchived, notesViewMode, closeSidebar]);
 
   const renderNoteCard = (note: Note) => (
     <NoteCard
@@ -1305,8 +1328,19 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
 
   return (
     <div className="notes-layout">
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="notes-sidebar-backdrop"
+          aria-label="Закрыть панель папок"
+          onClick={closeSidebar}
+        />
+      )}
       {/* Sidebar */}
-      <div className="notes-sidebar notes-sidebar-width">
+      <div
+        id="notes-sidebar-panel"
+        className={`notes-sidebar notes-sidebar-width${sidebarOpen ? ' is-open' : ''}`}
+      >
         <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid var(--pico-border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
             <a href="/" style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>← Главная</a>
@@ -1412,12 +1446,23 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
 
         {/* Folder tree with inline notes */}
         <FolderTree folders={folders} notes={treeNotes} selectedFolder={selectedFolder} expandedFolders={expandedFolders}
-          editingId={editingId} onSelectFolder={setSelectedFolder} onToggle={toggleFolder} onRename={renameFolder} onDeleteFolder={deleteFolder}
+          editingId={editingId} onSelectFolder={selectFolder} onToggle={toggleFolder} onRename={renameFolder} onDeleteFolder={deleteFolder}
           onScrollToNote={scrollToNote} onMoveNote={moveToFolder} onMoveFolder={moveFolderTo} />
       </div>
 
       {/* Main: list or grid + detail */}
       <div ref={feedRef} className="notes-feed-bg">
+        <div className="notes-mobile-toolbar">
+          <button
+            type="button"
+            className="notes-touch-btn outline notes-folders-btn"
+            aria-expanded={sidebarOpen}
+            aria-controls="notes-sidebar-panel"
+            onClick={() => setSidebarOpen((o) => !o)}
+          >
+            Папки
+          </button>
+        </div>
         <div className="notes-view-toggle">
           <span className="notes-view-toggle-label">Вид</span>
           <button type="button" className={notesViewMode === 'list' ? 'is-active' : ''} onClick={() => { if (editingId) saveEdit(); setNotesViewMode('list'); }}>

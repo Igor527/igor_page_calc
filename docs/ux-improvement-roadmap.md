@@ -1,6 +1,6 @@
 # UX improvement roadmap
 
-План по результатам UX-аудита. **Спринты 1–2** реализованы; **спринт 3** — только документация (не внедрять без отдельного запроса).
+План по результатам UX-аудита. **Спринты 1–3** реализованы.
 
 Единый отступ контента от шапки: `var(--content-offset-from-header)` (= `calc(var(--site-header-height) * 2)`), см. `UI_RULES.md` и `src/index.css`.
 
@@ -94,11 +94,21 @@
 
 ---
 
-## Спринт 3 — навигация и мобильные сценарии (2–3 дня)
+## Спринт 3 — выполнен (2026-05-26)
 
-### 11. Компактное меню в шапке
+| # | Задача | Файлы |
+|---|--------|-------|
+| 11 | Компактное меню в шапке | `SiteHeader.tsx`, `index.html`, `index.css`, `main.tsx` |
+| 12 | Поиск в блоге | `BlogPage.tsx` |
+| 13 | Заметки: drawer сайдбара на мобильном | `NotesPage.tsx`, `index.css` |
+| 14 | Бейдж синхронизации | `SyncBadge.tsx`, `githubSync.ts`, `SyncSettings.tsx`, `SiteHeader.tsx` |
+| 15 | Weather / RSS: guided empty state | `SetupWizard.tsx`, `WeatherPage.tsx`, `RssPage.tsx` |
 
-**Файлы:** `index.html` и/или новый React-компонент в `src/components/SiteNav.tsx`, подключение из `main.tsx`.
+---
+
+### 11. Компактное меню в шапке (выполнено)
+
+**Файлы:** `index.html`, `src/components/SiteHeader.tsx`, `src/index.css`, `src/main.tsx`.
 
 **Критерии приёмки:**
 - 4–6 публичных ссылок: главная, калькуляторы, блог, CV (и др. по согласованию).
@@ -110,9 +120,9 @@
 
 ---
 
-### 12. Поиск в блоге
+### 12. Поиск в блоге (выполнено)
 
-**Файлы:** `src/app/blog/BlogPage.tsx`, при необходимости `src/index.css`.
+**Файлы:** `src/app/blog/BlogPage.tsx`.
 
 **Критерии приёмки:**
 - Поле поиска по заголовку и тексту поста (как в заметках: `type="search"`).
@@ -123,7 +133,7 @@
 
 ---
 
-### 13. Заметки на мобильном: drawer сайдбара
+### 13. Заметки на мобильном: drawer сайдбара (выполнено)
 
 **Файлы:** `src/app/admin/notes/NotesPage.tsx`, `src/index.css`.
 
@@ -136,9 +146,9 @@
 
 ---
 
-### 14. Бейдж синхронизации для админа
+### 14. Бейдж синхронизации для админа (выполнено)
 
-**Файлы:** `src/components/SyncSettings.tsx`, `src/lib/githubSync.ts`, шапка (`index.html` или `SiteNav`).
+**Файлы:** `src/components/SyncBadge.tsx`, `src/lib/githubSync.ts`, `src/components/SyncSettings.tsx`, `src/components/SiteHeader.tsx`.
 
 **Критерии приёмки:**
 - Один индикатор в шапке: «синхронизировано» / «идёт» / «ошибка» (по последнему pull/push или тесту соединения).
@@ -149,9 +159,9 @@
 
 ---
 
-### 15. Weather / RSS: guided empty state
+### 15. Weather / RSS: guided empty state (выполнено)
 
-**Файлы:** `src/app/weather/WeatherPage.tsx`, `src/app/rss/RssPage.tsx`.
+**Файлы:** `src/components/SetupWizard.tsx`, `src/app/weather/WeatherPage.tsx`, `src/app/rss/RssPage.tsx`.
 
 **Критерии приёмки:**
 - Вместо «стены текста» — пошаговый wizard (шаг 1 → 2 → 3) для первой настройки.
@@ -177,7 +187,5 @@
 ```mermaid
 flowchart LR
   S1[Sprint 1 done] --> S2[Sprint 2 done]
-  S2 --> S3[Sprint 3: 11-15]
+  S2 --> S3[Sprint 3 done]
 ```
-
-Рекомендуемый старт спринта 3: **11** (компактное меню), затем **12–13** (блог и заметки на мобильном).

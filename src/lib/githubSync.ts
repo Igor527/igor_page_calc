@@ -314,12 +314,81 @@ export async function testConnection(): Promise<SyncResult> {
 const DEBOUNCE_MS = 2500;
 const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
 
+export type SyncBadgeState = 'idle' | 'syncing' | 'ok' | 'error';
+
+let syncBadgeState: SyncBadgeState = 'idle';
+let syncBadgeError: string | null = null;
+let syncInFlight = 0;
+const syncBadgeListeners = new Set<() => void>();
+
+function emitSyncBadge() {
+  syncBadgeListeners.forEach((fn) => fn());
+}
+
+export function subscribeSyncBadge(listener: () => void): () => void {
+  syncBadgeListeners.add(listener);
+  return () => syncBadgeListeners.delete(listener);
+}
+
+export function getSyncBadge(): { state: SyncBadgeState; error: string | null } {
+  const hasPending = Object.keys(debounceTimers).length > 0;
+  if (syncInFlight > 0 || hasPending) {
+    return { state: 'syncing', error: syncBadgeError };
+  }
+  return { state: syncBadgeState, error: syncBadgeError };
+}
+
+export function setSyncBadgeResult(ok: boolean, error?: string): void {
+  syncBadgeState = ok ? 'ok' : 'error';
+  syncBadgeError = ok ? null : (error ?? 'Ошибка синхронизации');
+  emitSyncBadge();
+  if (ok) {
+    setTimeout(() => {
+      if (syncBadgeState === 'ok' && syncInFlight === 0 && Object.keys(debounceTimers).length === 0) {
+        syncBadgeState = 'idle';
+        syncBadgeError = null;
+        emitSyncBadge();
+      }
+    }, 3000);
+  }
+}
+
+function beginSyncOperation(): void {
+  syncInFlight += 1;
+  syncBadgeState = 'syncing';
+  emitSyncBadge();
+}
+
+function endSyncOperation(): void {
+  syncInFlight = Math.max(0, syncInFlight - 1);
+  emitSyncBadge();
+}
+
+async function runScheduledPush(push: () => void | Promise<void>): Promise<void> {
+  beginSyncOperation();
+  try {
+    const result = await Promise.resolve(push());
+    if (result && typeof result === 'object' && 'ok' in result) {
+      const r = result as SyncResult;
+      setSyncBadgeResult(r.ok, r.error);
+    } else {
+      setSyncBadgeResult(true);
+    }
+  } catch (e) {
+    setSyncBadgeResult(false, e instanceof Error ? e.message : String(e));
+  } finally {
+    endSyncOperation();
+  }
+}
+
 /** Вызвать push через DEBOUNCE_MS; повторный вызов с тем же key сбрасывает таймер. */
 export function schedulePush(key: string, push: () => void | Promise<void>): void {
   if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
+  emitSyncBadge();
   debounceTimers[key] = setTimeout(() => {
     delete debounceTimers[key];
-    void Promise.resolve(push());
+    emitSyncBadge();
+    void runScheduledPush(push);
   }, DEBOUNCE_MS);
 }
 
@@ -328,6 +397,7 @@ export function cancelScheduledPush(key: string): void {
   if (debounceTimers[key]) {
     clearTimeout(debounceTimers[key]);
     delete debounceTimers[key];
+    emitSyncBadge();
   }
 }
 
@@ -338,9 +408,11 @@ export function schedulePushWithDelay(
   push: () => void | Promise<void>
 ): void {
   if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
+  emitSyncBadge();
   debounceTimers[key] = setTimeout(() => {
     delete debounceTimers[key];
-    void Promise.resolve(push());
+    emitSyncBadge();
+    void runScheduledPush(push);
   }, delayMs);
 }
 

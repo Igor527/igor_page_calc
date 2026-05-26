@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import SetupWizard from '@/components/SetupWizard';
 import { fetchRssFeed, parseFeedXml, type RssEntry } from '@/lib/rssFetch';
 import { getRssListsFromRepo, pushRssLists, getSyncConfig, schedulePush } from '@/lib/githubSync';
 
@@ -183,6 +184,68 @@ const RssPage: React.FC = () => {
   }, []);
 
   const blogRssUrl = typeof window !== 'undefined' ? `${window.location.origin}/feed.xml` : '/feed.xml';
+  const hasSubscriptions = lists.some((l) => l.items.length > 0);
+  const showWizard = !hasSubscriptions;
+
+  const wizardSteps = useMemo(
+    () => [
+      {
+        title: 'Список',
+        summary: 'Создайте список источников — люди, сайты, темы.',
+        content: (
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={newListTitle}
+              onChange={(e) => setNewListTitle(e.target.value)}
+              placeholder="Название списка"
+              style={{ flex: '1 1 200px', padding: '8px 12px', fontSize: 14 }}
+            />
+            <button type="button" className="primary" style={{ minHeight: 44 }} onClick={addList}>
+              Добавить список
+            </button>
+          </div>
+        ),
+      },
+      {
+        title: 'Подписка',
+        summary: 'Раскройте список и добавьте URL RSS-ленты.',
+        content: (
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--pico-muted-color)' }}>
+            {lists.length === 0
+              ? 'Сначала создайте список на шаге 1.'
+              : 'Нажмите на список ниже, затем «+ Добавить подписку» и укажите название и URL ленты.'}
+          </p>
+        ),
+        more: (
+          <p style={{ margin: 0, fontSize: 12 }}>
+            Ссылка на RSS этого блога: <a href={blogRssUrl}>{blogRssUrl}</a> — можно добавить в любой список.
+          </p>
+        ),
+      },
+      {
+        title: 'Лента',
+        summary: 'Загрузите объединённую ленту всех подписок.',
+        content: (
+          <button
+            type="button"
+            className="primary"
+            style={{ fontSize: 13, padding: '8px 14px', minHeight: 44 }}
+            onClick={loadAllFeeds}
+            disabled={combinedLoading || !hasSubscriptions}
+          >
+            {combinedLoading ? 'Загрузка…' : 'Показать все записи'}
+          </button>
+        ),
+        more: (
+          <p style={{ margin: 0, fontSize: 12 }}>
+            При ошибке CORS откройте URL ленты в браузере, скопируйте XML и вставьте через «Вставить XML вручную» у подписки.
+          </p>
+        ),
+      },
+    ],
+    [newListTitle, lists.length, addList, blogRssUrl, loadAllFeeds, combinedLoading, hasSubscriptions]
+  );
 
   const handlePullFromRepo = useCallback(async () => {
     setSyncError(null);
@@ -224,6 +287,8 @@ const RssPage: React.FC = () => {
         Списки людей, сайтов и других источников с RSS. Ниже — ссылка на ленту этого блога, которую можно дать подписчикам.
       </p>
 
+      <SetupWizard steps={wizardSteps} hidden={!showWizard} />
+
       {/* Ссылка на RSS блога — для выдачи другим */}
       <section style={{ marginBottom: 32, padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)' }}>
         <h2 style={{ fontSize: 16, marginBottom: 8 }}>Подписаться на этот блог (RSS)</h2>
@@ -254,18 +319,22 @@ const RssPage: React.FC = () => {
       {/* Объединённая лента: все записи всех подписок по дате */}
       <section style={{ marginBottom: 32, padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8, background: 'var(--pico-card-background-color)' }}>
         <h2 style={{ fontSize: 16, marginBottom: 8 }}>Все записи по дате</h2>
-        <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', marginBottom: 12 }}>
-          Одна лента из всех сохранённых RSS: записи всех подписок в одном списке, сортировка по дате. Под каждой записью — подпись, чья это лента (список и название подписки).
-        </p>
+        {!showWizard && (
+          <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', marginBottom: 12 }}>
+            Одна лента из всех сохранённых RSS: записи всех подписок в одном списке, сортировка по дате.
+          </p>
+        )}
+        {!showWizard && (
         <button
           type="button"
           className="primary"
-          style={{ fontSize: 13, padding: '8px 14px' }}
+          style={{ fontSize: 13, padding: '8px 14px', minHeight: 44 }}
           onClick={loadAllFeeds}
           disabled={combinedLoading || lists.every((l) => l.items.length === 0)}
         >
           {combinedLoading ? 'Загрузка…' : combinedEntries.length ? 'Обновить ленту' : 'Показать все записи'}
         </button>
+        )}
         {combinedError && (
           <p style={{ fontSize: 12, color: 'var(--pico-del-color)', marginTop: 8 }}>{combinedError}</p>
         )}

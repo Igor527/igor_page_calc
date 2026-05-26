@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSyncConfig, setSyncConfig, setSyncConfigSafe, testConnection, type GitHubSyncConfig } from '@/lib/githubSync';
+import { getSyncConfig, setSyncConfig, setSyncConfigSafe, testConnection, setSyncBadgeResult, type GitHubSyncConfig } from '@/lib/githubSync';
 import { toastError, toastSuccess, toastInfo } from '@/lib/toast';
 
 function getEnv(name: string): string {
@@ -79,12 +79,13 @@ const SyncSettings: React.FC = () => {
     const r = await testConnection();
     const msg = r.ok ? 'Подключение успешно.' : (r.error || 'Ошибка');
     setTestResult(msg);
+    setSyncBadgeResult(r.ok, r.error);
     if (r.ok) toastSuccess(msg);
     else toastError(msg);
   };
 
   return (
-    <div style={{ marginTop: 16, fontSize: 13 }}>
+    <div id="sync-settings-anchor" style={{ marginTop: 16, fontSize: 13 }}>
       <button
         type="button"
         onClick={() => setOpen(!open)}

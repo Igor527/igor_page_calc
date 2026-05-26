@@ -9,6 +9,8 @@ import AdminSessionBanner from './components/AdminSessionBanner';
 import AdminAccessDenied from './components/AdminAccessDenied';
 import { ToastProvider } from './components/Toast';
 import { PageLoadingFallback, loadingVariantForPath } from './components/PageLoadingFallback';
+import { SiteHeaderPortal } from './components/SiteHeader';
+import { setSyncBadgeResult } from './lib/githubSync';
 
 const EditorPage = React.lazy(() => import('./app/admin/editor/page'));
 const PublicCalculator = React.lazy(() => import('./app/public/PublicCalculator'));
@@ -218,6 +220,16 @@ function App() {
   const isAdmin = getIsAdmin(firebaseUser);
   const isLimitedGuest = getIsLimitedGuest(firebaseUser);
 
+  const headerPortal = (
+    <SiteHeaderPortal path={path} isAdmin={isAdmin} isLimitedGuest={isLimitedGuest} />
+  );
+  const withChrome = (content: React.ReactNode) => (
+    <>
+      {headerPortal}
+      {content}
+    </>
+  );
+
   // Загружаем данные: сначала статические файлы сайта, затем при админе и настроенной синхронизации — из репо по API (источник истины при входе в админку)
   const [bundleTick, setBundleTick] = useState(0);
   useEffect(() => {
@@ -239,10 +251,16 @@ function App() {
     if (!getSyncConfig()) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
     try {
       const conn = await testConnection();
-      if (!conn.ok) return { ok: false, error: conn.error };
+      if (!conn.ok) {
+        setSyncBadgeResult(false, conn.error);
+        return { ok: false, error: conn.error };
+      }
 
       const notesR = await fetchNotesFromRepo();
-      if (!notesR.ok) return { ok: false, error: `Заметки: ${notesR.error}` };
+      if (!notesR.ok) {
+        setSyncBadgeResult(false, `Заметки: ${notesR.error}`);
+        return { ok: false, error: `Заметки: ${notesR.error}` };
+      }
       applyNotesFromRepoData(notesR);
 
       const cv = await getCvFromRepo();
@@ -250,7 +268,10 @@ function App() {
         try { localStorage.setItem('igor-cv-html', cv); } catch {}
       }
       const postsR = await fetchPostsFromRepo();
-      if (!postsR.ok) return { ok: false, error: `Блог: ${postsR.error}` };
+      if (!postsR.ok) {
+        setSyncBadgeResult(false, `Блог: ${postsR.error}`);
+        return { ok: false, error: `Блог: ${postsR.error}` };
+      }
       try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
 
       const dict = await getDictionaryFromRepo();
@@ -265,13 +286,13 @@ function App() {
       if (rssData) setRssListsFromBundle(rssData);
       ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));
+      setSyncBadgeResult(true);
       return { ok: true };
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
-      return {
-        ok: false,
-        error: detail ? `Сбой выгрузки: ${detail}` : GITHUB_REPO_FETCH_FAILED,
-      };
+      const err = detail ? `Сбой выгрузки: ${detail}` : GITHUB_REPO_FETCH_FAILED;
+      setSyncBadgeResult(false, err);
+      return { ok: false, error: err };
     }
   }, []);
 
@@ -281,27 +302,37 @@ function App() {
   }, [isAdmin, pullAllFromRepo]);
 
   if (isAuthLoading && path !== '/') {
-    return <div style={{ padding: '40px', textAlign: 'center', color: 'var(--pico-muted-color)' }}>Проверка авторизации...</div>;
+    return withChrome(
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--pico-muted-color)' }}>Проверка авторизации...</div>
+    );
   }
 
   if (path.startsWith('/admin/notes')) {
     if (!isAdmin) {
-      return withSessionBanner(
-        <AdminAccessDenied resourceLabel="Заметки" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+      return withChrome(
+        withSessionBanner(
+          <AdminAccessDenied resourceLabel="Заметки" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+        )
       );
     }
-    return withSessionBanner(
-      <PageSuspense><NotesPage dataVersion={bundleTick} /></PageSuspense>
+    return withChrome(
+      withSessionBanner(
+        <PageSuspense><NotesPage dataVersion={bundleTick} /></PageSuspense>
+      )
     );
   }
   if (path.startsWith('/admin/drawing')) {
     if (!isAdmin) {
-      return withSessionBanner(
-        <AdminAccessDenied resourceLabel="Страница рисования" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+      return withChrome(
+        withSessionBanner(
+          <AdminAccessDenied resourceLabel="Страница рисования" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+        )
       );
     }
-    return withSessionBanner(
-      <PageSuspense><DrawingPage /></PageSuspense>
+    return withChrome(
+      withSessionBanner(
+        <PageSuspense><DrawingPage /></PageSuspense>
+      )
     );
   }
   if (path.startsWith('/admin/review')) {
@@ -309,11 +340,11 @@ function App() {
     return null;
   }
   if (path.startsWith('/editor')) {
-    return <PageSuspense><EditorPage isAdmin={true} /></PageSuspense>;
+    return withChrome(<PageSuspense><EditorPage isAdmin={true} /></PageSuspense>);
   }
   if (path.startsWith('/planner')) {
     if (!isAdmin && !isLimitedGuest) {
-      return (
+      return withChrome(
         <AdminAccessDenied
           resourceLabel="Планировщик"
           accessMode="login-required"
@@ -321,24 +352,28 @@ function App() {
         />
       );
     }
-    return <PageSuspense><PlannerPage /></PageSuspense>;
+    return withChrome(<PageSuspense><PlannerPage /></PageSuspense>);
   }
   if (path === '/dictionary') {
     if (!isAdmin) {
-      return withSessionBanner(
-        <AdminAccessDenied resourceLabel="Словарь" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+      return withChrome(
+        withSessionBanner(
+          <AdminAccessDenied resourceLabel="Словарь" sessionExpired={adminSessionExpired} linkToHome={linkToHome} />
+        )
       );
     }
-    return withSessionBanner(
-      <PageSuspense><DictionaryPage dataVersion={bundleTick} /></PageSuspense>
+    return withChrome(
+      withSessionBanner(
+        <PageSuspense><DictionaryPage dataVersion={bundleTick} /></PageSuspense>
+      )
     );
   }
   if (path === '/cv') {
-    return <PageSuspense><CvPage isAdmin={isAdmin} /></PageSuspense>;
+    return withChrome(<PageSuspense><CvPage isAdmin={isAdmin} /></PageSuspense>);
   }
   if (path === '/weather') {
     if (!isAdmin && !isLimitedGuest) {
-      return (
+      return withChrome(
         <AdminAccessDenied
           resourceLabel="Метеостанция"
           accessMode="login-required"
@@ -346,35 +381,39 @@ function App() {
         />
       );
     }
-    return <PageSuspense><WeatherPage /></PageSuspense>;
+    return withChrome(<PageSuspense><WeatherPage /></PageSuspense>);
   }
   if (path === '/rss') {
     if (!isAdmin) {
-      return withSessionBanner(
-        <AdminAccessDenied
-          resourceLabel="RSS"
-          accessMode="admin-only"
-          sessionExpired={adminSessionExpired}
-        />
+      return withChrome(
+        withSessionBanner(
+          <AdminAccessDenied
+            resourceLabel="RSS"
+            accessMode="admin-only"
+            sessionExpired={adminSessionExpired}
+          />
+        )
       );
     }
-    return <PageSuspense><RssPage /></PageSuspense>;
+    return withChrome(<PageSuspense><RssPage /></PageSuspense>);
   }
   if (path === '/blog') {
-    return withSessionBanner(<BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />);
+    return withChrome(
+      withSessionBanner(<BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />)
+    );
   }
   if (path.startsWith('/blog/')) {
     const blogSlug = decodeURIComponent(path.slice('/blog/'.length));
-    return <BlogPostView slug={blogSlug} isAdmin={isAdmin} />;
+    return withChrome(<BlogPostView slug={blogSlug} isAdmin={isAdmin} />);
   }
   if (path === '/calculators') {
-    return <CalculatorsListPage isAdmin={isAdmin} />;
+    return withChrome(<CalculatorsListPage isAdmin={isAdmin} />);
   }
   // Калькулятор по имени: /calculators/:id или /calculators/:slug
   if (path.startsWith('/calculators/')) {
     const idOrSlug = decodeURIComponent(path.slice('/calculators/'.length));
     if (!idOrSlug) {
-      return (
+      return withChrome(
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
           <h2>Страница не найдена</h2>
           <p style={{ color: 'var(--color-muted-text)' }}>Не указан адрес калькулятора.</p>
@@ -385,7 +424,7 @@ function App() {
     const calculator = loadCalculator(idOrSlug) ?? getCalculatorBySlug(idOrSlug);
     const calculatorId = calculator?.id ?? idOrSlug;
     if (calculator && calculator.status === 'published') {
-      return (
+      return withChrome(
         <PageSuspense>
           <PublicCalculator
             calculatorId={calculator.id}
@@ -397,7 +436,7 @@ function App() {
       );
     }
     if (calculator) {
-      return (
+      return withChrome(
         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
           <h2>Калькулятор недоступен</h2>
           <p style={{ color: 'var(--color-muted-text)' }}>
@@ -411,7 +450,7 @@ function App() {
         </div>
       );
     }
-    return (
+    return withChrome(
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
         <h2>Страница не найдена</h2>
         <p style={{ color: 'var(--color-muted-text)' }}>Калькулятор с ID "{calculatorId}" не найден.</p>
@@ -421,14 +460,16 @@ function App() {
   }
 
   // Главная: welcome
-  return withSessionBanner(
-    <WelcomePage
-      isAdmin={isAdmin}
-      isLimitedGuest={isLimitedGuest}
-      dataVersion={bundleTick}
-      onPullAllFromRepo={pullAllFromRepo}
-      adminSessionExpired={adminSessionExpired}
-    />
+  return withChrome(
+    withSessionBanner(
+      <WelcomePage
+        isAdmin={isAdmin}
+        isLimitedGuest={isLimitedGuest}
+        dataVersion={bundleTick}
+        onPullAllFromRepo={pullAllFromRepo}
+        adminSessionExpired={adminSessionExpired}
+      />
+    )
   );
 }
 
