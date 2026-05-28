@@ -1,7 +1,34 @@
 {
   "version": 1,
-  "exportedAt": 1779960670224,
+  "exportedAt": 1779960749143,
   "entries": [
+    {
+      "id": "e1779960746172-imansf",
+      "source": "Как лучше оплатить. Наличные или карта",
+      "translation": "Cash or card—what's the best way to pay?",
+      "transcription": "[kak ˈlʉt͡ʃʂɪ ɐˈpɫatʲɪtʲ ǀ nɐˈlʲit͡ɕnɨɪ ˈɪlʲɪ kɐrˈta]",
+      "fromLang": "ru",
+      "toLang": "en",
+      "addedAt": 1779960746172
+    },
+    {
+      "id": "e1779960698265-38s1wa",
+      "source": "Как лучше оплатить. Наличные или карта",
+      "translation": "Лучше оплатить наличными или картой?",
+      "transcription": "[ˈkak ˈlʲuʂɛ ɐˈpɫatʲɪtʲ ˈnaɫʲɪt͡ɕnɨɪ ˈɪɫʲɪ ˈkartə]",
+      "fromLang": "sr",
+      "toLang": "ru",
+      "addedAt": 1779960698265
+    },
+    {
+      "id": "e1779960686614-kk69ni",
+      "source": "Как лучше оплатить. Наличные или карта",
+      "translation": "Лучше оплатить наличными или картой?",
+      "transcription": "[kɐk ˈlʉt͡ʃʂɨ ɐˈpɫatʲɪtʲ ˈnaɫʲɪt͡ɕnɨɪ ˈɪɫʲɪ ˈkartəj]",
+      "fromLang": "ru",
+      "toLang": "sr",
+      "addedAt": 1779960686614
+    },
     {
       "id": "e1774652184755-zsqgcr",
       "source": "Adjust plan",
