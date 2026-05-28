@@ -1,7 +1,16 @@
 {
   "version": 1,
-  "exportedAt": 1779960749143,
+  "exportedAt": 1779961423216,
   "entries": [
+    {
+      "id": "e1779961420232-33s6tq",
+      "source": "Как лучше оплатить. Наличные или карта",
+      "translation": "Bolje je platiti. Gotovinom ili karticom",
+      "transcription": "[ˈkak ˈlʲuʂɛ ɐˈpɫatʲɪtʲ ǀ nɐˈlʲit͡ɕnɨɪ ˈɪlʲɪ kɐrˈta]",
+      "fromLang": "ru",
+      "toLang": "hr",
+      "addedAt": 1779961420232
+    },
     {
       "id": "e1779960746172-imansf",
       "source": "Как лучше оплатить. Наличные или карта",
