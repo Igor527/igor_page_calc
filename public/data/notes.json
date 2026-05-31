@@ -1,7 +1,20 @@
 {
   "version": 1,
-  "exportedAt": 1780263796240,
+  "exportedAt": 1780263904268,
   "notes": [
+    {
+      "id": "2026-05-30_00-11-52",
+      "title": "",
+      "content": "",
+      "folderId": "f_v3872i",
+      "createdAt": 1780092712547,
+      "updatedAt": 1780263897840,
+      "tags": [],
+      "color": "none",
+      "todos": [],
+      "archived": false,
+      "deleted": true
+    },
     {
       "id": "2026-05-30_00-11-54",
       "title": "Без заголовка",
@@ -14,17 +27,6 @@
       "archived": false,
       "todos": [],
       "deleted": true
-    },
-    {
-      "id": "2026-05-30_00-11-52",
-      "title": "",
-      "content": "",
-      "folderId": "f_v3872i",
-      "createdAt": 1780092712547,
-      "updatedAt": 1780092712547,
-      "tags": [],
-      "color": "none",
-      "todos": []
     },
     {
       "id": "2026-05-28_23-55-55",
