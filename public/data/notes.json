@@ -1,7 +1,20 @@
 {
   "version": 1,
-  "exportedAt": 1780263904268,
+  "exportedAt": 1780263991901,
   "notes": [
+    {
+      "id": "2026-05-26_03-09-07",
+      "title": "Форхэнд",
+      "content": "<p>Попробуй делать больше задержку на мяче</p><p></p><p>Подрезка ФХ</p><p>Пробуем слегка отклонить ракетку назад, чтоб мяч перелетел через сетку и потом резко отводим запястье назад и корпус чуть вперёд</p>",
+      "folderId": "f_ujrlle",
+      "createdAt": 1779754147207,
+      "updatedAt": 1780263984659,
+      "tags": [],
+      "color": "red",
+      "archived": false,
+      "deleted": false,
+      "pinned": true
+    },
     {
       "id": "2026-05-30_00-11-52",
       "title": "",
@@ -124,20 +137,6 @@
       "color": "none",
       "todos": [],
       "deleted": true
-    },
-    {
-      "id": "2026-05-26_03-09-07",
-      "title": "Форхэнд",
-      "content": "<p>Попробуй делать больше задержку на мяче</p>",
-      "folderId": "f_ujrlle",
-      "createdAt": 1779754147207,
-      "updatedAt": 1779755470800,
-      "tags": [],
-      "color": "none",
-      "archived": false,
-      "deleted": false,
-      "todos": [],
-      "pinned": true
     },
     {
       "id": "2026-03-10_03-58-36_dup",
