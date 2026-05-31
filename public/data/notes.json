@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1780092723102,
+  "exportedAt": 1780263796240,
   "notes": [
     {
       "id": "2026-05-30_00-11-54",
@@ -8,9 +8,12 @@
       "content": "",
       "folderId": "f_v3872i",
       "createdAt": 1780092714814,
-      "updatedAt": 1780092717067,
+      "updatedAt": 1780263790171,
       "tags": [],
-      "color": "none"
+      "color": "none",
+      "archived": false,
+      "todos": [],
+      "deleted": true
     },
     {
       "id": "2026-05-30_00-11-52",
