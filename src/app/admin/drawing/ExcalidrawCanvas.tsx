@@ -13,6 +13,7 @@ export type ExcalidrawCanvasHandle = {
 type Props = {
   canvasRef: React.MutableRefObject<ExcalidrawCanvasHandle | null>;
   onApiReady?: (api: ExcalidrawImperativeAPI) => void;
+  onChange?: (elements: any, appState: any, files: any) => void;
 };
 
 function readSiteTheme(): 'light' | 'dark' {
@@ -20,7 +21,7 @@ function readSiteTheme(): 'light' | 'dark' {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-const ExcalidrawCanvas = memo(function ExcalidrawCanvas({ canvasRef, onApiReady }: Props) {
+const ExcalidrawCanvas = memo(function ExcalidrawCanvas({ canvasRef, onApiReady, onChange }: Props) {
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(readSiteTheme);
 
@@ -73,6 +74,7 @@ const ExcalidrawCanvas = memo(function ExcalidrawCanvas({ canvasRef, onApiReady 
             saveAsImage: false,
           },
         }}
+        onChange={onChange}
       />
     </div>
   );

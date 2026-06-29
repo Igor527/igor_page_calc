@@ -22,12 +22,10 @@ const DictionaryPage = React.lazy(() => import('./app/dictionary/DictionaryPage'
 const CvPage = React.lazy(() => import('./app/cv/CvPage'));
 const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
 const RssPage = React.lazy(() => import('./app/rss/RssPage'));
-import { BlogList, BlogPostView, loadBlogBundle } from './app/blog/BlogPage';
-import { loadDictionaryBundle, setDictionaryFromBundle } from './app/dictionary/DictionaryPage';
-import { loadNotesBundle, applyNotesFromRepoData } from './app/admin/notes/NotesPage';
+const BlogList = React.lazy(() => import('./app/blog/BlogPage').then(m => ({ default: m.BlogList })));
+const BlogPostView = React.lazy(() => import('./app/blog/BlogPage').then(m => ({ default: m.BlogPostView })));
 import { loadCalculator, getCalculatorBySlug, loadPublishedBundle, loadPublishedBundleFromContent } from './lib/calculatorStorage';
 import { loadLayoutsBundle, setAllLayoutsFromBundle } from './lib/pageLayouts';
-import { applyPlannerFromRepoData } from './app/planner/PlannerPage';
 import {
   fetchNotesFromRepo,
   fetchPostsFromRepo,
@@ -42,7 +40,6 @@ import {
   testConnection,
 } from './lib/githubSync';
 import { GITHUB_REPO_FETCH_FAILED, GITHUB_SYNC_NOT_CONFIGURED } from './lib/syncAuthMessages';
-import { setRssListsFromBundle } from './app/rss/RssPage';
 import {
   subscribeToAuth,
   isAdminUser,
@@ -234,11 +231,12 @@ function App() {
   const [bundleTick, setBundleTick] = useState(0);
   useEffect(() => {
     // При настроенной синхронизации словарь грузим только из репо (pullAllFromRepo), иначе статический файл перезатрёт данные из репо после обновления страницы
-    const dictLoad = getSyncConfig() ? Promise.resolve() : loadDictionaryBundle();
-    const notesLoad = getSyncConfig() ? Promise.resolve() : loadNotesBundle();
+    const dictLoad = getSyncConfig() ? Promise.resolve() : import('./app/dictionary/DictionaryPage').then(m => m.loadDictionaryBundle());
+    const notesLoad = getSyncConfig() ? Promise.resolve() : import('./app/admin/notes/NotesPage').then(m => m.loadNotesBundle());
+    const blogLoad = import('./app/blog/BlogPage').then(m => m.loadBlogBundle());
     Promise.all([
       loadPublishedBundle(),
-      loadBlogBundle(),
+      blogLoad,
       notesLoad,
       loadLayoutsBundle(),
       dictLoad,
@@ -261,6 +259,7 @@ function App() {
         setSyncBadgeResult(false, `Заметки: ${notesR.error}`);
         return { ok: false, error: `Заметки: ${notesR.error}` };
       }
+      const { applyNotesFromRepoData } = await import('./app/admin/notes/NotesPage');
       applyNotesFromRepoData(notesR);
 
       const cv = await getCvFromRepo();
@@ -275,15 +274,24 @@ function App() {
       try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
 
       const dict = await getDictionaryFromRepo();
-      if (dict) setDictionaryFromBundle(dict);
+      if (dict) {
+        const { setDictionaryFromBundle } = await import('./app/dictionary/DictionaryPage');
+        setDictionaryFromBundle(dict);
+      }
       const layouts = await getLayoutsFromRepo();
       if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
       const planner = await getPlannerFromRepo();
-      if (planner) applyPlannerFromRepoData(planner);
+      if (planner) {
+        const { applyPlannerFromRepoData } = await import('./app/planner/PlannerPage');
+        applyPlannerFromRepoData(planner);
+      }
       const calcJson = await getCalculatorsJsonFromRepo();
       if (calcJson) loadPublishedBundleFromContent(calcJson);
       const rssData = await getRssListsFromRepo();
-      if (rssData) setRssListsFromBundle(rssData);
+      if (rssData) {
+        const { setRssListsFromBundle } = await import('./app/rss/RssPage');
+        setRssListsFromBundle(rssData);
+      }
       ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));
       setSyncBadgeResult(true);
@@ -399,12 +407,20 @@ function App() {
   }
   if (path === '/blog') {
     return withChrome(
-      withSessionBanner(<BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />)
+      withSessionBanner(
+        <PageSuspense>
+          <BlogList isAdmin={isAdmin} adminSessionExpired={adminSessionExpired} />
+        </PageSuspense>
+      )
     );
   }
   if (path.startsWith('/blog/')) {
     const blogSlug = decodeURIComponent(path.slice('/blog/'.length));
-    return withChrome(<BlogPostView slug={blogSlug} isAdmin={isAdmin} />);
+    return withChrome(
+      <PageSuspense>
+        <BlogPostView slug={blogSlug} isAdmin={isAdmin} />
+      </PageSuspense>
+    );
   }
   if (path === '/calculators') {
     return withChrome(<CalculatorsListPage isAdmin={isAdmin} />);

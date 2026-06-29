@@ -196,3 +196,61 @@ export async function pushRssListsToFirebase(lists: unknown[]): Promise<SyncResu
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export interface BoardMetadata {
+  id: string;
+  name: string;
+  updatedAt: number;
+}
+
+export async function getBoardsMetadata(): Promise<Record<string, BoardMetadata> | null> {
+  try {
+    const snap = await get(ref(getDb(), 'data/boardsMetadata'));
+    if (!snap.exists()) return null;
+    return snap.val() as Record<string, BoardMetadata>;
+  } catch {
+    return null;
+  }
+}
+
+export async function getBoardScene(boardId: string): Promise<any | null> {
+  try {
+    const snap = await get(ref(getDb(), `data/boards/${boardId}/scene`));
+    if (!snap.exists()) return null;
+    return snap.val();
+  } catch {
+    return null;
+  }
+}
+
+export async function saveBoardToFirebase(boardId: string, name: string, scene: any): Promise<SyncResult> {
+  try {
+    const updatedAt = Date.now();
+    const cleanScene = cleanUndefined(scene);
+    
+    // Сохраняем метаданные доски
+    await set(ref(getDb(), `data/boardsMetadata/${boardId}`), { id: boardId, name, updatedAt });
+    
+    // Сохраняем саму доску со сценой
+    await set(ref(getDb(), `data/boards/${boardId}`), {
+      id: boardId,
+      name,
+      updatedAt,
+      scene: cleanScene
+    });
+    
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function deleteBoardFromFirebase(boardId: string): Promise<SyncResult> {
+  try {
+    await set(ref(getDb(), `data/boardsMetadata/${boardId}`), null);
+    await set(ref(getDb(), `data/boards/${boardId}`), null);
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

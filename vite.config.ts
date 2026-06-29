@@ -71,13 +71,40 @@ export default defineConfig(({ mode }) => {
   build: {
     outDir: 'dist',
     sourcemap: true,
-    chunkSizeWarningLimit: 1600,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       onwarn(warning, warn) {
         const msg = warning.message || '';
         if (msg.includes('contains an annotation that Rollup cannot interpret')) return;
         warn(warning);
       },
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@excalidraw')) {
+              return 'vendor-excalidraw';
+            }
+            if (id.includes('mermaid') || id.includes('dagre') || id.includes('khroma') || id.includes('stylis')) {
+              return 'vendor-mermaid';
+            }
+            if (id.includes('@tiptap') || id.includes('prosemirror')) {
+              return 'vendor-tiptap';
+            }
+            if (id.includes('recharts') || id.includes('d3')) {
+              return 'vendor-recharts';
+            }
+            if (id.includes('mathjs')) {
+              return 'vendor-mathjs';
+            }
+            if (id.includes('firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('emoji-picker-react')) {
+              return 'vendor-emoji';
+            }
+          }
+        }
+      }
     },
   },
   // Для SPA роутинга - все запросы должны возвращать index.html
