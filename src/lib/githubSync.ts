@@ -10,6 +10,8 @@ import {
   GITHUB_REPO_FETCH_FAILED,
   GITHUB_SYNC_NOT_CONFIGURED,
 } from './syncAuthMessages';
+import { getFirebaseApp } from './firebaseAuth';
+import * as fb from './firebaseData';
 
 const CONFIG_KEY = 'igor-github-sync-config';
 
@@ -21,6 +23,9 @@ export interface GitHubSyncConfig {
 }
 
 export function getSyncConfig(): GitHubSyncConfig | null {
+  if (getFirebaseApp()) {
+    return { owner: 'Firebase', repo: 'RealtimeDB', branch: 'live', token: 'active' };
+  }
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (!raw) return null;
@@ -457,6 +462,13 @@ export async function pushNotesMerged(notes: unknown[], folders: unknown[]): Pro
 
 /** Авто-пуш заметок: перед отправкой загружаем репо и мержим по id + updatedAt. */
 export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushNotesToFirebase(notes, folders);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remote = await getNotesFromRepo();
   const localNotes = notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>;
@@ -474,6 +486,11 @@ export async function fetchPostsFromRepo(): Promise<
   | { ok: true; posts: BlogPostRepo[] }
   | { ok: false; error: string }
 > {
+  if (getFirebaseApp()) {
+    const res = await fb.getPostsFromFirebase();
+    if (res) return { ok: true, posts: res as BlogPostRepo[] };
+    return { ok: false, error: 'Посты в Firebase не найдены' };
+  }
   const file = await fetchFile(dataPath('posts.json'));
   if (!file.ok) return { ok: false, error: file.error };
   try {
@@ -488,6 +505,10 @@ export async function fetchPostsFromRepo(): Promise<
 
 /** Посты из репо (public/data/posts.json). null если файла нет или ошибка. */
 export async function getPostsFromRepo(): Promise<BlogPostRepo[] | null> {
+  if (getFirebaseApp()) {
+    const res = await fb.getPostsFromFirebase();
+    return res ? (res as BlogPostRepo[]) : null;
+  }
   const r = await fetchPostsFromRepo();
   return r.ok ? r.posts : null;
 }
@@ -513,6 +534,11 @@ export async function fetchNotesFromRepo(): Promise<
   | { ok: true; notes: unknown[]; folders: unknown[] }
   | { ok: false; error: string }
 > {
+  if (getFirebaseApp()) {
+    const res = await fb.getNotesFromFirebase();
+    if (res) return { ok: true, notes: res.notes, folders: res.folders };
+    return { ok: false, error: 'Заметки в Firebase не найдены' };
+  }
   const notesPath = dataPath('notes.json');
   const { data, error } = await getJsonFromRepo(notesPath);
   if (error) return { ok: false, error };
@@ -532,12 +558,18 @@ export async function fetchNotesFromRepo(): Promise<
 
 /** Заметки и папки из репо (notes.json). */
 export async function getNotesFromRepo(): Promise<{ notes: unknown[]; folders: unknown[] } | null> {
+  if (getFirebaseApp()) {
+    return fb.getNotesFromFirebase();
+  }
   const r = await fetchNotesFromRepo();
   return r.ok ? { notes: r.notes, folders: r.folders } : null;
 }
 
 /** Словарь из репо (dictionary.json). */
 export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; priorityLangs: string[] } | null> {
+  if (getFirebaseApp()) {
+    return fb.getDictionaryFromFirebase();
+  }
   const { data, error } = await getJsonFromRepo(dataPath('dictionary.json'));
   if (error || !data) return null;
   const parsed = data as { entries?: unknown[]; priorityLangs?: string[] };
@@ -549,6 +581,9 @@ export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; pri
 
 /** Порядок окон из репо (layouts.json). */
 export async function getLayoutsFromRepo(): Promise<Record<string, unknown[]> | null> {
+  if (getFirebaseApp()) {
+    return fb.getLayoutsFromFirebase();
+  }
   const { data, error } = await getJsonFromRepo(dataPath('layouts.json'));
   if (error || !data) return null;
   const layouts = (data as { layouts?: Record<string, unknown[]> }).layouts ?? data as Record<string, unknown[]>;
@@ -562,6 +597,9 @@ export type PlannerRepoData = {
 };
 
 export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
+  if (getFirebaseApp()) {
+    return fb.getPlannerFromFirebase();
+  }
   const { data, error } = await getJsonFromRepo(dataPath('planner.json'));
   if (error || !data) return null;
   const parsed = data as { tasks?: unknown[]; labels?: unknown[] };
@@ -574,12 +612,18 @@ export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
 
 /** Содержимое calculators.json из репо (для подстановки в published bundle). */
 export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
+  if (getFirebaseApp()) {
+    return fb.getCalculatorsJsonFromFirebase();
+  }
   const file = await getFile(dataPath('calculators.json'));
   return file ? file.content : null;
 }
 
 /** CV (резюме) из репо: public/data/cv.json с полем html. */
 export async function getCvFromRepo(): Promise<string | null> {
+  if (getFirebaseApp()) {
+    return fb.getCvFromFirebase();
+  }
   const { data, error } = await getJsonFromRepo(dataPath('cv.json'));
   if (error || !data) return null;
   const parsed = data as { html?: string };
@@ -589,6 +633,13 @@ export async function getCvFromRepo(): Promise<string | null> {
 
 /** Авто-пуш CV в репо (public/data/cv.json). */
 export async function pushCv(html: string): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushCvToFirebase(html);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), html }, null, 2);
   return putFile(dataPath('cv.json'), payload, 'Автосинхронизация: CV');
@@ -618,6 +669,18 @@ export async function pushPosts(
   posts: unknown[],
   modifiedPostIds?: Set<string>
 ): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const now = Date.now();
+    const ids = modifiedPostIds ?? new Set<string>();
+    const postsWithPushTime = (posts as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>).map((p) =>
+      ids.has(String(p.id ?? '')) ? { ...p, updatedAt: now } : p
+    );
+    const res = await fb.pushPostsToFirebase(postsWithPushTime);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const now = Date.now();
   const ids = modifiedPostIds ?? new Set<string>();
@@ -655,6 +718,13 @@ function mergeDictionary(
 
 /** Авто-пуш словаря: перед отправкой загружаем репо и мержим по id + addedAt. */
 export async function pushDictionary(entries: unknown[], priorityLangs: string[]): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushDictionaryToFirebase(entries, priorityLangs);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remote = await getDictionaryFromRepo();
   const localEntries = entries as Array<{ id?: string; addedAt?: number; [k: string]: unknown }>;
@@ -707,6 +777,15 @@ function mergeCalculators(remoteJson: string | null, localJson: string, allLocal
 
 /** Авто-пуш калькуляторов: перед отправкой загружаем репо и мержим по id. */
 export async function pushCalculators(bundleJson: string, allLocalStatuses: Array<{ id: string; status: CalculatorStatus }>): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const remoteJson = await fb.getCalculatorsJsonFromFirebase();
+    const merged = mergeCalculators(remoteJson, bundleJson, allLocalStatuses);
+    const res = await fb.pushCalculatorsToFirebase(merged);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remoteJson = await getCalculatorsJsonFromRepo();
   const merged = mergeCalculators(remoteJson, bundleJson, allLocalStatuses);
@@ -735,6 +814,13 @@ function mergeLayouts(remote: Record<string, unknown[]> | null, local: Record<st
 
 /** Авто-пуш порядка окон: перед отправкой загружаем репо и мержим по id секции. */
 export async function pushLayouts(layouts: Record<string, unknown[]>): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushLayoutsToFirebase(layouts);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const remote = await getLayoutsFromRepo();
   const merged = mergeLayouts(remote, layouts);
@@ -758,6 +844,14 @@ export async function pushPlanner(
   tasks: Array<{ id: string; name: string; start: Date; end: Date; progress?: number; type?: string; [k: string]: unknown }>,
   labels?: Array<{ name: string; color?: string }>
 ): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const serialized = serializePlannerTasks(tasks);
+    const res = await fb.pushPlannerToFirebase(serialized, labels ?? []);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const serialized = serializePlannerTasks(tasks);
   const payload = JSON.stringify(
@@ -770,6 +864,9 @@ export async function pushPlanner(
 
 /** Списки RSS из репо (rss-lists.json). */
 export async function getRssListsFromRepo(): Promise<{ lists: unknown[] } | null> {
+  if (getFirebaseApp()) {
+    return fb.getRssListsFromFirebase();
+  }
   const { data, error } = await getJsonFromRepo(dataPath('rss-lists.json'));
   if (error || !data) return null;
   const parsed = data as { lists?: unknown[] };
@@ -778,6 +875,13 @@ export async function getRssListsFromRepo(): Promise<{ lists: unknown[] } | null
 
 /** Пуш списков RSS в репо. */
 export async function pushRssLists(lists: unknown[]): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushRssListsToFirebase(lists);
+    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    endSyncOperation();
+    return res;
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), lists }, null, 2);
   return putFile(dataPath('rss-lists.json'), payload, 'Синхронизация: RSS подписки');

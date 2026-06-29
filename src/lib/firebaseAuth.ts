@@ -83,6 +83,11 @@ let auth: Auth | null = null;
 /** Результат редиректа (GitHub/Google) — запрашиваем один раз при первой инициализации Auth. */
 let pendingRedirectResult: Promise<import('firebase/auth').UserCredential | null> | null = null;
 
+export function getFirebaseApp(): FirebaseApp | null {
+  if (!app) getFirebaseAuth();
+  return app;
+}
+
 export function getFirebaseAuth(): Auth | null {
   if (!isFirebaseConfigured()) return null;
   if (auth) return auth;
@@ -91,11 +96,13 @@ export function getFirebaseAuth(): Auth | null {
   const projectId = getEnv('VITE_FIREBASE_PROJECT_ID');
   const appId = getEnv('VITE_FIREBASE_APP_ID') || undefined;
   const measurementId = getEnv('VITE_FIREBASE_MEASUREMENT_ID') || undefined;
+  const databaseURL = getEnv('VITE_FIREBASE_DATABASE_URL') || undefined;
   app = initializeApp({
     apiKey,
     authDomain,
     projectId,
     appId,
+    databaseURL,
     measurementId: measurementId || undefined,
   });
   auth = getAuth(app);

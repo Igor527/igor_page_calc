@@ -3,6 +3,7 @@ import PageLayout from '@/components/PageLayout';
 import SyncSettings from '@/components/SyncSettings';
 import { getSyncConfig } from '@/lib/githubSync';
 import { ADMIN_LOGIN_PATH, ADMIN_SESSION_EXPIRED_TITLE } from '@/lib/syncAuthMessages';
+import { FirebaseMigration } from '@/components/FirebaseMigration';
 
 const WelcomePage: React.FC<{
   isAdmin?: boolean;
@@ -72,6 +73,7 @@ const WelcomePage: React.FC<{
                 Выйти из режима админа
               </a>
               <SyncSettings />
+              <FirebaseMigration />
             </>
           ) : isLimitedGuest ? (
             <>
