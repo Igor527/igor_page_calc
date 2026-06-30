@@ -237,10 +237,10 @@ export async function saveBoardToFirebase(boardId: string, name: string, scene: 
   try {
     const updatedAt = Date.now();
     const cleanScene = cleanUndefined(scene);
-    
+
     // Сохраняем метаданные доски
     await set(ref(getDb(), `data/boardsMetadata/${boardId}`), { id: boardId, name, updatedAt });
-    
+
     // Сохраняем саму доску со сценой
     await set(ref(getDb(), `data/boards/${boardId}`), {
       id: boardId,
@@ -248,7 +248,7 @@ export async function saveBoardToFirebase(boardId: string, name: string, scene: 
       updatedAt,
       scene: cleanScene
     });
-    
+
     return { ok: true };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
