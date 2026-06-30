@@ -45,6 +45,8 @@ import {
   isAdminUser,
   isLimitedGuestUser,
   useFirebaseAdmin,
+  getFirebaseApp,
+  getFirebaseAuth,
   setLegacyAdminFlag,
   getLegacyAdminFlag,
   signOut,
@@ -305,7 +307,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isAdmin || !getSyncConfig()) return;
+    if (!isAdmin) return;
+    if (!getSyncConfig() && !getFirebaseApp()) return;
     void pullAllFromRepo();
   }, [isAdmin, pullAllFromRepo]);
 

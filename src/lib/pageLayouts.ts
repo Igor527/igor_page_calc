@@ -38,6 +38,14 @@ export function setAllLayoutsFromBundle(data: Record<string, PageSection[]>): vo
 
 /** Загрузить порядок окон из data/layouts.json (статический файл сайта). */
 export async function loadLayoutsBundle(): Promise<boolean> {
+  const { getFirebaseApp } = await import('./firebaseAuth');
+  if (getFirebaseApp()) {
+    const layouts = await getLayoutsFromRepo();
+    if (layouts) {
+      setAllLayoutsFromBundle(layouts as Record<string, PageSection[]>);
+      return true;
+    }
+  }
   try {
     const res = await fetch('/data/layouts.json');
     if (!res.ok) return false;

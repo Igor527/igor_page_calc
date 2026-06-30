@@ -140,6 +140,15 @@ function save(key: string, value: unknown): string | null {
 
 /** Загружает data/notes.json из репо (статический файл сайта) и подставляет в localStorage. */
 export function loadNotesBundle(): Promise<boolean> {
+  if (getFirebaseApp()) {
+    return fetchNotesFromRepo().then((data) => {
+      if (data.ok) {
+        applyNotesFromRepoData(data);
+        return true;
+      }
+      return false;
+    });
+  }
   return fetch('/data/notes.json')
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { notes?: Note[]; folders?: NoteFolder[] }) => {

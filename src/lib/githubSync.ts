@@ -88,7 +88,7 @@ function base64ToUtf8(base64: string): string {
 }
 
 function githubAuthHeaders(cfg: GitHubSyncConfig, accept = 'application/vnd.github.v3+json'): HeadersInit {
-  return { Accept: accept, Authorization: `Bearer ${cfg.token}` };
+  return { Accept: accept, Authorization: `token ${cfg.token}` };
 }
 
 type GitHubContentMeta = {
@@ -232,8 +232,7 @@ export async function putFile(path: string, content: string, message: string): P
   const res = await fetch(url, {
     method: 'PUT',
     headers: {
-      Accept: 'application/vnd.github.v3+json',
-      Authorization: `Bearer ${cfg.token}`,
+      ...githubAuthHeaders(cfg),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -253,7 +252,7 @@ export async function listFiles(path: string): Promise<Array<{name: string; path
   if (!cfg) return null;
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}?ref=${encodeURIComponent(cfg.branch)}`;
   const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `Bearer ${cfg.token}` },
+    headers: githubAuthHeaders(cfg),
   });
   if (!res.ok) {
     if (res.status === 404) return []; // Папка еще не существует
@@ -287,8 +286,7 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
   const res = await fetch(url, {
     method: 'DELETE',
     headers: {
-      Accept: 'application/vnd.github.v3+json',
-      Authorization: `Bearer ${cfg.token}`,
+      ...githubAuthHeaders(cfg),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -304,15 +302,20 @@ export async function deleteFile(path: string, sha: string, message: string): Pr
 
 /** Проверка подключения: запрос к API репозитория. */
 export async function testConnection(): Promise<SyncResult> {
-  const cfg = getSyncConfig();
-  if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
-  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}`;
-  const res = await fetch(url, {
-    headers: { Accept: 'application/vnd.github.v3+json', Authorization: `Bearer ${cfg.token}` },
-  });
-  if (res.ok) return { ok: true };
-  const err = await res.json().catch(() => ({}));
-  return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
+  try {
+    const cfg = getSyncConfig();
+    if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
+    const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}`;
+    const res = await fetch(url, {
+      headers: githubAuthHeaders(cfg),
+    });
+    if (res.ok) return { ok: true };
+    const err = await res.json().catch(() => ({}));
+    return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: `Сеть или CORS: ${detail}` };
+  }
 }
 
 const DEBOUNCE_MS = 2500;

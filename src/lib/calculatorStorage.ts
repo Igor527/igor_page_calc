@@ -193,15 +193,21 @@ const PUBLISHED_JSON_URL = '/data/calculators.json';
  * После загрузки getPublishedCalculators() и getCalculatorBySlug() отдают данные из бандла.
  */
 export function loadPublishedBundle(): Promise<void> {
-  return fetch(PUBLISHED_JSON_URL)
-    .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-    .then((data: { version?: number; calculators?: SavedCalculator[] }) => {
-      const list = Array.isArray(data.calculators) ? data.calculators : [];
-      publishedBundle = list.filter((c) => c.status === 'published');
-    })
-    .catch(() => {
-      publishedBundle = null;
-    });
+  return import('./firebaseAuth').then(m => m.getFirebaseApp()).then((app) => {
+    if (app) {
+      return import('./githubSync').then(m => m.getCalculatorsJsonFromRepo()).then((json) => {
+        if (json) loadPublishedBundleFromContent(json);
+      });
+    }
+    return fetch(PUBLISHED_JSON_URL)
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data: { version?: number; calculators?: SavedCalculator[] }) => {
+        const list = Array.isArray(data.calculators) ? data.calculators : [];
+        publishedBundle = list.filter((c) => c.status === 'published');
+      });
+  }).catch(() => {
+    publishedBundle = null;
+  });
 }
 
 /** Подставить опубликованный список из строки (например, из репо по API). */

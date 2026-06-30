@@ -18,7 +18,12 @@ export function formatRepoFileError(path: string, reason: string): string {
 }
 
 export function formatGitHubApiError(status: number, apiMessage?: string): string {
-  if (status === 401 || status === 403) return GITHUB_TOKEN_INVALID;
+  if (status === 401) return GITHUB_TOKEN_INVALID;
+  if (status === 403) {
+    const detail = apiMessage?.trim();
+    if (detail) return `Превышен лимит или ошибка прав (403): ${detail}`;
+    return GITHUB_TOKEN_INVALID;
+  }
   if (status === 404) return 'Файл не найден в репозитории (404).';
   const detail = apiMessage?.trim();
   if (detail) return `Ошибка GitHub (${status}): ${detail}`;

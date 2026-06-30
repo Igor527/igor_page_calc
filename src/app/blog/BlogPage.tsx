@@ -117,6 +117,21 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
 let blogBundle: BlogPost[] | null = null;
 
 export function loadBlogBundle(): Promise<void> {
+  if (getFirebaseApp()) {
+    return import('@/lib/githubSync').then(m => m.getPostsFromRepo()).then((list) => {
+      if (list) {
+        blogBundle = list
+          .filter((p) => !(p as any).deleted)
+          .map((p) => ({
+            ...p,
+            tags: (p as any).tags ?? [],
+            coverImage: (p as any).coverImage ?? '',
+            polls: (p as any).polls ?? [],
+            todos: (p as any).todos ?? [],
+          })) as any as BlogPost[];
+      }
+    }).catch(() => { blogBundle = null; });
+  }
   return fetch('/data/posts.json', { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : Promise.reject()))
     .then((data: { posts?: BlogPost[] } | BlogPost[]) => {

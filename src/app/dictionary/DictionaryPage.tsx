@@ -61,6 +61,13 @@ export function setDictionaryFromBundle(data: { entries?: DictionaryEntry[]; pri
 
 /** Загрузить словарь из data/dictionary.json (статический файл сайта). */
 export async function loadDictionaryBundle(): Promise<boolean> {
+  if (getFirebaseApp()) {
+    const data = await getDictionaryFromRepo();
+    if (data) {
+      setDictionaryFromBundle(data as any);
+      return true;
+    }
+  }
   try {
     const res = await fetch('/data/dictionary.json');
     if (!res.ok) return false;
