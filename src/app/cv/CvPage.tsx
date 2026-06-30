@@ -9,6 +9,7 @@ import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { mistralChat } from '@/lib/dictionaryApi';
 import { getSyncConfig, getCvFromRepo, pushCv, schedulePush } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 
 const STORAGE_KEY = 'igor-cv-html';
 
@@ -225,16 +226,16 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   const handleChange = useCallback((html: string) => {
     setContent(html);
     saveCvContent(html);
-    if (getSyncConfig()) {
+    if (getSyncConfig() || getFirebaseApp()) {
       schedulePush('cv', () => pushCv(html));
     }
   }, []);
 
   const handleSave = useCallback(async () => {
     saveCvContent(content);
-    if (getSyncConfig()) {
+    if (getSyncConfig() || getFirebaseApp()) {
       const r = await pushCv(content);
-      setSaveMessage(r.ok ? 'Сохранено и выгружено в репо' : (r.error || 'Ошибка выгрузки'));
+      setSaveMessage(r.ok ? 'Сохранено и выгружено' : (r.error || 'Ошибка выгрузки'));
     } else {
       setSaveMessage('Сохранено');
     }

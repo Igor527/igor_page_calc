@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Gantt, ViewMode, type Task } from 'gantt-task-react';
 import { schedulePush, pushPlanner, getPlannerFromRepo, getSyncConfig } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 
 const STORAGE_KEY = 'igor-page-planner-tasks';
 const STORAGE_KEY_LABELS = 'igor-page-planner-labels';
@@ -279,7 +280,7 @@ const PlannerPage: React.FC = () => {
 
   // Любые изменения задач или меток — пушим в репо (удаление, метки, цвета, количество и т.д.)
   useEffect(() => {
-    if (!getSyncConfig()) return;
+    if (!getSyncConfig() && !getFirebaseApp()) return;
     schedulePush('planner', () => pushPlanner(tasks as any[], labelsList));
   }, [tasks, labelsList]);
 

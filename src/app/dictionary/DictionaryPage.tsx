@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { LANG_OPTIONS, detectLanguage, translate, TRANSLATION_SERVERS_INFO, testMistralAccess, normalizeLangCode } from '@/lib/dictionaryApi';
 import { schedulePush, pushDictionary, getDictionaryFromRepo, getSyncConfig } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 
 const STORAGE_KEY = 'igor-dictionary-entries';
 const PRIORITY_STORAGE_KEY = 'igor-dictionary-priority';
@@ -118,7 +119,7 @@ const DictionaryPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => 
     savePriorityLanguages(priorityLangs);
   }, [priorityLangs]);
   useEffect(() => {
-    if (getSyncConfig()) schedulePush('dictionary', () => pushDictionary(entries, priorityLangs));
+    if (getSyncConfig() || getFirebaseApp()) schedulePush('dictionary', () => pushDictionary(entries, priorityLangs));
   }, [entries, priorityLangs]);
 
   const entriesByLang = useMemo(() => {

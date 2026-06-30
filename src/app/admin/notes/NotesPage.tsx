@@ -9,6 +9,7 @@ import {
   pushNotesMerged,
   getSyncConfig,
 } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 import { toastError } from '@/lib/toast';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
@@ -990,7 +991,8 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
       justPushedRef.current = false;
       return;
     }
-    if (!getSyncConfig() || !pendingSyncRef.current) return;
+    if (!pendingSyncRef.current) return;
+    if (!getSyncConfig() && !getFirebaseApp()) return;
     setSyncStatus('pending');
     schedulePushWithDelay('notes', NOTES_PUSH_DELAY_MS, runPullMergePush);
   }, [notes, folders, runPullMergePush]);

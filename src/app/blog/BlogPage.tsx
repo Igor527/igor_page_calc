@@ -9,6 +9,7 @@ import {
   fetchPostsFromRepo,
   mergePosts,
 } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 import { ADMIN_LOGIN_PATH, ADMIN_SESSION_EXPIRED_TITLE } from '@/lib/syncAuthMessages';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
@@ -681,7 +682,8 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
       justPushedRef.current = false;
       return;
     }
-    if (!getSyncConfig() || modifiedPostIdsRef.current.size === 0) return;
+    if (modifiedPostIdsRef.current.size === 0) return;
+    if (!getSyncConfig() && !getFirebaseApp()) return;
     setSyncStatus('pending');
     schedulePushWithDelay('blog', BLOG_PUSH_DELAY_MS, runPullMergePush);
   }, [posts, runPullMergePush]);

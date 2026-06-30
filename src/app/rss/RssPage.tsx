@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import SetupWizard from '@/components/SetupWizard';
 import { fetchRssFeed, parseFeedXml, type RssEntry } from '@/lib/rssFetch';
 import { getRssListsFromRepo, pushRssLists, getSyncConfig, schedulePush } from '@/lib/githubSync';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
 
 const STORAGE_KEY = 'igor-rss-lists';
 
@@ -114,7 +115,7 @@ const RssPage: React.FC = () => {
   }, [lists]);
 
   useEffect(() => {
-    if (getSyncConfig()) schedulePush('rss', () => pushRssLists(lists));
+    if (getSyncConfig() || getFirebaseApp()) schedulePush('rss', () => pushRssLists(lists));
   }, [lists]);
 
   const addList = useCallback(() => {

@@ -24,9 +24,7 @@ export interface GitHubSyncConfig {
 }
 
 export function getSyncConfig(): GitHubSyncConfig | null {
-  if (getFirebaseApp()) {
-    return { owner: 'Firebase', repo: 'RealtimeDB', branch: 'live', token: 'active' };
-  }
+
   try {
     const raw = localStorage.getItem(CONFIG_KEY);
     if (!raw) return null;
