@@ -10,8 +10,11 @@ export interface SyncResult {
 function getDb() {
   const app = getFirebaseApp();
   if (!app) throw new Error('Firebase не инициализирован');
-  const url = import.meta.env.VITE_FIREBASE_DATABASE_URL;
-  return getDatabase(app, url || undefined);
+
+  const url = import.meta.env.VITE_FIREBASE_DATABASE_URL ||
+    "https://urban-planner-b6b13-default-rtdb.europe-west1.firebasedatabase.app";
+
+  return getDatabase(app, url);
 }
 
 function cleanUndefined<T>(obj: T): T {
