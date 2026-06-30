@@ -33,7 +33,9 @@ function isFirebaseConfigured(): boolean {
   return !!(
     getEnv('VITE_FIREBASE_API_KEY') &&
     getEnv('VITE_FIREBASE_AUTH_DOMAIN') &&
-    getEnv('VITE_FIREBASE_PROJECT_ID')
+    getEnv('VITE_FIREBASE_PROJECT_ID') &&
+    getEnv('VITE_FIREBASE_DATABASE_URL') // Добавили обязательную проверку URL базы данных
+  );
   );
 }
 
@@ -250,7 +252,7 @@ export async function handleGitHubRedirectResult(): Promise<{ ok: boolean; error
       const p = typeof window !== 'undefined' ? sessionStorage.getItem(REDIRECT_PROVIDER_KEY) : null;
       if (p === 'google') provider = 'google';
       else if (p === 'github') provider = 'github';
-    } catch {}
+    } catch { }
     return { ok: false, error: msg + hint, provider };
   }
 }
@@ -259,7 +261,7 @@ export async function handleGitHubRedirectResult(): Promise<{ ok: boolean; error
 export function setRedirectProvider(provider: 'google' | 'github'): void {
   try {
     if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(REDIRECT_PROVIDER_KEY, provider);
-  } catch {}
+  } catch { }
 }
 
 export async function signIn(email: string, password: string): Promise<{ ok: boolean; error?: string }> {

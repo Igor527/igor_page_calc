@@ -35,29 +35,29 @@ async function check() {
     const data = snap.val();
     console.log('✅ Данные в Firebase найдены!');
     console.log('---');
-    
+
     for (const [key, value] of Object.entries(data)) {
       let info = '';
       if (Array.isArray(value)) {
         info = `(Массив из ${value.length} элементов)`;
       } else if (typeof value === 'object' && value !== null) {
         if (key === 'notes' && value.notes) {
-           info = `(${value.notes.length} заметок, ${value.folders?.length || 0} папок)`;
+          info = `(${value.notes.length} заметок, ${value.folders?.length || 0} папок)`;
         } else if (key === 'dictionary' && value.entries) {
-           info = `(${value.entries.length} слов)`;
+          info = `(${value.entries.length} слов)`;
         } else if (key === 'planner' && value.tasks) {
-           info = `(${value.tasks.length} задач)`;
+          info = `(${value.tasks.length} задач)`;
         } else if (key === 'rssLists' && value.lists) {
-           info = `(${value.lists.length} списков)`;
+          info = `(${value.lists.length} списков)`;
         } else {
-           info = `(Объект, ключи: ${Object.keys(value).length})`;
+          info = `(Объект, ключи: ${Object.keys(value).length})`;
         }
       } else if (typeof value === 'string') {
         info = `(Строка, длина: ${value.length} симв.)`;
       }
       console.log(`- ${key}: ${info}`);
     }
-    
+
   } catch (err) {
     console.error('Ошибка доступа:', err.message);
   }
