@@ -276,7 +276,7 @@ function App() {
       const dict = await getDictionaryFromRepo();
       if (dict) {
         const { setDictionaryFromBundle } = await import('./app/dictionary/DictionaryPage');
-        setDictionaryFromBundle(dict);
+        setDictionaryFromBundle(dict as any);
       }
       const layouts = await getLayoutsFromRepo();
       if (layouts) setAllLayoutsFromBundle(layouts as Record<string, import('./lib/pageLayouts').PageSection[]>);
@@ -290,7 +290,7 @@ function App() {
       const rssData = await getRssListsFromRepo();
       if (rssData) {
         const { setRssListsFromBundle } = await import('./app/rss/RssPage');
-        setRssListsFromBundle(rssData);
+        setRssListsFromBundle(rssData as any);
       }
       ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));

@@ -1,18 +1,18 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { Excalidraw, THEME, type ExcalidrawImperativeAPI } from '@excalidraw/excalidraw';
+import { Excalidraw, THEME } from '@excalidraw/excalidraw';
 import '@excalidraw/excalidraw/index.css';
 import { appendSkeletons, embedSvgAsImage } from './excalidrawScene';
 
 export type ExcalidrawCanvasHandle = {
-  getApi: () => ExcalidrawImperativeAPI | null;
-  appendSkeletons: typeof appendSkeletons;
-  embedSvg: typeof embedSvgAsImage;
+  getApi: () => any | null;
+  appendSkeletons: (skeletons: any[]) => void;
+  embedSvg: (svg: string, name: string) => void;
   resetScene: () => void;
 };
 
 type Props = {
   canvasRef: React.MutableRefObject<ExcalidrawCanvasHandle | null>;
-  onApiReady?: (api: ExcalidrawImperativeAPI) => void;
+  onApiReady?: (api: any) => void;
   onChange?: (elements: any, appState: any, files: any) => void;
 };
 
@@ -22,7 +22,7 @@ function readSiteTheme(): 'light' | 'dark' {
 }
 
 const ExcalidrawCanvas = memo(function ExcalidrawCanvas({ canvasRef, onApiReady, onChange }: Props) {
-  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+  const apiRef = useRef<any | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(readSiteTheme);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ const ExcalidrawCanvas = memo(function ExcalidrawCanvas({ canvasRef, onApiReady,
   }, []);
 
   const bindApi = useCallback(
-    (api: ExcalidrawImperativeAPI) => {
+    (api: any) => {
       apiRef.current = api;
       canvasRef.current = {
         getApi: () => apiRef.current,

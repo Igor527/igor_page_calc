@@ -105,8 +105,9 @@ export function getFirebaseAuth(): Auth | null {
     databaseURL,
     measurementId: measurementId || undefined,
   });
-  auth = getAuth(app);
-  pendingRedirectResult = Promise.resolve().then(() => getRedirectResult(auth));
+  const authInstance = getAuth(app);
+  auth = authInstance;
+  pendingRedirectResult = Promise.resolve().then(() => getRedirectResult(authInstance));
   return auth;
 }
 

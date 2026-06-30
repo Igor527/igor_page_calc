@@ -4,8 +4,6 @@ import {
   restoreElements,
   restoreAppState,
   convertToExcalidrawElements,
-  type ExcalidrawImperativeAPI,
-  type ExcalidrawElementSkeleton,
 } from '@excalidraw/excalidraw';
 
 const SCENE_MARKERS = ['<!-- excalidraw-scene:', '<!-- tldraw-snapshot:'] as const;
@@ -49,7 +47,7 @@ export function parseScenePayload(encoded: string): {
   }
 }
 
-export async function buildSvgWithScene(api: ExcalidrawImperativeAPI): Promise<string> {
+export async function buildSvgWithScene(api: any): Promise<string> {
   const elements = api.getSceneElements();
   const appState = api.getAppState();
   const files = api.getFiles();
@@ -66,7 +64,7 @@ export async function buildSvgWithScene(api: ExcalidrawImperativeAPI): Promise<s
   return `${svgMarkup}\n<!-- excalidraw-scene: ${encoded} -->`;
 }
 
-export function sceneCenter(api: ExcalidrawImperativeAPI): { x: number; y: number } {
+export function sceneCenter(api: any): { x: number; y: number } {
   const appState = api.getAppState();
   const zoom = appState.zoom?.value ?? 1;
   const w = appState.width ?? 800;
@@ -77,7 +75,7 @@ export function sceneCenter(api: ExcalidrawImperativeAPI): { x: number; y: numbe
   };
 }
 
-export function appendSkeletons(api: ExcalidrawImperativeAPI, skeletons: ExcalidrawElementSkeleton[]) {
+export function appendSkeletons(api: any, skeletons: any[]) {
   const { x, y } = sceneCenter(api);
   const converted = convertToExcalidrawElements(
     skeletons.map((s, i) => ({
@@ -90,8 +88,8 @@ export function appendSkeletons(api: ExcalidrawImperativeAPI, skeletons: Excalid
   api.updateScene({ elements: [...api.getSceneElements(), ...converted] });
 }
 
-export function embedSvgAsImage(api: ExcalidrawImperativeAPI, svgContent: string, _name: string) {
-  const fileId = `file-${Date.now()}` as Parameters<ExcalidrawImperativeAPI['addFiles']>[0][0]['id'];
+export function embedSvgAsImage(api: any, svgContent: string, _name: string) {
+  const fileId = `file-${Date.now()}` as any;
   const dataURL = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgContent)))}`;
   const { x, y } = sceneCenter(api);
   api.addFiles([

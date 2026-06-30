@@ -12,7 +12,17 @@ import { recalculateValues } from '@/lib/engine';
 import { useCalcStore } from '@/lib/store';
 import type { Block } from '@/types/blocks';
 import parkingDemo from '@/data/parking_demo.json';
-import { generateCalculatorId, saveCalculator, loadCalculator, getEditorCalculatorList, downloadPublishedBundle, buildPublishedBundle, loadPublishedBundleFromContent, updateCalculatorStatus } from '@/lib/calculatorStorage';
+import { 
+  generateCalculatorId, 
+  saveCalculator, 
+  loadCalculator, 
+  getEditorCalculatorList, 
+  downloadPublishedBundle, 
+  buildPublishedBundle, 
+  loadPublishedBundleFromContent, 
+  updateCalculatorStatus,
+  getAllCalculatorsMinimal,
+} from '@/lib/calculatorStorage';
 import { pushCalculators, getCalculatorsJsonFromRepo, getSyncConfig } from '@/lib/githubSync';
 import { validateBlocks, validateImportedBlocks } from '@/lib/validation';
 import { toMatrixTableBlock } from '@/lib/tableData';
@@ -110,7 +120,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
     setListKey((k) => k + 1);
     setSaveMessage('Опубликован. Изменения автоматически отправляются в репо (если настроена синхронизация).');
     setTimeout(() => setSaveMessage(null), 5000);
-    pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2)).catch(() => {});
+    pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2), getAllCalculatorsMinimal()).catch(() => {});
   };
 
   const handleSaveDraft = () => {
@@ -526,7 +536,7 @@ const EditorPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false }) => {
             </button>
             <button
               type="button"
-              onClick={() => pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2)).catch(() => {})}
+              onClick={() => pushCalculators(JSON.stringify(buildPublishedBundle(), null, 2), getAllCalculatorsMinimal()).catch(() => {})}
               title="Сохранить опубликованный список калькуляторов в репо"
               style={{ display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px', fontSize: 13, border: '1px solid var(--pico-border-color)', borderRadius: 4, background: 'var(--pico-card-background-color)', color: 'var(--pico-color)', cursor: 'pointer' }}
             >

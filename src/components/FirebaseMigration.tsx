@@ -96,7 +96,7 @@ export const FirebaseMigration: React.FC = () => {
       if (!app) throw new Error('Firebase не инициализирован');
       
       // Проверка авторизации
-      const auth = getDatabase ? (await import('firebase/auth')).getAuth(app) : null;
+      const auth = (await import('firebase/auth')).getAuth(app);
       const user = auth ? auth.currentUser : null;
       addLog(`Пользователь в Firebase: ${user ? `${user.email} (UID: ${user.uid})` : 'НЕ АВТОРИЗОВАН (гость)'}`);
 

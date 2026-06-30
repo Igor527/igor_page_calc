@@ -280,7 +280,7 @@ const WeatherPage: React.FC = () => {
                       borderRadius: 8,
                     }}
                     labelStyle={{ color: 'var(--pico-color)' }}
-                    formatter={(value: number) => [value != null ? `${value} °C` : '—', 'Температура']}
+                    formatter={(value: any) => [value != null ? `${value} °C` : '—', 'Температура']}
                   />
                   <Line
                     type="monotone"
@@ -316,7 +316,7 @@ const WeatherPage: React.FC = () => {
                       border: '1px solid var(--pico-border-color)',
                       borderRadius: 8,
                     }}
-                    formatter={(value: number) => [value != null ? value : '—', 'Давление']}
+                    formatter={(value: any) => [value != null ? value : '—', 'Давление']}
                   />
                   <Line
                     type="monotone"
@@ -352,7 +352,7 @@ const WeatherPage: React.FC = () => {
                       border: '1px solid var(--pico-border-color)',
                       borderRadius: 8,
                     }}
-                    formatter={(value: number) => [value != null ? `${value} µg/m³` : '—', '']}
+                    formatter={(value: any) => [value != null ? `${value} µg/m³` : '—', '']}
                   />
                   <Legend />
                   {data.some((r) => r.pm1 != null) && (

@@ -93,7 +93,7 @@ const FONT_SIZES = [
 
 /* Panel for image position/zoom when image is selected (like cover editor). cvMode adds float, rotate, grayscale. */
 const ImageFocusBubbleMenu: React.FC<{
-  editor: ReturnType<typeof useEditor> extends React.MutableRefObject<infer T> ? T : { chain: () => unknown; getAttributes: (name: string) => Record<string, unknown> };
+  editor: Editor | null;
   onClose: () => void;
   cvMode?: boolean;
 }> = ({ editor, onClose, cvMode }) => {
@@ -253,7 +253,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
-      ImageResizeWithFocus.configure({ inline: false, allowBase64: true }),
+      (ImageResizeWithFocus as any).configure({ inline: false, allowBase64: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Underline,
       Highlight.configure({ multicolor: false }),
@@ -304,7 +304,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     if (suppressUpdate.current) { suppressUpdate.current = false; return; }
     const next = value || '';
     if (editor.getHTML() !== next) {
-      editor.commands.setContent(next, false);
+      editor.commands.setContent(next, { emitUpdate: false });
     }
   }, [value, editor]);
 
@@ -312,7 +312,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   useEffect(() => {
     if (!editor) return;
     const handleInsertImage = (e: CustomEvent<string>) => {
-      editor.chain().focus().setImage({ src: e.detail }).run();
+      (editor.chain().focus() as any).setImage({ src: e.detail }).run();
     };
     window.addEventListener('insert-image-to-editor', handleInsertImage as EventListener);
     return () => window.removeEventListener('insert-image-to-editor', handleInsertImage as EventListener);
@@ -332,7 +332,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     if (!editor) return;
     const dataUrl = await fileToDataUrl(file);
     const resized = await resizeImage(dataUrl);
-    editor.chain().focus().setImage({ src: resized }).run();
+    (editor.chain().focus() as any).setImage({ src: resized }).run();
   }, [editor]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -356,7 +356,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   const insertImageFromUrl = useCallback(() => {
     if (!editor) return;
     const url = window.prompt('URL изображения:');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+    if (url) (editor.chain().focus() as any).setImage({ src: url }).run();
   }, [editor]);
 
   // Apply position/zoom styles to images with data-pos-x (in editor DOM)

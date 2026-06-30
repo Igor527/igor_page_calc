@@ -648,7 +648,7 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
       return { ok: false, error: remoteR.error };
     }
     setSyncStatus('sending');
-    const merged = mergePosts(remoteR.posts, posts) as BlogPost[];
+    const merged = mergePosts(remoteR.posts as any[], posts as any[]) as any as BlogPost[];
     const ids = new Set(modifiedPostIdsRef.current);
     modifiedPostIdsRef.current.clear();
     const result = await pushPosts(merged, ids);
@@ -698,7 +698,7 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
     setSyncError(null);
     const remoteR = await fetchPostsFromRepo();
     if (remoteR.ok) {
-      const merged = mergePosts(remoteR.posts, posts) as BlogPost[];
+      const merged = mergePosts(remoteR.posts as any[], posts as any[]) as any as BlogPost[];
       const normalized = merged.map((p) => ({
         ...p,
         tags: p.tags ?? [],

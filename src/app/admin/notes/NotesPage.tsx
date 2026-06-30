@@ -738,7 +738,7 @@ const NoteCard: React.FC<{
 
   return (
     <div
-      ref={cardRef}
+      ref={cardRef as any}
       id={`note-${note.id}`}
       className={cardClass}
       style={{
@@ -960,10 +960,10 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     }
     setSyncStatus('sending');
     const merged = mergeNotes(
-      remoteR.notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
-      remoteR.folders as Array<{ id?: string; [k: string]: unknown }>,
-      notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
-      folders as Array<{ id?: string; [k: string]: unknown }>
+      remoteR.notes as any[],
+      remoteR.folders as any[],
+      notes as any[],
+      folders as any[]
     );
     const result = await pushNotesMerged(merged.notes, merged.folders);
     if (result.ok) {
@@ -1008,10 +1008,10 @@ const NotesPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => {
     const remoteR = await fetchNotesFromRepo();
     if (remoteR.ok) {
       const merged = mergeNotes(
-        remoteR.notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
-        remoteR.folders as Array<{ id?: string; [k: string]: unknown }>,
-        notes as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>,
-        folders as Array<{ id?: string; [k: string]: unknown }>
+        remoteR.notes as any[],
+        remoteR.folders as any[],
+        notes as any[],
+        folders as any[]
       );
       const normalized = (merged.notes as Note[]).map(normalizeNote);
       justPushedRef.current = true;

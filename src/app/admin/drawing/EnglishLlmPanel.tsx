@@ -149,7 +149,7 @@ export const EnglishLlmPanel: React.FC<Props> = ({ canvasRef }) => {
     const api = canvas.getApi();
     if (!api) return '';
     
-    const elements = api.getSceneElements().filter(el => el.isSelected);
+    const elements = (api.getSceneElements() as any[]).filter((el: any) => el.isSelected);
     if (elements.length === 0) return '';
     
     const sorted = [...elements].sort((a, b) => {

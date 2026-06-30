@@ -253,7 +253,7 @@ const RssPage: React.FC = () => {
     try {
       const data = await getRssListsFromRepo();
       if (data?.lists && data.lists.length >= 0) {
-        setRssListsFromBundle(data);
+        setRssListsFromBundle(data as any);
         setLists(data.lists as RssList[]);
       }
     } catch (e) {

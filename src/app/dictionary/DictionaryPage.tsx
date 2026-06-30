@@ -75,7 +75,7 @@ export async function loadDictionaryBundle(): Promise<boolean> {
 export async function loadDictionaryFromRepo(): Promise<{ ok: boolean; entries?: DictionaryEntry[]; priorityLangs?: string[] }> {
   const data = await getDictionaryFromRepo();
   if (!data) return { ok: false };
-  setDictionaryFromBundle(data);
+  setDictionaryFromBundle(data as any);
   return { ok: true, entries: data.entries as DictionaryEntry[], priorityLangs: data.priorityLangs };
 }
 

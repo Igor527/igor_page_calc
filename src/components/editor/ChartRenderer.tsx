@@ -74,7 +74,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ block, dataSource }) => {
   }
 
   const chartType = block.chartType || 'line';
-  const height = block.options?.height || 300;
+  const height = (block as any).options?.height || 300;
 
   // Рендеринг в зависимости от типа графика
   switch (chartType.toLowerCase()) {
@@ -129,7 +129,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ block, dataSource }) => {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
                 outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"

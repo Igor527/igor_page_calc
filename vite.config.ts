@@ -81,11 +81,8 @@ export default defineConfig(({ mode }) => {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('@excalidraw')) {
+            if (id.includes('@excalidraw') || id.includes('mermaid') || id.includes('dagre') || id.includes('khroma') || id.includes('stylis')) {
               return 'vendor-excalidraw';
-            }
-            if (id.includes('mermaid') || id.includes('dagre') || id.includes('khroma') || id.includes('stylis')) {
-              return 'vendor-mermaid';
             }
             if (id.includes('@tiptap') || id.includes('prosemirror')) {
               return 'vendor-tiptap';

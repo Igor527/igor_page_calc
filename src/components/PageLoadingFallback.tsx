@@ -8,7 +8,7 @@ const skeletonBase: React.CSSProperties = {
   animation: 'page-loading-pulse 1.2s ease-in-out infinite',
 };
 
-function Bar({ width, height = 14, style }: { width: string | number; height?: number; style?: React.CSSProperties }) {
+function Bar({ width, height = 14, style }: { width: string | number; height?: string | number; style?: React.CSSProperties }) {
   return <div style={{ ...skeletonBase, width, height, ...style }} aria-hidden />;
 }
 

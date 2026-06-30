@@ -8,7 +8,7 @@ import {
   parseScenePayload,
   buildSvgWithScene,
 } from './excalidrawScene';
-import type { ExcalidrawElementSkeleton } from '@excalidraw/excalidraw/element/types';
+type ExcalidrawElementSkeleton = any;
 import {
   getBoardsMetadata,
   getBoardScene,

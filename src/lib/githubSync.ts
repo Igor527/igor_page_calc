@@ -12,6 +12,7 @@ import {
 } from './syncAuthMessages';
 import { getFirebaseApp } from './firebaseAuth';
 import * as fb from './firebaseData';
+import type { CalculatorStatus } from './calculatorStorage';
 
 const CONFIG_KEY = 'igor-github-sync-config';
 
@@ -31,7 +32,7 @@ export function getSyncConfig(): GitHubSyncConfig | null {
     if (!raw) return null;
     const c = JSON.parse(raw) as GitHubSyncConfig;
     if (!c.owner || !c.repo || !c.token) return null;
-    return { branch: c.branch || 'main', ...c };
+    return { ...c, branch: c.branch || 'main' };
   } catch {
     return null;
   }
@@ -369,7 +370,7 @@ function endSyncOperation(): void {
   emitSyncBadge();
 }
 
-async function runScheduledPush(push: () => void | Promise<void>): Promise<void> {
+async function runScheduledPush(push: () => any | Promise<any>): Promise<void> {
   beginSyncOperation();
   try {
     const result = await Promise.resolve(push());
@@ -387,7 +388,7 @@ async function runScheduledPush(push: () => void | Promise<void>): Promise<void>
 }
 
 /** Вызвать push через DEBOUNCE_MS; повторный вызов с тем же key сбрасывает таймер. */
-export function schedulePush(key: string, push: () => void | Promise<void>): void {
+export function schedulePush(key: string, push: () => any | Promise<any>): void {
   if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
   emitSyncBadge();
   debounceTimers[key] = setTimeout(() => {
@@ -410,7 +411,7 @@ export function cancelScheduledPush(key: string): void {
 export function schedulePushWithDelay(
   key: string,
   delayMs: number,
-  push: () => void | Promise<void>
+  push: () => any | Promise<any>
 ): void {
   if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
   emitSyncBadge();
@@ -465,7 +466,7 @@ export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<S
   if (getFirebaseApp()) {
     beginSyncOperation();
     const res = await fb.pushNotesToFirebase(notes, folders);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -636,7 +637,7 @@ export async function pushCv(html: string): Promise<SyncResult> {
   if (getFirebaseApp()) {
     beginSyncOperation();
     const res = await fb.pushCvToFirebase(html);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -677,7 +678,7 @@ export async function pushPosts(
       ids.has(String(p.id ?? '')) ? { ...p, updatedAt: now } : p
     );
     const res = await fb.pushPostsToFirebase(postsWithPushTime);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -721,7 +722,7 @@ export async function pushDictionary(entries: unknown[], priorityLangs: string[]
   if (getFirebaseApp()) {
     beginSyncOperation();
     const res = await fb.pushDictionaryToFirebase(entries, priorityLangs);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -782,7 +783,7 @@ export async function pushCalculators(bundleJson: string, allLocalStatuses: Arra
     const remoteJson = await fb.getCalculatorsJsonFromFirebase();
     const merged = mergeCalculators(remoteJson, bundleJson, allLocalStatuses);
     const res = await fb.pushCalculatorsToFirebase(merged);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -817,7 +818,7 @@ export async function pushLayouts(layouts: Record<string, unknown[]>): Promise<S
   if (getFirebaseApp()) {
     beginSyncOperation();
     const res = await fb.pushLayoutsToFirebase(layouts);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -848,7 +849,7 @@ export async function pushPlanner(
     beginSyncOperation();
     const serialized = serializePlannerTasks(tasks);
     const res = await fb.pushPlannerToFirebase(serialized, labels ?? []);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }
@@ -878,7 +879,7 @@ export async function pushRssLists(lists: unknown[]): Promise<SyncResult> {
   if (getFirebaseApp()) {
     beginSyncOperation();
     const res = await fb.pushRssListsToFirebase(lists);
-    setSyncBadgeResult(res.ok ? 'ok' : 'error');
+    setSyncBadgeResult(res.ok, res.error);
     endSyncOperation();
     return res;
   }

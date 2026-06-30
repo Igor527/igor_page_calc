@@ -231,11 +231,11 @@ const PlannerPage: React.FC = () => {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         const raw = data?.tasks;
-        const parsed: PlannerTask[] = Array.isArray(raw) ? raw.map((t: { start: number; end: number; [k: string]: unknown }) => ({
+        const parsed: PlannerTask[] = Array.isArray(raw) ? raw.map((t: any) => ({
           ...t,
           start: new Date(typeof t.start === 'number' ? t.start : t.start),
           end: new Date(typeof t.end === 'number' ? t.end : t.end),
-        })) : [];
+        })) as any as PlannerTask[] : [];
         if (parsed.length > 0) setTasks(parsed);
         const rawLabels = Array.isArray(data?.labels) ? data.labels : [];
         const parsedLabels: LabelWithColor[] = rawLabels
@@ -280,7 +280,7 @@ const PlannerPage: React.FC = () => {
   // Любые изменения задач или меток — пушим в репо (удаление, метки, цвета, количество и т.д.)
   useEffect(() => {
     if (!getSyncConfig()) return;
-    schedulePush('planner', () => pushPlanner(tasks, labelsList));
+    schedulePush('planner', () => pushPlanner(tasks as any[], labelsList));
   }, [tasks, labelsList]);
 
   const handleDateChange = useCallback((task: Task) => {
@@ -481,11 +481,11 @@ const PlannerPage: React.FC = () => {
       const raw = await getPlannerFromRepo();
       if (raw && (raw.tasks?.length > 0 || (raw.labels?.length ?? 0) > 0)) {
         applyPlannerFromRepoData(raw);
-        const parsed: PlannerTask[] = (raw.tasks ?? []).map((t) => ({
+        const parsed: PlannerTask[] = (raw.tasks ?? []).map((t: any) => ({
           ...t,
           start: new Date(t.start),
           end: new Date(t.end),
-        }));
+        })) as any as PlannerTask[];
         setTasks(parsed);
         setLabelsList(raw.labels ?? []);
       } else {
@@ -506,7 +506,7 @@ const PlannerPage: React.FC = () => {
     setPushLoading(true);
     setPushStatus('Загрузка в репо…');
     try {
-      const r = await pushPlanner(tasks, labelsList);
+      const r = await pushPlanner(tasks as any[], labelsList);
       if (r.ok) {
         const now = Date.now();
         setLastSyncedAt(now);

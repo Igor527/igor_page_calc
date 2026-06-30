@@ -55,7 +55,7 @@ const useClickOutside = (ref: React.RefObject<HTMLElement>, handler: () => void)
 };
 
 function replaceBlockIdRefs<T extends Record<string, any>>(obj: T, oldId: string, newId: string): T {
-  const next = { ...obj };
+  const next = { ...obj } as any;
   if ('then_id' in next && next.then_id === oldId) next.then_id = newId;
   if ('else_id' in next && next.else_id === oldId) next.else_id = newId;
   if ('sourceId' in next && next.sourceId === oldId) next.sourceId = newId;
@@ -70,7 +70,7 @@ function replaceBlockIdRefs<T extends Record<string, any>>(obj: T, oldId: string
     );
   if ('formula' in next && typeof next.formula === 'string')
     next.formula = next.formula.replace(new RegExp('\\b' + oldId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), newId);
-  return next;
+  return next as T;
 }
 
 const blockTypeIcons: Record<string, string> = {
@@ -104,7 +104,7 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
 
   useClickOutside(autocompleteRef, () => setShowAutocomplete(false));
 
-  function handleChange<K extends keyof Block>(key: K, value: any) {
+  function handleChange(key: string, value: any) {
     if (!block) return;
     const updated = blocks.map((b) => b.id === block.id ? { ...b, [key]: value } : b);
     setBlocks(updated);
@@ -230,16 +230,6 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
                 />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2 p-2 rounded-lg bg-blue-500 bg-opacity-5 border border-blue-500 border-opacity-20 mt-1">
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" checked={!!block.lockColumn} onChange={e => handleChange('lockColumn', e.target.checked)} className="w-auto m-0" />
-                <span className="text-[10px] font-bold group-hover:text-blue-500 transition-colors">Фикс колонки {block.lockColumn ? '🔒' : '🔓'}</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input type="checkbox" checked={!!block.lockValue} onChange={e => handleChange('lockValue', e.target.checked)} className="w-auto m-0" />
-                <span className="text-[10px] font-bold group-hover:text-blue-500 transition-colors">Фикс знач {block.lockValue ? '🔒' : '🔓'}</span>
-              </label>
-            </div>
           </PropertyCard>
         )}
 
@@ -339,6 +329,16 @@ const PropertyEditor: React.FC<PropertyEditorProps> = ({ selectedId, onSelect })
                       }}
                       className="w-full p-2 text-xs rounded border border-[var(--pico-border-color)] bg-[var(--pico-form-element-background-color)]"
                    />
+                 </div>
+                 <div className="grid grid-cols-2 gap-2 p-2 rounded-lg bg-blue-500 bg-opacity-5 border border-blue-500 border-opacity-20 mt-1">
+                   <label className="flex items-center gap-2 cursor-pointer group">
+                     <input type="checkbox" checked={!!(block as any).lockColumn} onChange={e => handleChange('lockColumn', e.target.checked)} className="w-auto m-0" />
+                     <span className="text-[10px] font-bold group-hover:text-blue-500 transition-colors">Фикс колонки {(block as any).lockColumn ? '🔒' : '🔓'}</span>
+                   </label>
+                   <label className="flex items-center gap-2 cursor-pointer group">
+                     <input type="checkbox" checked={!!(block as any).lockValue} onChange={e => handleChange('lockValue', e.target.checked)} className="w-auto m-0" />
+                     <span className="text-[10px] font-bold group-hover:text-blue-500 transition-colors">Фикс знач {(block as any).lockValue ? '🔒' : '🔓'}</span>
+                   </label>
                  </div>
                </div>
              )}
