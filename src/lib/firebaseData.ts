@@ -40,7 +40,8 @@ export async function getNotesFromFirebase(): Promise<{ notes: unknown[]; folder
     const snap = await get(ref(getDb(), 'data/notes'));
     if (!snap.exists()) return null;
     return snap.val() as { notes: unknown[]; folders: unknown[] };
-  } catch {
+  } catch (e) {
+    console.error('Firebase getNotes error:', e);
     return null;
   }
 }
@@ -60,7 +61,8 @@ export async function getPostsFromFirebase(): Promise<unknown[] | null> {
     const snap = await get(ref(getDb(), 'data/posts'));
     if (!snap.exists()) return null;
     return snap.val() as unknown[];
-  } catch {
+  } catch (e) {
+    console.error('Firebase getPosts error:', e);
     return null;
   }
 }
@@ -80,7 +82,8 @@ export async function getDictionaryFromFirebase(): Promise<{ entries: unknown[];
     const snap = await get(ref(getDb(), 'data/dictionary'));
     if (!snap.exists()) return null;
     return snap.val() as { entries: unknown[]; priorityLangs: string[] };
-  } catch {
+  } catch (e) {
+    console.error('Firebase getDictionary error:', e);
     return null;
   }
 }
@@ -100,7 +103,8 @@ export async function getLayoutsFromFirebase(): Promise<Record<string, unknown[]
     const snap = await get(ref(getDb(), 'data/layouts'));
     if (!snap.exists()) return null;
     return snap.val() as Record<string, unknown[]>;
-  } catch {
+  } catch (e) {
+    console.error('Firebase getLayouts error:', e);
     return null;
   }
 }
@@ -120,7 +124,8 @@ export async function getPlannerFromFirebase(): Promise<PlannerRepoData | null> 
     const snap = await get(ref(getDb(), 'data/planner'));
     if (!snap.exists()) return null;
     return snap.val() as PlannerRepoData;
-  } catch {
+  } catch (e) {
+    console.error('Firebase getPlanner error:', e);
     return null;
   }
 }
@@ -141,7 +146,8 @@ export async function getCalculatorsJsonFromFirebase(): Promise<string | null> {
     if (!snap.exists()) return null;
     const data = snap.val();
     return typeof data === 'string' ? data : JSON.stringify(data);
-  } catch {
+  } catch (e) {
+    console.error('Firebase getCalculators error:', e);
     return null;
   }
 }
@@ -162,7 +168,8 @@ export async function getCvFromFirebase(): Promise<string | null> {
     const snap = await get(ref(getDb(), 'data/cv'));
     if (!snap.exists()) return null;
     return snap.val() as string;
-  } catch {
+  } catch (e) {
+    console.error('Firebase getCv error:', e);
     return null;
   }
 }
@@ -182,7 +189,8 @@ export async function getRssListsFromFirebase(): Promise<{ lists: unknown[] } | 
     const snap = await get(ref(getDb(), 'data/rssLists'));
     if (!snap.exists()) return null;
     return snap.val() as { lists: unknown[] };
-  } catch {
+  } catch (e) {
+    console.error('Firebase getRss error:', e);
     return null;
   }
 }
@@ -208,7 +216,8 @@ export async function getBoardsMetadata(): Promise<Record<string, BoardMetadata>
     const snap = await get(ref(getDb(), 'data/boardsMetadata'));
     if (!snap.exists()) return null;
     return snap.val() as Record<string, BoardMetadata>;
-  } catch {
+  } catch (e) {
+    console.error('Firebase getBoardsMetadata error:', e);
     return null;
   }
 }
@@ -218,7 +227,8 @@ export async function getBoardScene(boardId: string): Promise<any | null> {
     const snap = await get(ref(getDb(), `data/boards/${boardId}/scene`));
     if (!snap.exists()) return null;
     return snap.val();
-  } catch {
+  } catch (e) {
+    console.error('Firebase getBoardScene error:', e);
     return null;
   }
 }

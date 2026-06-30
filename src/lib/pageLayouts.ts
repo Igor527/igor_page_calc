@@ -99,15 +99,10 @@ export function getDefaults(pageId: string): PageSection[] {
           title: 'Добро пожаловать!',
           subtitle: 'Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе.',
         }),
-        sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor' }),
-        sec('w3', 'link', { linkLabel: 'Планировщик (Гантт)', linkUrl: '/planner', adminOnly: true, showForGuest: true }),
         sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
         sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
-        sec('w6rss', 'link', { linkLabel: 'RSS подписки', linkUrl: '/rss', adminOnly: true }),
-        sec('w6a', 'link', { linkLabel: 'Словарь / Перевод', linkUrl: '/dictionary', adminOnly: true }),
-        sec('w7', 'link', { linkLabel: 'Заметки (админ)', linkUrl: '/admin/notes', adminOnly: true }),
         sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv' }),
-        sec('w9', 'link', { linkLabel: 'Метеостанция', linkUrl: '/weather', adminOnly: true, showForGuest: true }),
+        sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor', adminOnly: true }),
       ];
     case 'calculators':
       return [

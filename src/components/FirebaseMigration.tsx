@@ -26,29 +26,29 @@ export const FirebaseMigration: React.FC = () => {
       const backup: any = {};
       
       addLog('Скачивание заметок...');
-      backup.notes = await getNotesFromRepo();
+      backup.notes = await getNotesFromRepo(true);
       
       addLog('Скачивание постов блога...');
-      backup.posts = await getPostsFromRepo();
+      backup.posts = await getPostsFromRepo(true);
       
       addLog('Скачивание словаря...');
-      backup.dictionary = await getDictionaryFromRepo();
+      backup.dictionary = await getDictionaryFromRepo(true);
       
       addLog('Скачивание Layouts...');
-      backup.layouts = await getLayoutsFromRepo();
+      backup.layouts = await getLayoutsFromRepo(true);
       
       addLog('Скачивание Planner...');
-      backup.planner = await getPlannerFromRepo();
+      backup.planner = await getPlannerFromRepo(true);
       
       addLog('Скачивание Calculators...');
-      const calcsStr = await getCalculatorsJsonFromRepo();
+      const calcsStr = await getCalculatorsJsonFromRepo(true);
       backup.calculators = calcsStr ? JSON.parse(calcsStr) : null;
       
       addLog('Скачивание CV...');
-      backup.cv = await getCvFromRepo();
+      backup.cv = await getCvFromRepo(true);
       
       addLog('Скачивание RSS...');
-      backup.rss = await getRssListsFromRepo();
+      backup.rss = await getRssListsFromRepo(true);
       
       addLog('Формирование файла...');
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
@@ -102,61 +102,61 @@ export const FirebaseMigration: React.FC = () => {
 
       addLog('Проверка подключения к Firebase (тестовое чтение)...');
       const db = getDatabase(app, dbUrl || undefined);
-      const testRef = ref(db, 'data');
+      const testRef = ref(db, 'data/posts');
       await withTimeout(get(testRef), 5000);
       addLog('✅ Подключение успешно установлено!');
 
       addLog('Загрузка заметок с GitHub...');
-      const notesData = await getNotesFromRepo();
+      const notesData = await getNotesFromRepo(true);
       if (notesData) {
         const res = await withTimeout(pushNotesToFirebase(notesData.notes, notesData.folders));
         addLog(res.ok ? '✅ Заметки перенесены' : `❌ Ошибка заметок: ${res.error}`);
       }
 
       addLog('Загрузка постов блога...');
-      const posts = await getPostsFromRepo();
+      const posts = await getPostsFromRepo(true);
       if (posts) {
         const res = await withTimeout(pushPostsToFirebase(posts));
         addLog(res.ok ? '✅ Посты перенесены' : `❌ Ошибка постов: ${res.error}`);
       }
 
       addLog('Загрузка словаря...');
-      const dict = await getDictionaryFromRepo();
+      const dict = await getDictionaryFromRepo(true);
       if (dict) {
         const res = await withTimeout(pushDictionaryToFirebase(dict.entries, dict.priorityLangs));
         addLog(res.ok ? '✅ Словарь перенесен' : `❌ Ошибка словаря: ${res.error}`);
       }
 
       addLog('Загрузка Layouts...');
-      const layouts = await getLayoutsFromRepo();
+      const layouts = await getLayoutsFromRepo(true);
       if (layouts) {
         const res = await withTimeout(pushLayoutsToFirebase(layouts));
         addLog(res.ok ? '✅ Layouts перенесены' : `❌ Ошибка Layouts: ${res.error}`);
       }
 
       addLog('Загрузка Planner...');
-      const planner = await getPlannerFromRepo();
+      const planner = await getPlannerFromRepo(true);
       if (planner) {
         const res = await withTimeout(pushPlannerToFirebase(planner.tasks, planner.labels || []));
         addLog(res.ok ? '✅ Planner перенесен' : `❌ Ошибка Planner: ${res.error}`);
       }
 
       addLog('Загрузка Calculators...');
-      const calcs = await getCalculatorsJsonFromRepo();
+      const calcs = await getCalculatorsJsonFromRepo(true);
       if (calcs) {
         const res = await withTimeout(pushCalculatorsToFirebase(calcs));
         addLog(res.ok ? '✅ Calculators перенесены' : `❌ Ошибка Calculators: ${res.error}`);
       }
 
       addLog('Загрузка CV...');
-      const cv = await getCvFromRepo();
+      const cv = await getCvFromRepo(true);
       if (cv) {
         const res = await withTimeout(pushCvToFirebase(cv));
         addLog(res.ok ? '✅ CV перенесено' : `❌ Ошибка CV: ${res.error}`);
       }
 
       addLog('Загрузка RSS...');
-      const rss = await getRssListsFromRepo();
+      const rss = await getRssListsFromRepo(true);
       if (rss) {
         const res = await withTimeout(pushRssListsToFirebase(rss.lists));
         addLog(res.ok ? '✅ RSS перенесен' : `❌ Ошибка RSS: ${res.error}`);

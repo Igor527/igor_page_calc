@@ -484,11 +484,11 @@ export async function pushNotes(notes: unknown[], folders: unknown[]): Promise<S
 type BlogPostRepo = { id?: string; updatedAt?: number; deleted?: boolean; [k: string]: unknown };
 
 /** Посты из репо (public/data/posts.json) с текстом ошибки. */
-export async function fetchPostsFromRepo(): Promise<
+export async function fetchPostsFromRepo(ignoreFirebase = false): Promise<
   | { ok: true; posts: BlogPostRepo[] }
   | { ok: false; error: string }
 > {
-  if (getFirebaseApp()) {
+  if (getFirebaseApp() && !ignoreFirebase) {
     const res = await fb.getPostsFromFirebase();
     if (res) return { ok: true, posts: res as BlogPostRepo[] };
     return { ok: false, error: 'Посты в Firebase не найдены' };
@@ -506,8 +506,8 @@ export async function fetchPostsFromRepo(): Promise<
 }
 
 /** Посты из репо (public/data/posts.json). null если файла нет или ошибка. */
-export async function getPostsFromRepo(): Promise<BlogPostRepo[] | null> {
-  if (getFirebaseApp()) {
+export async function getPostsFromRepo(ignoreFirebase = false): Promise<BlogPostRepo[] | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     const res = await fb.getPostsFromFirebase();
     return res ? (res as BlogPostRepo[]) : null;
   }
@@ -559,8 +559,8 @@ export async function fetchNotesFromRepo(): Promise<
 }
 
 /** Заметки и папки из репо (notes.json). */
-export async function getNotesFromRepo(): Promise<{ notes: unknown[]; folders: unknown[] } | null> {
-  if (getFirebaseApp()) {
+export async function getNotesFromRepo(ignoreFirebase = false): Promise<{ notes: unknown[]; folders: unknown[] } | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getNotesFromFirebase();
   }
   const r = await fetchNotesFromRepo();
@@ -568,8 +568,8 @@ export async function getNotesFromRepo(): Promise<{ notes: unknown[]; folders: u
 }
 
 /** Словарь из репо (dictionary.json). */
-export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; priorityLangs: string[] } | null> {
-  if (getFirebaseApp()) {
+export async function getDictionaryFromRepo(ignoreFirebase = false): Promise<{ entries: unknown[]; priorityLangs: string[] } | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getDictionaryFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('dictionary.json'));
@@ -582,8 +582,8 @@ export async function getDictionaryFromRepo(): Promise<{ entries: unknown[]; pri
 }
 
 /** Порядок окон из репо (layouts.json). */
-export async function getLayoutsFromRepo(): Promise<Record<string, unknown[]> | null> {
-  if (getFirebaseApp()) {
+export async function getLayoutsFromRepo(ignoreFirebase = false): Promise<Record<string, unknown[]> | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getLayoutsFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('layouts.json'));
@@ -598,8 +598,8 @@ export type PlannerRepoData = {
   labels?: Array<{ name: string; color?: string }>;
 };
 
-export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
-  if (getFirebaseApp()) {
+export async function getPlannerFromRepo(ignoreFirebase = false): Promise<PlannerRepoData | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getPlannerFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('planner.json'));
@@ -613,8 +613,8 @@ export async function getPlannerFromRepo(): Promise<PlannerRepoData | null> {
 }
 
 /** Содержимое calculators.json из репо (для подстановки в published bundle). */
-export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
-  if (getFirebaseApp()) {
+export async function getCalculatorsJsonFromRepo(ignoreFirebase = false): Promise<string | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getCalculatorsJsonFromFirebase();
   }
   const file = await getFile(dataPath('calculators.json'));
@@ -622,8 +622,8 @@ export async function getCalculatorsJsonFromRepo(): Promise<string | null> {
 }
 
 /** CV (резюме) из репо: public/data/cv.json с полем html. */
-export async function getCvFromRepo(): Promise<string | null> {
-  if (getFirebaseApp()) {
+export async function getCvFromRepo(ignoreFirebase = false): Promise<string | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getCvFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('cv.json'));
@@ -865,8 +865,8 @@ export async function pushPlanner(
 }
 
 /** Списки RSS из репо (rss-lists.json). */
-export async function getRssListsFromRepo(): Promise<{ lists: unknown[] } | null> {
-  if (getFirebaseApp()) {
+export async function getRssListsFromRepo(ignoreFirebase = false): Promise<{ lists: unknown[] } | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getRssListsFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('rss-lists.json'));

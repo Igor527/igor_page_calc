@@ -60,14 +60,8 @@ export const SiteHeader: React.FC<{
         { href: '/admin/drawing', label: 'Рисование' },
       ];
     }
-    if (isLimitedGuest) {
-      return [
-        { href: '/planner', label: 'Планировщик' },
-        { href: '/weather', label: 'Метео' },
-      ];
-    }
     return [];
-  }, [isAdmin, isLimitedGuest]);
+  }, [isAdmin]);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
