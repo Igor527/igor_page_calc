@@ -36,7 +36,6 @@ function isFirebaseConfigured(): boolean {
     getEnv('VITE_FIREBASE_PROJECT_ID') &&
     getEnv('VITE_FIREBASE_DATABASE_URL') // Добавили обязательную проверку URL базы данных
   );
-  );
 }
 
 /** Список email'ов админов (через запятую в VITE_ADMIN_EMAIL или один email). */
