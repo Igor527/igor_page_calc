@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { putFile, listFiles, deleteFile, getFile } from '@/lib/githubSync';
+import React, { useState, useEffect } from 'react';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
+import { getAiDiagramPromptsFromFirebase, pushAiDiagramPromptsToFirebase } from '@/lib/firebaseData';
 
 const PROMPTS_FILE_PATH = 'public/data/ai-diagram-prompts.json';
 
@@ -56,24 +57,23 @@ export const AiDiagramPanel: React.FC<{
   const [fileName, setFileName] = useState('diagram-' + Date.now().toString().slice(-6) + '.svg');
 
   useEffect(() => {
-    getFile(PROMPTS_FILE_PATH).then(res => {
-      if (res && res.content) {
-        try {
-          const data = JSON.parse(res.content);
-          if (data.systemPrompt) setSystemPrompt(data.systemPrompt);
-          if (data.userPrompt) setUserPrompt(data.userPrompt);
-        } catch { /* ignore */ }
-      }
-    });
+    if (getFirebaseApp()) {
+      getAiDiagramPromptsFromFirebase().then(res => {
+        if (res) {
+          if (res.systemPrompt) setSystemPrompt(res.systemPrompt);
+          if (res.userPrompt) setUserPrompt(res.userPrompt);
+        }
+      });
+    }
     const localApiKey = localStorage.getItem('igor-mistral-api');
     if (localApiKey) setApiKey(localApiKey);
   }, []);
 
   const handleSavePrompts = async () => {
     setIsSavingPrompt(true);
-    const payload = JSON.stringify({ systemPrompt, userPrompt }, null, 2);
-    const res = await putFile(PROMPTS_FILE_PATH, payload, 'Обновлены шаблоны AI-диаграмм');
-    if (res.ok) alert('Промпты сохранены в репо.');
+    const res = await pushAiDiagramPromptsToFirebase({ systemPrompt, userPrompt });
+    if (res.ok) alert('Промпты сохранены в Firebase.');
+    else alert('Ошибка сохранения');
     setIsSavingPrompt(false);
   };
 

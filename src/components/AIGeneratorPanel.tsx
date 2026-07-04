@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getFirebaseApp } from '@/lib/firebaseAuth';
+import { getAiPromptsFromFirebase, pushAiPromptsToFirebase } from '@/lib/firebaseData';
 import { putFile, listFiles, deleteFile, getFile } from '@/lib/githubSync';
 
 const PROMPTS_FILE_PATH = 'public/data/ai-prompts.json';
@@ -72,17 +74,16 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
   const [assets, setAssets] = useState<Array<{name: string, path: string, sha: string}>>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
 
-  // Загружаем сохраненный промпт из GitHub (чтобы он "деплоился" и между устройствами синхронизировался)
+  // Загружаем сохраненный промпт из Firebase
   useEffect(() => {
-    getFile(PROMPTS_FILE_PATH).then(res => {
-      if (res && res.content) {
-        try {
-          const data = JSON.parse(res.content);
-          if (data.systemPrompt) setSystemPrompt(data.systemPrompt);
-          if (data.userPrompt) setUserPrompt(data.userPrompt);
-        } catch { /* ignore */ }
-      }
-    });
+    if (getFirebaseApp()) {
+      getAiPromptsFromFirebase().then(res => {
+        if (res) {
+          if (res.systemPrompt) setSystemPrompt(res.systemPrompt);
+          if (res.userPrompt) setUserPrompt(res.userPrompt);
+        }
+      });
+    }
 
     const localApiKey = localStorage.getItem('igor-mistral-api');
     if (localApiKey) setApiKey(localApiKey);
@@ -101,10 +102,9 @@ export const AIGeneratorPanel: React.FC<{ postSlug?: string }> = ({ postSlug }) 
 
   const handleSavePrompts = async () => {
     setIsSavingPrompt(true);
-    const payload = JSON.stringify({ systemPrompt, userPrompt }, null, 2);
-    const res = await putFile(PROMPTS_FILE_PATH, payload, 'Обновлены шаблоны AI-промптов');
+    const res = await pushAiPromptsToFirebase({ systemPrompt, userPrompt });
     if (res.ok) {
-      alert('Промпты успешно сохранены в репозиторий (deploy).');
+      alert('Промпты успешно сохранены в Firebase.');
     } else {
       alert('Ошибка: ' + res.error);
     }

@@ -98,12 +98,14 @@ export function getFirebaseAuth(): Auth | null {
   const appId = getEnv('VITE_FIREBASE_APP_ID') || undefined;
   const measurementId = getEnv('VITE_FIREBASE_MEASUREMENT_ID') || undefined;
   const databaseURL = getEnv('VITE_FIREBASE_DATABASE_URL') || undefined;
+  const storageBucket = getEnv('VITE_FIREBASE_STORAGE_BUCKET') || undefined;
   app = initializeApp({
     apiKey,
     authDomain,
     projectId,
     appId,
     databaseURL,
+    storageBucket,
     measurementId: measurementId || undefined,
   });
   const authInstance = getAuth(app);

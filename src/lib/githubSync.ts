@@ -457,6 +457,9 @@ export function mergeNotes(
 
 /** Записать уже объединённые заметки в репо (без повторного merge). */
 export async function pushNotesMerged(notes: unknown[], folders: unknown[]): Promise<SyncResult> {
+  if (getFirebaseApp()) {
+    return fb.pushNotesToFirebase(notes, folders);
+  }
   if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), notes, folders }, null, 2);
   return putFile(dataPath('notes.json'), payload, 'Автосинхронизация: заметки');

@@ -208,6 +208,48 @@ export async function pushRssListsToFirebase(lists: unknown[]): Promise<SyncResu
   }
 }
 
+export async function getAiPromptsFromFirebase(): Promise<{ systemPrompt?: string; userPrompt?: string } | null> {
+  try {
+    const snap = await get(ref(getDb(), 'data/aiPrompts'));
+    if (!snap.exists()) return null;
+    return snap.val() as { systemPrompt?: string; userPrompt?: string };
+  } catch (e) {
+    console.error('Firebase getAiPrompts error:', e);
+    return null;
+  }
+}
+
+export async function pushAiPromptsToFirebase(prompts: { systemPrompt?: string; userPrompt?: string }): Promise<SyncResult> {
+  try {
+    const data = cleanUndefined(prompts);
+    await set(ref(getDb(), 'data/aiPrompts'), data);
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function getAiDiagramPromptsFromFirebase(): Promise<{ systemPrompt?: string; userPrompt?: string } | null> {
+  try {
+    const snap = await get(ref(getDb(), 'data/aiDiagramPrompts'));
+    if (!snap.exists()) return null;
+    return snap.val() as { systemPrompt?: string; userPrompt?: string };
+  } catch (e) {
+    console.error('Firebase getAiDiagramPrompts error:', e);
+    return null;
+  }
+}
+
+export async function pushAiDiagramPromptsToFirebase(prompts: { systemPrompt?: string; userPrompt?: string }): Promise<SyncResult> {
+  try {
+    const data = cleanUndefined(prompts);
+    await set(ref(getDb(), 'data/aiDiagramPrompts'), data);
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 export interface BoardMetadata {
   id: string;
   name: string;
