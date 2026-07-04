@@ -1,17 +1,36 @@
 {
   "version": 1,
-  "exportedAt": 1783168882257,
+  "exportedAt": 1783168994916,
   "notes": [
     {
       "id": "2026-07-04_15-41-16",
-      "title": "",
-      "content": "",
+      "title": "Отпуск",
+      "content": "<p>Купить тещин язык и эвкалипт</p><p>Купить плексиглас с отсеками</p><p>Купить вентоборудование</p><p>Купить сервопривод, транзисторы и эл.сопротивления</p><p></p>",
       "folderId": null,
       "createdAt": 1783168876088,
-      "updatedAt": 1783168876088,
+      "updatedAt": 1783168988546,
       "tags": [],
-      "color": "none",
-      "todos": []
+      "color": "red",
+      "todos": [
+        {
+          "id": "todo_yljqkfi4_mr6crcb7",
+          "text": "тещин язык и эвкалипт"
+        },
+        {
+          "id": "todo_ux4dlvnu_mr6crieo",
+          "text": "плексиглас с отсеками"
+        },
+        {
+          "id": "todo_c7ct84uz_mr6crm01",
+          "text": "вентоборудование"
+        },
+        {
+          "id": "todo_3nx88m9d_mr6croyj",
+          "text": "сервопривод, транзисторы и эл.сопротивления"
+        }
+      ],
+      "archived": false,
+      "deleted": false
     },
     {
       "archived": false,
