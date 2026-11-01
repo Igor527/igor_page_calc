@@ -1201,7 +1201,6 @@ const PostCard: React.FC<{
   const hasBothLangs = Boolean(post.titleEn && post.contentEn);
 
   const toc = generateToc(displayContent);
-  const views = getViewCounts()[post.id] || 0;
 
   return (
     <article id={post.slug} style={{ padding: 0, border: '1px solid var(--pico-border-color)', borderRadius: 8, overflow: 'hidden' }}>
@@ -1216,7 +1215,6 @@ const PostCard: React.FC<{
             </h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
               <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-              {views > 0 && <span>👁 {views}</span>}
               {hasBothLangs && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--pico-border-color)', borderRadius: 12, padding: '1px 3px', fontSize: 11 }}>
                   <button
