@@ -32,6 +32,7 @@ import { loadLayoutsBundle, setAllLayoutsFromBundle } from './lib/pageLayouts';
 import {
   fetchNotesFromRepo,
   fetchPostsFromRepo,
+  fetchProjectsFromRepo,
   getDictionaryFromRepo,
   getLayoutsFromRepo,
   getProjectsFromRepo,
@@ -247,6 +248,7 @@ function App() {
       notesLoad,
       loadLayoutsBundle(),
       dictLoad,
+      projectsLoad,
     ]).then(() => {
       startTransition(() => setBundleTick((n) => n + 1));
     });
@@ -291,6 +293,10 @@ function App() {
       if (planner) {
         const { applyPlannerFromRepoData } = await import('./app/planner/PlannerPage');
         applyPlannerFromRepoData(planner);
+      }
+      const projR = await fetchProjectsFromRepo();
+      if (projR.ok) {
+        try { localStorage.setItem('igor-projects', JSON.stringify(projR.projects)); } catch {}
       }
       const calcJson = await getCalculatorsJsonFromRepo();
       if (calcJson) loadPublishedBundleFromContent(calcJson);

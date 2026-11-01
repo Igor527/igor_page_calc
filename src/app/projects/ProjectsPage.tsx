@@ -30,17 +30,36 @@ let projectsBundle: ProjectItem[] | null = null;
 export function loadProjectsBundle(): Promise<void> {
   return fetch('/data/projects.json', { cache: 'no-store' })
     .then((r) => (r.ok ? r.json() : Promise.reject()))
-    .then((data: { projects?: ProjectItem[] } | ProjectItem[]) => {
+    .then((data: { version?: number; exportedAt?: number; projects?: ProjectItem[] } | ProjectItem[]) => {
       const list = Array.isArray(data)
         ? data
         : Array.isArray((data as { projects?: ProjectItem[] }).projects)
         ? (data as { projects: ProjectItem[] }).projects
         : [];
+      const remoteExportedAt = (!Array.isArray(data) && data.exportedAt) ? data.exportedAt : 0;
       projectsBundle = list.filter((p) => !p.deleted);
       try {
         const local = loadLocalProjects();
         if (local.length === 0) {
           saveLocalProjects(list);
+        } else if (remoteExportedAt > 0) {
+          const localMax = Math.max(0, ...local.map((p) => p.updatedAt ?? 0));
+          if (remoteExportedAt > localMax) {
+            const map = new Map<string, ProjectItem>();
+            for (const p of list) {
+              if (p.id) map.set(p.id, p);
+            }
+            for (const p of local) {
+              if (!p.id) continue;
+              const remoteItem = map.get(p.id);
+              if (!remoteItem || (p.updatedAt ?? 0) >= (remoteItem.updatedAt ?? 0)) {
+                map.set(p.id, p);
+              }
+            }
+            const merged = Array.from(map.values()).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+            projectsBundle = merged.filter((p) => !p.deleted);
+            saveLocalProjects(merged);
+          }
         }
       } catch {}
     })
@@ -181,16 +200,22 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
     });
   }, []);
 
-  // When initial bundle loads if state was empty
+  // Подгружаем актуальный бандл из репозитория/хостинга при загрузке страницы
   useEffect(() => {
-    if (projects.length === 0) {
-      void loadProjectsBundle().then(() => {
-        const local = loadLocalProjects();
-        if (local.length > 0) setProjects(local);
-        else if (projectsBundle) setProjects(projectsBundle);
-      });
-    }
-  }, [projects.length]);
+    void loadProjectsBundle().then(() => {
+      if (projectsBundle && projectsBundle.length > 0) {
+        setProjects((current) => {
+          if (current.length === 0) return projectsBundle!;
+          const currMax = Math.max(0, ...current.map((p) => p.updatedAt ?? 0));
+          const bundleMax = Math.max(0, ...projectsBundle!.map((p) => p.updatedAt ?? 0));
+          if (bundleMax > currMax) {
+            return projectsBundle!;
+          }
+          return current;
+        });
+      }
+    });
+  }, []);
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'loading' | 'sending' | 'ok' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
