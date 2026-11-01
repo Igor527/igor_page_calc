@@ -672,12 +672,12 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
 
       {/* ─── Back link for non-welcome pages ─── */}
       {pageId !== 'welcome' && !editing && (
-        <p className="mt-8 text-center">
+        <p className="mt-12 text-center">
           <a
             href="/"
-            className="text-gray-600 dark:text-gray-400 underline hover:no-underline"
+            className="text-sm text-gray-500 hover:underline"
           >
-            {lang === 'ru' ? 'На главную' : 'Back to home'}
+            {lang === 'ru' ? '← На главную' : '← Back to Home'}
           </a>
         </p>
       )}

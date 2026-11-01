@@ -645,6 +645,7 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
   isAdmin,
   adminSessionExpired = false,
 }) => {
+  const { isEn } = useLang();
   const [posts, setPosts] = useState<BlogPost[]>(() => loadPosts());
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState('');
@@ -1176,8 +1177,10 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
           ))}
         </div>
 
-        <p className="mt-8 text-center">
-          <a href="/" style={{ color: 'var(--pico-muted-color)', textDecoration: 'underline' }}>На главную</a>
+        <p className="mt-12 text-center">
+          <a href="/" className="text-sm text-gray-500 hover:underline">
+            {isEn ? '← Back to Home' : '← На главную'}
+          </a>
         </p>
       </article>
     </main>
@@ -1448,8 +1451,14 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
         {/* <CommentSection postId={post.id} isAdmin={isAdmin} /> */}
 
         <hr style={{ margin: '32px 0' }} />
-        <p className="text-center">
-          <a href="/blog" style={{ color: 'var(--pico-muted-color)', textDecoration: 'underline' }}>← Все публикации</a>
+        <p className="mt-8 text-center flex items-center justify-center gap-6 text-sm">
+          <a href="/blog" className="text-gray-500 hover:underline">
+            {effectiveLang === 'en' ? '← All publications' : '← Все публикации'}
+          </a>
+          <span className="text-gray-300 dark:text-gray-700">•</span>
+          <a href="/" className="text-gray-500 hover:underline">
+            {effectiveLang === 'en' ? 'Back to Home' : 'На главную'}
+          </a>
         </p>
       </article>
     </main>

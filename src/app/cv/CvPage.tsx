@@ -162,8 +162,8 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
   return (
     <div className="cv-page-public" style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
       <p style={{ marginBottom: 16 }}>
-        <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>
-          {lang === 'ru' ? '← На главную' : '← Back to home'}
+        <a href="/" className="text-sm text-gray-500 hover:underline">
+          {lang === 'ru' ? '← На главную' : '← Back to Home'}
         </a>
       </p>
       {safeHtml ? (
@@ -178,6 +178,11 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
           {lang === 'ru' ? 'Резюме пока не заполнено.' : 'CV is not filled in yet.'}
         </p>
       )}
+      <p className="mt-12 text-center">
+        <a href="/" className="text-sm text-gray-500 hover:underline">
+          {lang === 'ru' ? '← На главную' : '← Back to Home'}
+        </a>
+      </p>
     </div>
   );
 };

@@ -32,7 +32,7 @@ export const SiteHeader: React.FC<{
   isAdmin: boolean;
   isLimitedGuest: boolean;
 }> = ({ path, isAdmin, isLimitedGuest }) => {
-  const { lang, toggleLang } = useLang();
+  const { lang, setLang } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | undefined>(undefined);
@@ -143,7 +143,7 @@ export const SiteHeader: React.FC<{
   const showSyncBadge = isAdmin && !!getSyncConfig();
   const allNav = useMemo(() => [...publicNav, ...extraNav], [publicNav, extraNav]);
 
-  const renderLink = (item: NavItem) => {
+  const renderLink = (item: NavItem, icon?: string) => {
     const section = getActiveSection(item.href === '/' ? '/' : item.href);
     const isCurrent = item.match ? item.match(path) : active === section || isActivePath(path, item.href);
     return (
@@ -154,7 +154,8 @@ export const SiteHeader: React.FC<{
         aria-current={isCurrent ? 'page' : undefined}
         onClick={closeMenu}
       >
-        {item.label}
+        {icon && <span style={{ opacity: 0.8, fontSize: 15 }}>{icon}</span>}
+        <span>{item.label}</span>
       </a>
     );
   };
@@ -170,7 +171,48 @@ export const SiteHeader: React.FC<{
           role="navigation"
           aria-label={lang === 'ru' ? 'Разделы сайта' : 'Site navigation'}
         >
-          {allNav.map(renderLink)}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {publicNav.map((item) => {
+              let icon = '📄';
+              if (item.href === '/') icon = '🏠';
+              else if (item.href === '/projects') icon = '🚀';
+              else if (item.href === '/blog') icon = '✍️';
+              else if (item.href === '/cv') icon = '💼';
+              return renderLink(item, icon);
+            })}
+          </div>
+          {extraNav.length > 0 && (
+            <>
+              <div
+                style={{
+                  padding: '8px 12px 2px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  opacity: 0.5,
+                  borderTop: '1px solid var(--pico-border-color)',
+                  marginTop: 4,
+                }}
+              >
+                {lang === 'ru' ? 'Инструменты' : 'Tools'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {extraNav.map((item) => {
+                  let icon = '⚡';
+                  if (item.href === '/calculators') icon = '🧮';
+                  else if (item.href === '/admin/notes') icon = '📝';
+                  else if (item.href === '/editor') icon = '📐';
+                  else if (item.href === '/planner') icon = '📅';
+                  else if (item.href === '/weather') icon = '🌤️';
+                  else if (item.href === '/rss') icon = '📡';
+                  else if (item.href === '/dictionary') icon = '📖';
+                  else if (item.href === '/admin/drawing') icon = '🎨';
+                  return renderLink(item, icon);
+                })}
+              </div>
+            </>
+          )}
         </div>
         <button
           type="button"
@@ -194,7 +236,11 @@ export const SiteHeader: React.FC<{
           aria-label={menuOpen ? (lang === 'ru' ? 'Закрыть меню' : 'Close menu') : (lang === 'ru' ? 'Открыть меню' : 'Open menu')}
           onClick={() => setMenuOpen((o) => !o)}
         >
-          {menuOpen ? '✕' : '☰'}
+          <span className="site-nav__burger-box" aria-hidden="true">
+            <span className={`site-nav__burger-line site-nav__burger-line--1 ${menuOpen ? 'is-open' : ''}`} />
+            <span className={`site-nav__burger-line site-nav__burger-line--2 ${menuOpen ? 'is-open' : ''}`} />
+            <span className={`site-nav__burger-line site-nav__burger-line--3 ${menuOpen ? 'is-open' : ''}`} />
+          </span>
         </button>
       </nav>
       <div className="site-header__actions">
@@ -207,17 +253,39 @@ export const SiteHeader: React.FC<{
         >
           {lang === 'ru' ? 'Назад' : 'Back'}
         </button>
-        <button
-          type="button"
-          className="site-header__btn text-xs font-semibold"
-          aria-label={lang === 'en' ? 'Switch language to Russian' : 'Переключить язык на английский'}
-          title={lang === 'en' ? 'Switch to Russian' : 'Switch to English'}
-          onClick={toggleLang}
+        {/* Rounded EN / RU pill switcher */}
+        <div
+          className="inline-flex items-center p-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-xs font-medium shadow-xs"
+          role="group"
+          aria-label={lang === 'en' ? 'Language switch' : 'Переключатель языка'}
         >
-          <span className={lang === 'en' ? 'font-bold underline' : 'opacity-60'}>EN</span>
-          {' / '}
-          <span className={lang === 'ru' ? 'font-bold underline' : 'opacity-60'}>RU</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setLang('en')}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 leading-none ${
+              lang === 'en'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+            aria-pressed={lang === 'en'}
+            title="English"
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang('ru')}
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 leading-none ${
+              lang === 'ru'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+            aria-pressed={lang === 'ru'}
+            title="Русский"
+          >
+            RU
+          </button>
+        </div>
         <button
           type="button"
           id="themeBtn"
