@@ -678,31 +678,45 @@ export function mergePosts(
   return [...byId.values()].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
-/** Авто-пуш постов блога. В репо updatedAt = время пуша только у постов из modifiedPostIds. */
+/** Авто-пуш постов блога в Firebase и/или GitHub репозиторий. В репо updatedAt = время пуша только у постов из modifiedPostIds. */
 export async function pushPosts(
   posts: unknown[],
   modifiedPostIds?: Set<string>
 ): Promise<SyncResult> {
-  if (getFirebaseApp()) {
-    beginSyncOperation();
-    const now = Date.now();
-    const ids = modifiedPostIds ?? new Set<string>();
-    const postsWithPushTime = (posts as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>).map((p) =>
-      ids.has(String(p.id ?? '')) ? { ...p, updatedAt: now } : p
-    );
-    const res = await fb.pushPostsToFirebase(postsWithPushTime);
-    setSyncBadgeResult(res.ok, res.error);
-    endSyncOperation();
-    return res;
-  }
-  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
   const now = Date.now();
   const ids = modifiedPostIds ?? new Set<string>();
   const postsWithPushTime = (posts as Array<{ id?: string; updatedAt?: number; [k: string]: unknown }>).map((p) =>
     ids.has(String(p.id ?? '')) ? { ...p, updatedAt: now } : p
   );
-  const payload = JSON.stringify({ version: 1, exportedAt: now, posts: postsWithPushTime }, null, 2);
-  return putFile(dataPath('posts.json'), payload, 'Автосинхронизация: блог');
+
+  let fbOk = true;
+  let fbError: string | undefined;
+
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushPostsToFirebase(postsWithPushTime);
+    fbOk = res.ok;
+    fbError = res.error;
+    endSyncOperation();
+  }
+
+  const syncConfig = getSyncConfig();
+  if (syncConfig) {
+    const payload = JSON.stringify({ version: 1, exportedAt: now, posts: postsWithPushTime }, null, 2);
+    const gitRes = await putFile(dataPath('posts.json'), payload, 'Автосинхронизация: блог');
+    setSyncBadgeResult(gitRes.ok, gitRes.error);
+    return gitRes;
+  }
+
+  if (getFirebaseApp()) {
+    setSyncBadgeResult(fbOk, fbError);
+    return { ok: fbOk, error: fbError };
+  }
+
+  return {
+    ok: false,
+    error: 'Синхронизация с GitHub не настроена. Укажите токен в настройках.',
+  };
 }
 
 /** Объединить словарь: по id записи берётся версия с большим addedAt; priorityLangs — локальные первые, потом дополнение из ремо. */
