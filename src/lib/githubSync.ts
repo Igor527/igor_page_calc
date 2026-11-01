@@ -900,3 +900,57 @@ export async function pushRssLists(lists: unknown[]): Promise<SyncResult> {
   const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), lists }, null, 2);
   return putFile(dataPath('rss-lists.json'), payload, 'Синхронизация: RSS подписки');
 }
+
+/** Проекты из репо (public/data/projects.json) с текстом ошибки. */
+export async function fetchProjectsFromRepo(ignoreFirebase = false): Promise<
+  | { ok: true; projects: unknown[] }
+  | { ok: false; error: string }
+> {
+  if (getFirebaseApp() && !ignoreFirebase) {
+    const res = await fb.getProjectsFromFirebase();
+    if (res) return { ok: true, projects: res };
+    return { ok: false, error: 'Проекты в Firebase не найдены' };
+  }
+  const file = await fetchFile(dataPath('projects.json'));
+  if (!file.ok) return { ok: false, error: file.error };
+  try {
+    const data = JSON.parse(file.content.replace(/^\uFEFF/, '').trim()) as { projects?: unknown[] };
+    const list = Array.isArray(data?.projects) ? data.projects : [];
+    return { ok: true, projects: list };
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : 'невалидный JSON';
+    return { ok: false, error: formatRepoFileError(dataPath('projects.json'), detail) };
+  }
+}
+
+/** Авто-пуш проектов в Firebase и/или GitHub репозиторий. */
+export async function pushProjects(projects: unknown[]): Promise<SyncResult> {
+  let fbOk = true;
+  let fbError: string | undefined;
+
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushProjectsToFirebase(projects);
+    fbOk = res.ok;
+    fbError = res.error;
+    endSyncOperation();
+  }
+
+  const syncConfig = getSyncConfig();
+  if (syncConfig) {
+    const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), projects }, null, 2);
+    const gitRes = await putFile(dataPath('projects.json'), payload, 'Автосинхронизация: проекты');
+    setSyncBadgeResult(gitRes.ok, gitRes.error);
+    return gitRes;
+  }
+
+  if (getFirebaseApp()) {
+    setSyncBadgeResult(fbOk, fbError);
+    return { ok: fbOk, error: fbError };
+  }
+
+  return {
+    ok: false,
+    error: 'Синхронизация с GitHub не настроена. Укажите токен на главной странице в настройках.',
+  };
+}

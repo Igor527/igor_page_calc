@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useLang } from '@/lib/i18n';
-import { getSyncConfig, putFile, dataPath } from '@/lib/githubSync';
+import { getSyncConfig, pushProjects, fetchProjectsFromRepo, schedulePushWithDelay, cancelScheduledPush } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
 
 export interface ProjectItem {
@@ -154,13 +154,72 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
     }
   }, [projects.length]);
 
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'loading' | 'sending' | 'ok' | 'error'>('idle');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const justPushedRef = useRef(false);
+
+  const doPush = useCallback(async (listToPush: ProjectItem[]) => {
+    setSyncStatus('sending');
+    setSyncError(null);
+    const res = await pushProjects(listToPush);
+    if (res.ok) {
+      setSyncStatus('ok');
+      justPushedRef.current = true;
+      setTimeout(() => setSyncStatus('idle'), 4000);
+    } else {
+      setSyncStatus('error');
+      setSyncError(res.error || (isEn ? 'Sync failed' : 'Ошибка синхронизации'));
+    }
+  }, [isEn]);
+
   const saveAndSync = useCallback((updated: ProjectItem[]) => {
     setProjects(updated);
     saveLocalProjects(updated);
-    if (getSyncConfig() && !getFirebaseApp()) {
-      const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), projects: updated }, null, 2);
-      void putFile(dataPath('projects.json'), payload, 'Автосинхронизация: проекты');
+    if (!isAdmin) return;
+    if (getSyncConfig() || getFirebaseApp()) {
+      setSyncStatus('pending');
+      setSyncError(null);
+      schedulePushWithDelay('projects', 4000, () => doPush(updated));
     }
+  }, [isAdmin, doPush]);
+
+  const handleSyncNow = useCallback(() => {
+    cancelScheduledPush('projects');
+    void doPush(projects);
+  }, [projects, doPush]);
+
+  const handlePullFromRepo = useCallback(async () => {
+    cancelScheduledPush('projects');
+    setSyncStatus('loading');
+    setSyncError(null);
+    const remote = await fetchProjectsFromRepo();
+    if (remote.ok) {
+      const remoteList = (Array.isArray(remote.projects) ? remote.projects : []) as ProjectItem[];
+      const map = new Map<string, ProjectItem>();
+      for (const p of remoteList) {
+        if (p.id) map.set(p.id, p);
+      }
+      for (const p of projects) {
+        if (!p.id) continue;
+        const ex = map.get(p.id);
+        if (!ex || (p.updatedAt ?? 0) >= (ex.updatedAt ?? 0)) {
+          map.set(p.id, p);
+        }
+      }
+      const merged = Array.from(map.values()).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      setProjects(merged);
+      saveLocalProjects(merged);
+      setSyncStatus('ok');
+      setTimeout(() => setSyncStatus('idle'), 3000);
+    } else {
+      setSyncStatus('error');
+      setSyncError(remote.error || (isEn ? 'Failed to fetch from repo' : 'Не удалось получить данные из репозитория'));
+    }
+  }, [projects, isEn]);
+
+  const handleCancelPush = useCallback(() => {
+    cancelScheduledPush('projects');
+    setSyncStatus('idle');
   }, []);
 
   const categories = useMemo(() => {
@@ -352,21 +411,98 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
         </p>
 
         {isAdmin && (
-          <div className="flex flex-wrap justify-center gap-3 mt-4">
-            <button
-              type="button"
-              onClick={handleStartNew}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-            >
-              {isEn ? '+ Add Project Card' : '+ Добавить проект'}
-            </button>
-            <button
-              type="button"
-              onClick={() => downloadProjectsBundle(projects)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-sm font-medium transition-all"
-            >
-              {isEn ? 'Export projects.json' : 'Экспорт projects.json'}
-            </button>
+          <div className="mt-4 p-4 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-950/30 max-w-2xl mx-auto">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleStartNew}
+                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                >
+                  {isEn ? '+ Add Project Card' : '+ Добавить проект'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSyncNow}
+                  disabled={syncStatus === 'sending' || syncStatus === 'loading'}
+                  className="px-3.5 py-1.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+                  title={isEn ? 'Push changes to GitHub repository' : 'Отправить изменения в репозиторий GitHub'}
+                >
+                  {syncStatus === 'sending' ? (isEn ? 'Pushing...' : 'Отправка...') : (isEn ? '🚀 Push to Repo' : '🚀 Загрузить в репо')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePullFromRepo}
+                  disabled={syncStatus === 'sending' || syncStatus === 'loading'}
+                  className="px-3.5 py-1.5 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50 rounded-lg text-sm font-medium transition-all"
+                >
+                  {syncStatus === 'loading' ? (isEn ? 'Pulling...' : 'Загрузка...') : (isEn ? '🔄 Pull from Repo' : '🔄 Обновить из репо')}
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadProjectsBundle(projects)}
+                  className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
+                >
+                  {isEn ? 'Export JSON' : 'Скачать JSON'}
+                </button>
+                <a
+                  href="/#sync-settings-anchor"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                  title={isEn ? 'Configure GitHub Token' : 'Настройки токена GitHub'}
+                >
+                  {isEn ? '⚙️ Sync Settings' : '⚙️ Настройки синхронизации'}
+                </a>
+              </div>
+            </div>
+
+            {/* Sync feedback banner */}
+            <div className="text-xs text-left">
+              {syncStatus === 'pending' && (
+                <div className="flex items-center justify-between text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 p-2 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <span>⏳ {isEn ? 'Changes will be pushed to GitHub in 4s...' : 'Изменения будут отправлены в репозиторий через 4 сек...'}</span>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleSyncNow} className="underline font-semibold">{isEn ? 'Push Now' : 'Загрузить сейчас'}</button>
+                    <button type="button" onClick={handleCancelPush} className="underline opacity-75">{isEn ? 'Cancel' : 'Отмена'}</button>
+                  </div>
+                </div>
+              )}
+              {syncStatus === 'sending' && (
+                <div className="text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg border border-blue-200 dark:border-blue-800">
+                  🚀 {isEn ? 'Pushing projects.json to GitHub repository... (creating commit)' : 'Отправка projects.json в репозиторий GitHub... (создаётся коммит)'}
+                </div>
+              )}
+              {syncStatus === 'loading' && (
+                <div className="text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 p-2 rounded-lg border border-blue-200 dark:border-blue-800">
+                  🔄 {isEn ? 'Loading latest projects from repository...' : 'Загрузка актуальных проектов из репозитория...'}
+                </div>
+              )}
+              {syncStatus === 'ok' && (
+                <div className="text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950/40 p-2 rounded-lg border border-green-200 dark:border-green-800">
+                  ✅ {isEn ? 'Successfully pushed to GitHub! A commit was made and GitHub Actions is deploying the site.' : 'Успешно отправлено в репозиторий GitHub! Коммит создан, GitHub Actions запустил сборку сайта.'}
+                </div>
+              )}
+              {syncStatus === 'error' && (
+                <div className="text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 p-2 rounded-lg border border-red-200 dark:border-red-800">
+                  ❌ {syncError}
+                </div>
+              )}
+              {syncStatus === 'idle' && (
+                <div className="text-gray-500 dark:text-gray-400">
+                  {getSyncConfig() ? (
+                    <span>
+                      ✓ {isEn ? 'GitHub Sync configured' : 'Синхронизация с GitHub настроена'}: <code className="px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">{getSyncConfig()?.owner}/{getSyncConfig()?.repo} ({getSyncConfig()?.branch})</code>. {isEn ? 'Any edits auto-push to repo.' : 'Все изменения автоматически отправляются в репозиторий.'}
+                    </span>
+                  ) : (
+                    <span>
+                      ⚠️ {isEn ? 'GitHub Token is not configured. Edits are currently saved ONLY in your browser localStorage. To publish to the site & repo, configure GitHub Token in Sync Settings.' : 'GitHub Token не настроен. Сейчас изменения сохраняются ТОЛЬКО локально в вашем браузере. Чтобы они попадали в репозиторий и на сайт, укажите токен в Настройках синхронизации.'}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </header>

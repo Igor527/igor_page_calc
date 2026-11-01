@@ -309,3 +309,24 @@ export async function deleteBoardFromFirebase(boardId: string): Promise<SyncResu
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
 }
+
+export async function getProjectsFromFirebase(): Promise<unknown[] | null> {
+  try {
+    const snap = await get(ref(getDb(), 'data/projects'));
+    if (!snap.exists()) return null;
+    return snap.val() as unknown[];
+  } catch (e) {
+    console.error('Firebase getProjects error:', e);
+    return null;
+  }
+}
+
+export async function pushProjectsToFirebase(projects: unknown[]): Promise<SyncResult> {
+  try {
+    const data = cleanUndefined(projects);
+    await set(ref(getDb(), 'data/projects'), data);
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}

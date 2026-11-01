@@ -299,7 +299,7 @@ function App() {
         const { setRssListsFromBundle } = await import('./app/rss/RssPage');
         setRssListsFromBundle(rssData as any);
       }
-      ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss'].forEach(cancelScheduledPush);
+      ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss', 'projects'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));
       setSyncBadgeResult(true);
       return { ok: true };
