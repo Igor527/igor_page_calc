@@ -412,15 +412,23 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (targetIdx < 0 || targetIdx >= list.length) return;
 
-    const temp = list[idx];
-    list[idx] = list[targetIdx];
-    list[targetIdx] = temp;
+    const currentItem = list[idx];
+    const targetItem = list[targetIdx];
 
-    // Reassign orders
-    const updatedMap = new Map(list.map((item, i) => [item.id, i + 1]));
-    const updatedAll = projects.map((p) => ({
+    const fullSorted = [...projects].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const fullIdx = fullSorted.findIndex((p) => p.id === currentItem.id);
+    const fullTargetIdx = fullSorted.findIndex((p) => p.id === targetItem.id);
+
+    if (fullIdx >= 0 && fullTargetIdx >= 0) {
+      fullSorted.splice(fullIdx, 1);
+      fullSorted.splice(fullTargetIdx, 0, currentItem);
+    }
+
+    const now = Date.now();
+    const updatedAll = fullSorted.map((p, i) => ({
       ...p,
-      order: updatedMap.get(p.id) ?? p.order,
+      order: i + 1,
+      updatedAt: now,
     }));
     saveAndSync(updatedAll);
   };
