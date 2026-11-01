@@ -10,8 +10,11 @@ import RichTextEditor from '@/components/editor/RichTextEditor';
 import { mistralChat } from '@/lib/dictionaryApi';
 import { getSyncConfig, getCvFromRepo, pushCv, schedulePush } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
+import { useLang } from '@/lib/i18n';
 
 const STORAGE_KEY = 'igor-cv-html';
+const CV_VERSION_KEY = 'igor-cv-version';
+const CURRENT_CV_VERSION = '4';
 
 function loadCvContent(): string {
   try {
@@ -25,6 +28,7 @@ function loadCvContent(): string {
 function saveCvContent(html: string): void {
   try {
     localStorage.setItem(STORAGE_KEY, html);
+    localStorage.setItem(CV_VERSION_KEY, CURRENT_CV_VERSION);
   } catch {
     /* ignore */
   }
@@ -127,14 +131,15 @@ const MistralPanel: React.FC = () => {
 /** Публичный вид: готовая страница CV без редактора. Загружает cv.json из статики, если есть. */
 const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content, initialized }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [fetchedHtml, setFetchedHtml] = useState<string | null>(null);
+  const [fetchedData, setFetchedData] = useState<{ html?: string; htmlEn?: string } | null>(null);
+  const { lang } = useLang();
 
   useEffect(() => {
     let cancelled = false;
     fetch('/data/cv.json')
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { html?: string } | null) => {
-        if (!cancelled && data && typeof data.html === 'string') setFetchedHtml(data.html);
+      .then((data: { html?: string; htmlEn?: string } | null) => {
+        if (!cancelled && data) setFetchedData(data);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -142,19 +147,24 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
 
   useEffect(() => {
     applyImageFocusStyles(containerRef.current);
-  }, [content, fetchedHtml]);
+  }, [content, fetchedData]);
 
-  const displayHtml = (fetchedHtml != null ? fetchedHtml : content) || '';
+  const displayHtml =
+    (lang === 'en' && fetchedData?.htmlEn)
+      ? fetchedData.htmlEn
+      : (fetchedData?.html != null ? fetchedData.html : content) || '';
   const safeHtml = sanitizeHtml(displayHtml);
 
   if (!initialized) {
-    return <div style={{ padding: 24, textAlign: 'center' }}>Загрузка…</div>;
+    return <div style={{ padding: 24, textAlign: 'center' }}>{lang === 'ru' ? 'Загрузка…' : 'Loading…'}</div>;
   }
 
   return (
     <div className="cv-page-public" style={{ maxWidth: 720, margin: '0 auto', padding: '24px 20px' }}>
       <p style={{ marginBottom: 16 }}>
-        <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>← На главную</a>
+        <a href="/" style={{ color: 'var(--pico-primary)', textDecoration: 'underline' }}>
+          {lang === 'ru' ? '← На главную' : '← Back to home'}
+        </a>
       </p>
       {safeHtml ? (
         <div
@@ -164,7 +174,9 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
           style={{ lineHeight: 1.5 }}
         />
       ) : (
-        <p style={{ color: 'var(--pico-muted-color)' }}>Резюме пока не заполнено.</p>
+        <p style={{ color: 'var(--pico-muted-color)' }}>
+          {lang === 'ru' ? 'Резюме пока не заполнено.' : 'CV is not filled in yet.'}
+        </p>
       )}
     </div>
   );
@@ -215,7 +227,23 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
         }
       }
       if (!cancelled) {
-        setContent(local);
+        let text = local;
+        const savedVer = localStorage.getItem(CV_VERSION_KEY);
+        if (!text || savedVer !== CURRENT_CV_VERSION) {
+          try {
+            const r = await fetch('/data/cv.json');
+            if (r.ok) {
+              const d = await r.json();
+              if (d?.html) {
+                text = d.html;
+                saveCvContent(text);
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        setContent(text);
       }
       setInitialized(true);
     };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useLang } from '@/lib/i18n';
 import { sanitizeHtml } from '@/lib/security';
 import {
   getSyncConfig,
@@ -51,7 +52,7 @@ export interface BlogTodoItem {
   text: string;
 }
 
-interface BlogPost {
+export interface BlogPost {
   id: string;
   title: string;
   content: string;
@@ -66,6 +67,9 @@ interface BlogPost {
   updatedAt: number;
   /** Мягкое удаление: при синхронизации с репо удаление не теряется при пушах с другого устройства */
   deleted?: boolean;
+  titleEn?: string;
+  contentEn?: string;
+  tagsEn?: string[];
 }
 
 /* ═══════════════════ View counter ═══════════════════ */

@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "exportedAt": 1776110000000,
+  "projects": [
+    {
+      "id": "proj_civil3d_plugins",
+      "title": "Разработка авторских плагинов для Autodesk AutoCAD Civil 3D",
+      "titleEn": "Custom Plugin Suite for Autodesk AutoCAD Civil 3D",
+      "category": "Плагины и автоматизация",
+      "categoryEn": "Plugins & Automation",
+      "description": "Разработка специализированных плагинов и модулей автоматизации (.NET C#, AutoCAD Civil 3D API, Dynamo). Автоматизация рутинных проектных операций, пакетная обработка поверхностей, трасс и коридоров, валидация геометрических данных и генерация ведомостей объемов работ.",
+      "descriptionEn": "Development of specialized plugins and automation suites (.NET C#, AutoCAD Civil 3D API, Dynamo). Automated routine civil design workflows, batch corridor and surface processing, geometry integrity checks, and automated engineering reports.",
+      "imageUrl": "/assets/project-civil3d.svg",
+      "tags": ["Civil 3D", "C#", ".NET API", "Dynamo", "Automation"],
+      "year": "2024–2026",
+      "published": true,
+      "order": 1,
+      "createdAt": 1776000000000,
+      "updatedAt": 1776000000000
+    },
+    {
+      "id": "proj_blender_3d",
+      "title": "3D-моделирование и визуализация в Blender",
+      "titleEn": "High-Precision 3D Modeling & Visualization in Blender",
+      "category": "3D-моделирование",
+      "categoryEn": "3D Modeling & Renders",
+      "description": "Создание детализированных 3D-моделей под индивидуальные технические требования заказчиков. Визуализация архитектурных и градостроительных решений, разработка процедурных окружений, работа со скриптами Blender Python (bpy) для параметрической генерации объектов.",
+      "descriptionEn": "Custom high-precision 3D modeling tailored to client engineering and architectural requirements. District visualizations, procedural environment assets, and Blender Python (bpy) automation scripts for parametric modeling.",
+      "imageUrl": "/assets/project-blender.svg",
+      "tags": ["Blender", "3D Modeling", "Cycles", "Python bpy", "Parametric"],
+      "year": "2024–2026",
+      "published": true,
+      "order": 2,
+      "createdAt": 1775900000000,
+      "updatedAt": 1775900000000
+    },
+    {
+      "id": "proj_master_planning",
+      "title": "Генеральные планы и мастер-планирование территорий",
+      "titleEn": "Urban Master Planning & Site Design",
+      "category": "Градостроительство",
+      "categoryEn": "Master Planning",
+      "description": "Комплексная разработка мастер-планов жилых и рекреационных районов, оценка градостроительного потенциала земельных участков, трассировка улично-дорожной сети, зонирование территорий и вертикальная планировка рельефа.",
+      "descriptionEn": "Comprehensive master planning of residential and mixed-use districts, urban development potential assessment, road network routing, land use zoning, and grading / earthwork optimization.",
+      "imageUrl": "/assets/project-planning.svg",
+      "tags": ["Master Plan", "Urban Design", "Site Analysis", "Grading"],
+      "year": "2020–2026",
+      "published": true,
+      "order": 3,
+      "createdAt": 1775800000000,
+      "updatedAt": 1775800000000
+    },
+    {
+      "id": "proj_bim_infra",
+      "title": "Инфраструктурное BIM-моделирование и сводные модели",
+      "titleEn": "Civil BIM & Infrastructure Coordination",
+      "category": "BIM-услуги",
+      "categoryEn": "BIM Services",
+      "description": "Построение информационных моделей линейных объектов и площадок строительства, междисциплинарная координация (проверка коллизий), подготовка данных в форматах IFC и передача проектных данных между Autodesk InfraWorks, Civil 3D и Navisworks.",
+      "descriptionEn": "Information modeling of linear infrastructure and construction sites, multi-disciplinary clash detection, IFC interoperability, and coordinated workflow between Autodesk InfraWorks, Civil 3D, and Navisworks.",
+      "imageUrl": "/assets/project-bim.svg",
+      "tags": ["BIM", "InfraWorks", "Navisworks", "IFC", "Coordination"],
+      "year": "2021–2026",
+      "published": true,
+      "order": 4,
+      "createdAt": 1775700000000,
+      "updatedAt": 1775700000000
+    }
+  ]
+}

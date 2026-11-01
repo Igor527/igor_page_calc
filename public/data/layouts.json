@@ -1,25 +1,41 @@
 {
-  "version": 1,
+  "version": 4,
   "exportedAt": 1776115818785,
   "layouts": {
     "welcome": [
       {
         "id": "w1",
         "type": "hero",
-        "title": "Добро пожаловать!",
-        "subtitle": "Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе."
+        "title": "Hello!\nI'm Igor Chevela",
+        "titleEn": "Hello!\nI'm Igor Chevela",
+        "titleRu": "Привет!\nЯ — Игорь Чевела",
+        "subtitle": "I specialize in site design, master planning, BIM services, and 3D modeling across Autodesk and Blender. Over the past year, my primary focus has been on developing proprietary plugins for Autodesk AutoCAD Civil 3D and creating 3D models of any complexity.",
+        "subtitleEn": "I specialize in site design, master planning, BIM services, and 3D modeling across Autodesk and Blender. Over the past year, my primary focus has been on developing proprietary plugins for Autodesk AutoCAD Civil 3D and creating 3D models of any complexity.",
+        "subtitleRu": "Занимаюсь разработкой генеральных планов, мастер-планов, BIM-услугами и 3D-моделированием в продуктах Autodesk и Blender. В последний год сфокусирован на разработке авторских плагинов для Autodesk AutoCAD Civil 3D и подготовке 3D-моделей любой сложности."
+      },
+      {
+        "id": "w7",
+        "type": "link",
+        "linkLabel": "Projects",
+        "linkLabelEn": "Projects",
+        "linkLabelRu": "Проекты",
+        "linkUrl": "/projects"
       },
       {
         "id": "w2",
         "type": "link",
-        "linkLabel": "Редактор калькуляторов",
+        "linkLabel": "Calculator Editor",
+        "linkLabelEn": "Calculator Editor",
+        "linkLabelRu": "Редактор калькуляторов",
         "linkUrl": "/editor",
         "adminOnly": true
       },
       {
         "id": "w3",
         "type": "link",
-        "linkLabel": "Планировщик (Гантт)",
+        "linkLabel": "Planner (Gantt)",
+        "linkLabelEn": "Planner (Gantt)",
+        "linkLabelRu": "Планировщик (Гантт)",
         "linkUrl": "/planner",
         "adminOnly": true,
         "showForGuest": true
@@ -27,33 +43,44 @@
       {
         "id": "w5",
         "type": "link",
-        "linkLabel": "Калькуляторы",
-        "linkUrl": "/calculators"
+        "linkLabel": "Calculators",
+        "linkLabelEn": "Calculators",
+        "linkLabelRu": "Калькуляторы",
+        "linkUrl": "/calculators",
+        "adminOnly": true
       },
       {
         "id": "w6",
         "type": "link",
-        "linkLabel": "Блог",
+        "linkLabel": "Blog",
+        "linkLabelEn": "Blog",
+        "linkLabelRu": "Блог",
         "linkUrl": "/blog"
       },
       {
         "id": "w6rss",
         "type": "link",
-        "linkLabel": "RSS подписки",
+        "linkLabel": "RSS Feeds",
+        "linkLabelEn": "RSS Feeds",
+        "linkLabelRu": "RSS подписки",
         "linkUrl": "/rss",
         "adminOnly": true
       },
       {
         "id": "w6a",
         "type": "link",
-        "linkLabel": "Словарь / Перевод",
+        "linkLabel": "Dictionary / Translation",
+        "linkLabelEn": "Dictionary / Translation",
+        "linkLabelRu": "Словарь / Перевод",
         "linkUrl": "/dictionary",
         "adminOnly": true
       },
       {
         "id": "w7",
         "type": "link",
-        "linkLabel": "Заметки (админ)",
+        "linkLabel": "Notes (Admin)",
+        "linkLabelEn": "Notes (Admin)",
+        "linkLabelRu": "Заметки (админ)",
         "linkUrl": "/admin/notes",
         "adminOnly": true
       },
@@ -61,12 +88,16 @@
         "id": "w8",
         "type": "link",
         "linkLabel": "CV",
+        "linkLabelEn": "CV",
+        "linkLabelRu": "CV",
         "linkUrl": "/cv"
       },
       {
         "id": "w9",
         "type": "link",
-        "linkLabel": "Метеостанция",
+        "linkLabel": "Weather Station",
+        "linkLabelEn": "Weather Station",
+        "linkLabelRu": "Метеостанция",
         "linkUrl": "/weather",
         "adminOnly": true,
         "showForGuest": true
@@ -74,7 +105,9 @@
       {
         "id": "s1776115506649",
         "type": "link",
-        "linkLabel": "Рисование",
+        "linkLabel": "Drawing",
+        "linkLabelEn": "Drawing",
+        "linkLabelRu": "Рисование",
         "linkUrl": "/admin/drawing",
         "adminOnly": true
       }

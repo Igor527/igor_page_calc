@@ -24,6 +24,9 @@ const WeatherPage = React.lazy(() => import('./app/weather/WeatherPage'));
 const RssPage = React.lazy(() => import('./app/rss/RssPage'));
 const BlogList = React.lazy(() => import('./app/blog/BlogPage').then(m => ({ default: m.BlogList })));
 const BlogPostView = React.lazy(() => import('./app/blog/BlogPage').then(m => ({ default: m.BlogPostView })));
+const ProjectsPage = React.lazy(() => import('./app/projects/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
+const LegalPage = React.lazy(() => import('./app/legal/LegalPage'));
+const EcoDashboardPage = React.lazy(() => import('./components/EcoDashboard').then(m => ({ default: m.EcoDashboard })));
 import { loadCalculator, getCalculatorBySlug, loadPublishedBundle, loadPublishedBundleFromContent } from './lib/calculatorStorage';
 import { loadLayoutsBundle, setAllLayoutsFromBundle } from './lib/pageLayouts';
 import {
@@ -31,6 +34,7 @@ import {
   fetchPostsFromRepo,
   getDictionaryFromRepo,
   getLayoutsFromRepo,
+  getProjectsFromRepo,
   getPlannerFromRepo,
   getCalculatorsJsonFromRepo,
   getRssListsFromRepo,
@@ -236,6 +240,7 @@ function App() {
     const dictLoad = getSyncConfig() ? Promise.resolve() : import('./app/dictionary/DictionaryPage').then(m => m.loadDictionaryBundle());
     const notesLoad = getSyncConfig() ? Promise.resolve() : import('./app/admin/notes/NotesPage').then(m => m.loadNotesBundle());
     const blogLoad = import('./app/blog/BlogPage').then(m => m.loadBlogBundle());
+    const projectsLoad = import('./app/projects/ProjectsPage').then(m => m.loadProjectsBundle());
     Promise.all([
       loadPublishedBundle(),
       blogLoad,
@@ -382,6 +387,9 @@ function App() {
   if (path === '/cv') {
     return withChrome(<PageSuspense><CvPage isAdmin={isAdmin} /></PageSuspense>);
   }
+  if (path === '/eco') {
+    return withChrome(<PageSuspense><EcoDashboardPage /></PageSuspense>);
+  }
   if (path === '/weather') {
     if (!isAdmin && !isLimitedGuest) {
       return withChrome(
@@ -407,6 +415,20 @@ function App() {
       );
     }
     return withChrome(<PageSuspense><RssPage /></PageSuspense>);
+  }
+  if (path === '/legal' || path === '/business') {
+    return withChrome(
+      <PageSuspense>
+        <LegalPage />
+      </PageSuspense>
+    );
+  }
+  if (path === '/projects') {
+    return withChrome(
+      <PageSuspense>
+        <ProjectsPage isAdmin={isAdmin} />
+      </PageSuspense>
+    );
   }
   if (path === '/blog') {
     return withChrome(

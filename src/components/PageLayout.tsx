@@ -12,6 +12,7 @@ import { pushLayouts, getSyncConfig } from '@/lib/githubSync';
 import { sanitizeHtml } from '@/lib/security';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { getPublishedCalculators } from '@/lib/calculatorStorage';
+import { useLang } from '@/lib/i18n';
 
 const LazyRTE = React.lazy(() => import('./editor/RichTextEditor'));
 
@@ -30,25 +31,41 @@ interface Props {
 
 /* ═══════════════════ Section renderers ═══════════════════ */
 
-function HeroSection({ section }: { section: PageSection }) {
+function HeroSection({ section, isWelcome }: { section: PageSection; isWelcome?: boolean }) {
+  const { lang, setLang } = useLang();
+  const title = (lang === 'ru' ? section.titleRu : section.titleEn) || section.title;
+  const subtitle = (lang === 'ru' ? section.subtitleRu : section.subtitleEn) || section.subtitle;
+
+  const paragraphs = subtitle
+    ? subtitle.includes('\n\n')
+      ? subtitle.split('\n\n')
+      : subtitle.split('\n')
+    : [];
+
   return (
-    <header className="text-center mb-2">
-      {section.title && (
-        <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
-          {section.title}
+    <header className="text-center mb-6">
+      
+      {title && (
+        <h1 className="text-3xl font-semibold text-gray-900 dark:text-gray-100 mb-3 whitespace-pre-line">
+          {title}
         </h1>
       )}
-      {section.subtitle &&
-        section.subtitle.split('\n').map((line, i) => (
-          <p key={i} className="text-gray-600 dark:text-gray-400">
-            {line}
-          </p>
-        ))}
+      {paragraphs.map((line, i) => (
+        <p
+          key={i}
+          className="text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-3 text-sm sm:text-base leading-relaxed text-left sm:text-center"
+        >
+          {line}
+        </p>
+      ))}
+      
     </header>
   );
 }
 
 function TextSection({ section }: { section: PageSection }) {
+  const { lang } = useLang();
+  const rawHtml = (lang === 'ru' ? section.htmlRu : section.htmlEn) || section.html || '';
   return (
     <div
       className="blog-content"
@@ -56,15 +73,32 @@ function TextSection({ section }: { section: PageSection }) {
       ref={(el) => {
         if (el) attachCodeCopyButtons(el);
       }}
-      dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.html || '') }}
+      dangerouslySetInnerHTML={{ __html: sanitizeHtml(rawHtml) }}
     />
   );
 }
 
+function getLinkDefaultLabel(url?: string, lang: 'en' | 'ru' = 'en'): string {
+  if (url === '/projects') return lang === 'ru' ? 'Проекты' : 'Projects';
+  if (url === '/blog') return lang === 'ru' ? 'Блог' : 'Blog';
+  if (url === '/cv') return 'CV';
+  if (url === '/calculators') return lang === 'ru' ? 'Калькуляторы' : 'Calculators';
+  if (url === '/editor') return lang === 'ru' ? 'Редактор' : 'Editor';
+  if (url === '/planner') return lang === 'ru' ? 'Планировщик' : 'Planner';
+  return '';
+}
+
 function LinkSection({ section }: { section: PageSection }) {
+  const { lang } = useLang();
+  const defaultLabel = getLinkDefaultLabel(section.linkUrl, lang);
+  const label =
+    (lang === 'ru' ? section.linkLabelRu : section.linkLabelEn) ||
+    defaultLabel ||
+    section.linkLabel ||
+    (lang === 'ru' ? 'Ссылка' : 'Link');
   return (
     <a href={section.linkUrl || '#'} role="button" className={linkBtnClass}>
-      {section.linkLabel || 'Ссылка'}
+      {label}
     </a>
   );
 }
@@ -74,11 +108,12 @@ function DividerSection() {
 }
 
 function CalculatorsWidget() {
+  const { lang } = useLang();
   const published = getPublishedCalculators();
   if (published.length === 0) {
     return (
       <p className="text-gray-500 dark:text-gray-400 text-center py-8">
-        Пока нет опубликованных калькуляторов.
+        {lang === 'ru' ? 'Пока нет опубликованных калькуляторов.' : 'No published calculators yet.'}
       </p>
     );
   }
@@ -119,6 +154,11 @@ function SectionEditorForm({
   onUpdate: (u: Partial<PageSection>) => void;
   onClose: () => void;
 }) {
+  const { lang } = useLang();
+  const currentTitle = (lang === 'ru' ? section.titleRu : section.titleEn) ?? section.title ?? '';
+  const currentSubtitle = (lang === 'ru' ? section.subtitleRu : section.subtitleEn) ?? section.subtitle ?? '';
+  const currentLinkLabel = (lang === 'ru' ? section.linkLabelRu : section.linkLabelEn) ?? section.linkLabel ?? '';
+
   return (
     <div
       style={{
@@ -131,25 +171,33 @@ function SectionEditorForm({
     >
       {section.type === 'hero' && (
         <>
-          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>Заголовок</label>
+          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+            {lang === 'ru' ? 'Заголовок' : 'Title'}
+          </label>
           <input
             style={inputStyle}
-            value={section.title || ''}
-            onChange={(e) => onUpdate({ title: e.target.value })}
+            value={currentTitle}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdate(lang === 'ru' ? { titleRu: val, title: section.title || val } : { titleEn: val, title: val });
+            }}
           />
           <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
-            Подзаголовок (переносы строк сохраняются)
+            {lang === 'ru' ? 'Подзаголовок (переносы строк сохраняются)' : 'Subtitle (line breaks preserved)'}
           </label>
           <textarea
             style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
-            value={section.subtitle || ''}
-            onChange={(e) => onUpdate({ subtitle: e.target.value })}
+            value={currentSubtitle}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdate(lang === 'ru' ? { subtitleRu: val, subtitle: section.subtitle || val } : { subtitleEn: val, subtitle: val });
+            }}
           />
         </>
       )}
 
       {section.type === 'text' && (
-        <React.Suspense fallback={<div style={{ padding: 12, color: 'var(--pico-muted-color)' }}>Загрузка редактора…</div>}>
+        <React.Suspense fallback={<div style={{ padding: 12, color: 'var(--pico-muted-color)' }}>{lang === 'ru' ? 'Загрузка редактора…' : 'Loading editor…'}</div>}>
           <LazyRTE
             value={section.html || ''}
             onChange={(html) => onUpdate({ html })}
@@ -160,11 +208,16 @@ function SectionEditorForm({
 
       {section.type === 'link' && (
         <>
-          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>Текст кнопки</label>
+          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+            {lang === 'ru' ? 'Текст кнопки' : 'Button text'}
+          </label>
           <input
             style={inputStyle}
-            value={section.linkLabel || ''}
-            onChange={(e) => onUpdate({ linkLabel: e.target.value })}
+            value={currentLinkLabel}
+            onChange={(e) => {
+              const val = e.target.value;
+              onUpdate(lang === 'ru' ? { linkLabelRu: val, linkLabel: section.linkLabel || val } : { linkLabelEn: val, linkLabel: val });
+            }}
           />
           <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>URL</label>
           <input
@@ -187,28 +240,30 @@ function SectionEditorForm({
               checked={!!section.adminOnly}
               onChange={(e) => onUpdate({ adminOnly: e.target.checked })}
             />
-            Только для админа
+            {lang === 'ru' ? 'Только для админа' : 'Admin only'}
           </label>
         </>
       )}
 
       {section.type === 'widget' && (
         <>
-          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>Тип виджета</label>
+          <label style={{ fontSize: 12, color: 'var(--pico-muted-color)' }}>
+            {lang === 'ru' ? 'Тип виджета' : 'Widget type'}
+          </label>
           <select
             style={inputStyle}
             value={section.widgetType || 'calculators'}
             onChange={(e) => onUpdate({ widgetType: e.target.value })}
           >
-            <option value="calculators">Список калькуляторов</option>
-            <option value="page-content">Контент страницы</option>
+            <option value="calculators">{lang === 'ru' ? 'Список калькуляторов' : 'Calculators list'}</option>
+            <option value="page-content">{lang === 'ru' ? 'Контент страницы' : 'Page content'}</option>
           </select>
         </>
       )}
 
       {section.type === 'divider' && (
         <p style={{ fontSize: 13, color: 'var(--pico-muted-color)', margin: 0 }}>
-          Разделитель — без настроек.
+          {lang === 'ru' ? 'Разделитель — без настроек.' : 'Divider — no settings.'}
         </p>
       )}
 
@@ -226,7 +281,7 @@ function SectionEditorForm({
             fontSize: 13,
           }}
         >
-          Готово
+          {lang === 'ru' ? 'Готово' : 'Done'}
         </button>
       </div>
     </div>
@@ -235,12 +290,20 @@ function SectionEditorForm({
 
 /* ═══════════════════ Add-section palette ═══════════════════ */
 
-const SECTION_TYPES: { type: SectionType; label: string; icon: string }[] = [
+const SECTION_TYPES_RU: { type: SectionType; label: string; icon: string }[] = [
   { type: 'hero', label: 'Заголовок', icon: 'H' },
   { type: 'text', label: 'Текст', icon: '¶' },
   { type: 'link', label: 'Кнопка', icon: '🔗' },
   { type: 'widget', label: 'Виджет', icon: '⚙' },
   { type: 'divider', label: 'Линия', icon: '—' },
+];
+
+const SECTION_TYPES_EN: { type: SectionType; label: string; icon: string }[] = [
+  { type: 'hero', label: 'Header', icon: 'H' },
+  { type: 'text', label: 'Text', icon: '¶' },
+  { type: 'link', label: 'Button', icon: '🔗' },
+  { type: 'widget', label: 'Widget', icon: '⚙' },
+  { type: 'divider', label: 'Divider', icon: '—' },
 ];
 
 /* ═══════════════════ Main component ═══════════════════ */
@@ -257,6 +320,7 @@ const ctrlBtn: React.CSSProperties = {
 };
 
 const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, dataVersion, children, footer }) => {
+  const { lang } = useLang();
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<PageSection[]>(() => loadPageSections(pageId));
   const [editId, setEditId] = useState<string | null>(null);
@@ -282,12 +346,12 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
   }, [pageId]);
 
   const handleReset = useCallback(() => {
-    if (!confirm('Сбросить страницу к стандартному виду?')) return;
+    if (!confirm(lang === 'ru' ? 'Сбросить страницу к стандартному виду?' : 'Reset page to default layout?')) return;
     resetPageSections(pageId);
     setSections(getDefaults(pageId));
     setEditing(false);
     setEditId(null);
-  }, [pageId]);
+  }, [pageId, lang]);
 
   const handlePullFromRepo = useCallback(async () => {
     setPullLoading(true);
@@ -316,11 +380,11 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
   const add = (type: SectionType) => {
     const defaults: Partial<PageSection> =
       type === 'hero'
-        ? { title: 'Заголовок', subtitle: '' }
+        ? { title: lang === 'ru' ? 'Заголовок' : 'Header', subtitle: '' }
         : type === 'text'
           ? { html: '<p></p>' }
           : type === 'link'
-            ? { linkLabel: 'Кнопка', linkUrl: '/' }
+            ? { linkLabel: lang === 'ru' ? 'Кнопка' : 'Button', linkUrl: '/' }
             : type === 'widget'
               ? { widgetType: 'calculators' }
               : {};
@@ -354,7 +418,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
     if (section.adminOnly && !canSeeRestricted && !editing) return null;
     switch (section.type) {
       case 'hero':
-        return <HeroSection section={section} />;
+        return <HeroSection section={section} isWelcome={pageId === 'welcome'} />;
       case 'text':
         return <TextSection section={section} />;
       case 'link':
@@ -370,16 +434,30 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
     }
   };
 
-  const sectionTypeLabel = (s: PageSection) =>
-    s.type === 'hero'
-      ? '🏷 Заголовок'
+  const sectionTypeLabel = (s: PageSection) => {
+    if (lang === 'ru') {
+      return s.type === 'hero'
+        ? '🏷 Заголовок'
+        : s.type === 'text'
+          ? '¶ Текст'
+          : s.type === 'link'
+            ? '🔗 Кнопка'
+            : s.type === 'widget'
+              ? '⚙ Виджет'
+              : '— Разделитель';
+    }
+    return s.type === 'hero'
+      ? '🏷 Header'
       : s.type === 'text'
-        ? '¶ Текст'
+        ? '¶ Text'
         : s.type === 'link'
-          ? '🔗 Кнопка'
+          ? '🔗 Button'
           : s.type === 'widget'
-            ? '⚙ Виджет'
-            : '— Разделитель';
+            ? '⚙ Widget'
+            : '— Divider';
+  };
+
+  const sectionTypes = lang === 'ru' ? SECTION_TYPES_RU : SECTION_TYPES_EN;
 
   return (
     <main className="max-w-[750px] mx-auto pb-20 px-4">
@@ -403,7 +481,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
           }}
         >
           <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--pico-color)' }}>
-            Редактирование страницы
+            {lang === 'ru' ? 'Редактирование страницы' : 'Page Editor'}
           </span>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {getSyncConfig() && (
@@ -414,10 +492,10 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                   disabled={pullLoading}
                   style={{ ...ctrlBtn, fontSize: 12 }}
                 >
-                  {pullLoading ? 'Загрузка…' : 'Выгрузить последний сэйв из репо'}
+                  {pullLoading ? (lang === 'ru' ? 'Загрузка…' : 'Loading…') : (lang === 'ru' ? 'Выгрузить последний сэйв из репо' : 'Pull latest save')}
                 </button>
                 <button type="button" onClick={() => pushLayouts(getAllLayouts()).catch(() => {})} style={{ ...ctrlBtn, fontSize: 12 }}>
-                  Загрузить в репо
+                  {lang === 'ru' ? 'Загрузить в репо' : 'Push to repo'}
                 </button>
               </>
             )}
@@ -426,10 +504,10 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
               onClick={handleReset}
               style={{ ...ctrlBtn, color: 'var(--color-danger)', fontSize: 12 }}
             >
-              Сброс
+              {lang === 'ru' ? 'Сброс' : 'Reset'}
             </button>
             <button type="button" onClick={handleCancel} style={{ ...ctrlBtn, fontSize: 12 }}>
-              Отмена
+              {lang === 'ru' ? 'Отмена' : 'Cancel'}
             </button>
             <button
               type="button"
@@ -442,7 +520,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                 fontSize: 12,
               }}
             >
-              Сохранить
+              {lang === 'ru' ? 'Сохранить' : 'Save'}
             </button>
           </div>
         </div>
@@ -491,13 +569,13 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                 >
                   <span style={{ fontWeight: 600, marginRight: 'auto' }}>
                     {sectionTypeLabel(section)}
-                    {section.adminOnly ? ' (админ)' : ''}
+                    {section.adminOnly ? (lang === 'ru' ? ' (админ)' : ' (admin)') : ''}
                   </span>
                   <button
                     type="button"
                     style={ctrlBtn}
                     onClick={() => move(idx, -1)}
-                    title="Вверх"
+                    title={lang === 'ru' ? 'Вверх' : 'Up'}
                     disabled={idx === 0}
                   >
                     ↑
@@ -506,7 +584,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                     type="button"
                     style={ctrlBtn}
                     onClick={() => move(idx, 1)}
-                    title="Вниз"
+                    title={lang === 'ru' ? 'Вниз' : 'Down'}
                     disabled={idx === sections.length - 1}
                   >
                     ↓
@@ -515,7 +593,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                     type="button"
                     style={ctrlBtn}
                     onClick={() => setEditId(editId === section.id ? null : section.id)}
-                    title="Редактировать"
+                    title={lang === 'ru' ? 'Редактировать' : 'Edit'}
                   >
                     ✏️
                   </button>
@@ -523,7 +601,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                     type="button"
                     style={{ ...ctrlBtn, color: 'var(--color-danger)' }}
                     onClick={() => remove(section.id)}
-                    title="Удалить"
+                    title={lang === 'ru' ? 'Удалить' : 'Delete'}
                   >
                     ✕
                   </button>
@@ -567,9 +645,9 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
               marginBottom: 4,
             }}
           >
-            Добавить секцию
+            {lang === 'ru' ? 'Добавить секцию' : 'Add section'}
           </span>
-          {SECTION_TYPES.map((st) => (
+          {sectionTypes.map((st) => (
             <button
               key={st.type}
               type="button"
@@ -579,11 +657,11 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
                 display: 'flex',
                 alignItems: 'center',
                 gap: 4,
-                padding: '6px 12px',
-                fontSize: 13,
+                fontSize: 12,
               }}
             >
-              {st.icon} {st.label}
+              <span>{st.icon}</span>
+              <span>{st.label}</span>
             </button>
           ))}
         </div>
@@ -599,7 +677,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
             href="/"
             className="text-gray-600 dark:text-gray-400 underline hover:no-underline"
           >
-            На главную
+            {lang === 'ru' ? 'На главную' : 'Back to home'}
           </a>
         </p>
       )}
@@ -609,7 +687,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
         <button
           type="button"
           onClick={() => setEditing(true)}
-          title="Редактировать страницу"
+          title={lang === 'ru' ? 'Редактировать страницу' : 'Edit page'}
           style={{
             position: 'fixed',
             bottom: 24,

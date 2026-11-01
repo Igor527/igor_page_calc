@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgCivil" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+    <linearGradient id="gridGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.02" />
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#bgCivil)" />
+  <!-- Isometric Grid / Terrain lines -->
+  <g stroke="#38bdf8" stroke-width="1.5" opacity="0.35" fill="none">
+    <path d="M50 350 Q 200 280, 400 320 T 750 260" />
+    <path d="M50 380 Q 220 310, 420 350 T 750 300" />
+    <path d="M50 410 Q 240 340, 440 380 T 750 340" />
+    <line x1="100" y1="50" x2="100" y2="400" stroke-dasharray="4 8" opacity="0.2" />
+    <line x1="250" y1="50" x2="250" y2="400" stroke-dasharray="4 8" opacity="0.2" />
+    <line x1="400" y1="50" x2="400" y2="400" stroke-dasharray="4 8" opacity="0.2" />
+    <line x1="550" y1="50" x2="550" y2="400" stroke-dasharray="4 8" opacity="0.2" />
+    <line x1="700" y1="50" x2="700" y2="400" stroke-dasharray="4 8" opacity="0.2" />
+  </g>
+  <!-- Road alignment / Corridor -->
+  <path d="M80 320 C 260 220, 520 280, 720 160" fill="none" stroke="#0284c7" stroke-width="28" stroke-linecap="round" opacity="0.7" />
+  <path d="M80 320 C 260 220, 520 280, 720 160" fill="none" stroke="#f8fafc" stroke-width="4" stroke-dasharray="14 12" />
+  <!-- Cross section pins -->
+  <circle cx="280" cy="245" r="8" fill="#38bdf8" stroke="#ffffff" stroke-width="3" />
+  <circle cx="510" cy="240" r="8" fill="#38bdf8" stroke="#ffffff" stroke-width="3" />
+  <!-- Code snippet badge in center -->
+  <rect x="220" y="70" width="360" height="110" rx="12" fill="#090d16" fill-opacity="0.85" stroke="#38bdf8" stroke-width="1.5" />
+  <text x="244" y="105" font-family="Consolas, monospace" font-size="16" fill="#38bdf8">using Autodesk.Civil.DatabaseServices;</text>
+  <text x="244" y="132" font-family="Consolas, monospace" font-size="15" fill="#f8fafc">Corridor.Rebuild(); // .NET API</text>
+  <text x="244" y="157" font-family="Consolas, monospace" font-size="14" fill="#a5f3fc">// Civil 3D Plugin Automation</text>
+</svg>

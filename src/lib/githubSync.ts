@@ -595,6 +595,15 @@ export async function getLayoutsFromRepo(ignoreFirebase = false): Promise<Record
   return layouts && typeof layouts === 'object' ? layouts : null;
 }
 
+/** Проекты из репо (projects.json). */
+export async function getProjectsFromRepo(): Promise<unknown[] | null> {
+  const { data, error } = await getJsonFromRepo(dataPath('projects.json'));
+  if (error || !data) return null;
+  const parsed = data as { projects?: unknown[] };
+  return Array.isArray(parsed) ? parsed : (Array.isArray(parsed.projects) ? parsed.projects : []);
+}
+
+
 /** Данные планировщика из репо (planner.json): задачи и метки с цветами. */
 export type PlannerRepoData = {
   tasks: Array<{ id: string; name: string; start: number; end: number; progress?: number; [k: string]: unknown }>;

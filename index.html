@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -12,11 +12,20 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="apple-touch-icon" href="/icon.svg" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://*.gstatic.com https://*.firebaseio.com https://*.firebasedatabase.app https://*.europe-west1.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.github.com https://api.mistral.ai https://*.googleapis.com https://docs.google.com https://api.allorigins.win https://corsproxy.io https://crossorigin.me https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.europe-west1.firebasedatabase.app wss://*.europe-west1.firebasedatabase.app https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://accounts.google.com https://*.firebaseapp.com https://*.github.com; frame-src 'self' https://accounts.google.com https://*.firebaseapp.com https://*.google.com https://*.firebasedatabase.app https://*.europe-west1.firebasedatabase.app;" />
-  <title>Urban Planner — калькуляторы и инструменты</title>
-  <meta name="description" content="Urban Planner — конструктор калькуляторов, блог и инструменты для автоматизации расчётов." />
-  <!-- Тема до первого кадра (убирает мелькание light→dark) -->
+  <title>Urban Planner — Calculations & Engineering</title>
+  <meta name="description" content="Urban Planner — Preliminary technical calculations, 3D engineering modeling, BIM services, and tools." />
+  <!-- Тема и язык до первого кадра (убирает мелькание light→dark) -->
   <script>
-    (function(){var m=parseInt(localStorage.getItem('themeMode'),10);if(isNaN(m))m=1;var theme=m===0?'light':'dark';document.documentElement.setAttribute('data-theme',theme);document.documentElement.classList.toggle('dark',theme==='dark');})();
+    (function(){
+      var m=parseInt(localStorage.getItem('themeMode'),10);
+      if(isNaN(m))m=1;
+      var theme=m===0?'light':'dark';
+      document.documentElement.setAttribute('data-theme',theme);
+      document.documentElement.classList.toggle('dark',theme==='dark');
+      var lang=localStorage.getItem('site_lang');
+      if(lang!=='ru') lang='en';
+      document.documentElement.setAttribute('lang',lang);
+    })();
   </script>
   <!-- Критический CSS: шапка/подвал и контентная область с первого кадра (best practice) -->
   <style>
@@ -33,7 +42,7 @@
     html.dark #header-container .site-header__btn:hover{background:#374151;}
     #footer-container footer{position:fixed;bottom:0;left:0;right:0;z-index:1000;background:#fff;border-top:1px solid #e5e7eb;padding-bottom:env(safe-area-inset-bottom,0);}
     html.dark #footer-container footer{background:#111827;border-color:#374151;}
-    #footer-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:16px;padding:12px 16px;}
+    #footer-inner{max-width:1200px;margin:0 auto;display:flex;justify-content:center;gap:16px;padding:12px 16px;flex-wrap:wrap;}
     #footer-container a{color:#4b5563;text-decoration:none;}
     #footer-container a:hover{text-decoration:underline;}
     html.dark #footer-container a{color:#9ca3af;}
@@ -79,7 +88,7 @@
         footer.className = 'fixed bottom-0 left-0 w-full z-[1000] bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700';
         var footerInner = document.createElement('div');
         footerInner.id = 'footer-inner';
-        footerInner.className = 'max-w-[1200px] mx-auto flex justify-center gap-4 py-3 px-4';
+        footerInner.className = 'max-w-[1200px] mx-auto flex justify-center gap-4 py-3 px-4 flex-wrap';
         var telegramLink = document.createElement('a');
         telegramLink.href = 'https://t.me/igor_chevela';
         telegramLink.className = 'text-gray-600 dark:text-gray-400 hover:underline';
@@ -92,6 +101,18 @@
         emailLink.className = 'text-gray-600 dark:text-gray-400 hover:underline';
         emailLink.textContent = 'hello@urbanplanner.page';
         footerInner.appendChild(emailLink);
+        var altEmailLink = document.createElement('a');
+        altEmailLink.href = 'mailto:igr.sprk.one@gmail.com';
+        altEmailLink.className = 'text-gray-600 dark:text-gray-400 hover:underline';
+        altEmailLink.title = 'Alternative contact email';
+        altEmailLink.textContent = 'igr.sprk.one@gmail.com';
+        footerInner.appendChild(altEmailLink);
+        var legalLink = document.createElement('a');
+        legalLink.href = '/legal';
+        legalLink.className = 'text-gray-600 dark:text-gray-400 hover:underline';
+        legalLink.textContent = 'legal';
+        legalLink.title = 'Legal & Business Notice: IGOR CHEVELA PR BEOGRAD';
+        footerInner.appendChild(legalLink);
         footer.appendChild(footerInner);
         footerContainer.appendChild(footer);
       }

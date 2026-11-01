@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { createPortal } from 'react-dom';
 import SyncBadge from '@/components/SyncBadge';
 import { getSyncConfig } from '@/lib/githubSync';
+import { useLang } from '@/lib/i18n';
 
 type NavItem = { href: string; label: string; match?: (path: string) => boolean };
 
@@ -12,6 +13,7 @@ function isActivePath(path: string, href: string): boolean {
 
 function getActiveSection(path: string): string {
   if (path === '/') return 'home';
+  if (path.startsWith('/projects')) return 'projects';
   if (path.startsWith('/calculators')) return 'calculators';
   if (path.startsWith('/blog')) return 'blog';
   if (path === '/cv') return 'cv';
@@ -30,6 +32,7 @@ export const SiteHeader: React.FC<{
   isAdmin: boolean;
   isLimitedGuest: boolean;
 }> = ({ path, isAdmin, isLimitedGuest }) => {
+  const { lang, toggleLang } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | undefined>(undefined);
@@ -40,28 +43,31 @@ export const SiteHeader: React.FC<{
 
   const publicNav: NavItem[] = useMemo(
     () => [
-      { href: '/', label: 'Главная' },
-      { href: '/calculators', label: 'Калькуляторы' },
-      { href: '/blog', label: 'Блог' },
+      { href: '/', label: lang === 'ru' ? 'Главная' : 'Home' },
+      { href: '/projects', label: lang === 'ru' ? 'Проекты' : 'Projects' },
+      { href: '/blog', label: lang === 'ru' ? 'Блог' : 'Blog' },
       { href: '/cv', label: 'CV' },
     ],
-    []
+    [lang]
   );
 
   const extraNav: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [
+      { href: '/calculators', label: lang === 'ru' ? 'Калькуляторы' : 'Calculators' },
+    ];
     if (isAdmin) {
-      return [
-        { href: '/admin/notes', label: 'Заметки' },
-        { href: '/editor', label: 'Редактор' },
-        { href: '/planner', label: 'Планировщик' },
-        { href: '/weather', label: 'Метео' },
+      items.push(
+        { href: '/admin/notes', label: lang === 'ru' ? 'Заметки' : 'Notes' },
+        { href: '/editor', label: lang === 'ru' ? 'Редактор' : 'Editor' },
+        { href: '/planner', label: lang === 'ru' ? 'Планировщик' : 'Planner' },
+        { href: '/weather', label: lang === 'ru' ? 'Метео' : 'Weather' },
         { href: '/rss', label: 'RSS' },
-        { href: '/dictionary', label: 'Словарь' },
-        { href: '/admin/drawing', label: 'Рисование' },
-      ];
+        { href: '/dictionary', label: lang === 'ru' ? 'Словарь' : 'Dictionary' },
+        { href: '/admin/drawing', label: lang === 'ru' ? 'Рисование' : 'Drawing' }
+      );
     }
-    return [];
-  }, [isAdmin]);
+    return items;
+  }, [isAdmin, lang]);
 
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -162,14 +168,14 @@ export const SiteHeader: React.FC<{
           className={`site-nav__links is-open${menuStyle ? ' site-nav__links--anchored' : ''}`}
           style={menuStyle}
           role="navigation"
-          aria-label="Разделы сайта"
+          aria-label={lang === 'ru' ? 'Разделы сайта' : 'Site navigation'}
         >
           {allNav.map(renderLink)}
         </div>
         <button
           type="button"
           className="site-nav__backdrop is-visible"
-          aria-label="Закрыть меню"
+          aria-label={lang === 'ru' ? 'Закрыть меню' : 'Close menu'}
           onClick={closeMenu}
         />
       </>,
@@ -178,14 +184,14 @@ export const SiteHeader: React.FC<{
 
   return (
     <>
-      <nav className="site-nav" aria-label="Основная навигация">
+      <nav className="site-nav" aria-label={lang === 'ru' ? 'Основная навигация' : 'Main navigation'}>
         <button
           ref={burgerRef}
           type="button"
           className="site-nav__burger"
           aria-expanded={menuOpen}
           aria-controls="site-nav-menu"
-          aria-label={menuOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-label={menuOpen ? (lang === 'ru' ? 'Закрыть меню' : 'Close menu') : (lang === 'ru' ? 'Открыть меню' : 'Open menu')}
           onClick={() => setMenuOpen((o) => !o)}
         >
           {menuOpen ? '✕' : '☰'}
@@ -196,10 +202,21 @@ export const SiteHeader: React.FC<{
         <button
           type="button"
           className="site-header__btn"
-          aria-label="Назад в истории браузера"
+          aria-label={lang === 'ru' ? 'Назад в истории браузера' : 'Back in browser history'}
           onClick={() => window.history.back()}
         >
-          Назад
+          {lang === 'ru' ? 'Назад' : 'Back'}
+        </button>
+        <button
+          type="button"
+          className="site-header__btn text-xs font-semibold"
+          aria-label={lang === 'en' ? 'Switch language to Russian' : 'Переключить язык на английский'}
+          title={lang === 'en' ? 'Switch to Russian' : 'Switch to English'}
+          onClick={toggleLang}
+        >
+          <span className={lang === 'en' ? 'font-bold underline' : 'opacity-60'}>EN</span>
+          {' / '}
+          <span className={lang === 'ru' ? 'font-bold underline' : 'opacity-60'}>RU</span>
         </button>
         <button
           type="button"

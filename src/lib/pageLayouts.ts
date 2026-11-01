@@ -7,8 +7,16 @@ export interface PageSection {
   type: SectionType;
   title?: string;
   subtitle?: string;
+  titleEn?: string;
+  subtitleEn?: string;
+  titleRu?: string;
+  subtitleRu?: string;
   html?: string;
+  htmlEn?: string;
+  htmlRu?: string;
   linkLabel?: string;
+  linkLabelEn?: string;
+  linkLabelRu?: string;
   linkUrl?: string;
   adminOnly?: boolean;
   /** Показывать ограниченному гостю (списки дел, метеостанция). */
@@ -68,7 +76,29 @@ export async function loadLayoutsFromRepo(): Promise<boolean> {
 
 export function loadPageSections(pageId: string): PageSection[] {
   const all = loadAll();
-  return all[pageId] ?? getDefaults(pageId);
+  const sections = all[pageId] ?? getDefaults(pageId);
+  // Ensure the welcome hero section is up-to-date with Igor Chevela greeting & bilingual text
+  if (pageId === 'welcome' && Array.isArray(sections)) {
+    const hero = sections.find((s) => s.id === 'w1');
+    if (hero && (!hero.title || !hero.title.includes('Igor Chevela'))) {
+      const defHero = getDefaults('welcome').find((s) => s.id === 'w1');
+      if (defHero) {
+        Object.assign(hero, defHero);
+      }
+    }
+    const hasProjects = sections.some((s) => s.linkUrl === '/projects');
+    if (!hasProjects) {
+      const defProj = getDefaults('welcome').find((s) => s.linkUrl === '/projects');
+      if (defProj) {
+        sections.splice(1, 0, defProj);
+      }
+    }
+    const calcSec = sections.find((s) => s.linkUrl === '/calculators' || s.id === 'w5');
+    if (calcSec) {
+      calcSec.adminOnly = true;
+    }
+  }
+  return sections;
 }
 
 export function savePageSections(pageId: string, sections: PageSection[]): void {
@@ -96,19 +126,31 @@ export function getDefaults(pageId: string): PageSection[] {
     case 'welcome':
       return [
         sec('w1', 'hero', {
-          title: 'Добро пожаловать!',
-          subtitle: 'Это страница, где вы можете сделать предварительные технические расчёты.\nПроект разрабатывается для себя и отображается «как есть». Ответственность за результаты лежит на пользователе.',
+          title: "Hello!\nI'm Igor Chevela",
+          titleEn: "Hello!\nI'm Igor Chevela",
+          titleRu: "Привет!\nЯ — Игорь Чевела",
+          subtitle:
+            'I specialize in site design, master planning, BIM services, and 3D modeling across Autodesk and Blender. Over the past year, my primary focus has been on developing proprietary plugins for Autodesk AutoCAD Civil 3D and creating 3D models of any complexity.',
+          subtitleEn:
+            'I specialize in site design, master planning, BIM services, and 3D modeling across Autodesk and Blender. Over the past year, my primary focus has been on developing proprietary plugins for Autodesk AutoCAD Civil 3D and creating 3D models of any complexity.',
+          subtitleRu:
+            'Занимаюсь разработкой генеральных планов, мастер-планов, BIM-услугами и 3D-моделированием в продуктах Autodesk и Blender. В последний год сфокусирован на разработке авторских плагинов для Autodesk AutoCAD Civil 3D и подготовке 3D-моделей любой сложности.',
         }),
-        sec('w5', 'link', { linkLabel: 'Калькуляторы', linkUrl: '/calculators' }),
-        sec('w6', 'link', { linkLabel: 'Блог', linkUrl: '/blog' }),
-        sec('w8', 'link', { linkLabel: 'CV', linkUrl: '/cv' }),
-        sec('w2', 'link', { linkLabel: 'Редактор калькуляторов', linkUrl: '/editor', adminOnly: true }),
+        sec('w7', 'link', { linkLabel: 'Projects', linkLabelEn: 'Projects', linkLabelRu: 'Проекты', linkUrl: '/projects' }),
+        sec('w6', 'link', { linkLabel: 'Blog', linkLabelEn: 'Blog', linkLabelRu: 'Блог', linkUrl: '/blog' }),
+        sec('w8', 'link', { linkLabel: 'CV', linkLabelEn: 'CV', linkLabelRu: 'CV', linkUrl: '/cv' }),
+        sec('w5', 'link', { linkLabel: 'Calculators', linkLabelEn: 'Calculators', linkLabelRu: 'Калькуляторы', linkUrl: '/calculators', adminOnly: true }),
+        sec('w2', 'link', { linkLabel: 'Calculator Editor', linkLabelEn: 'Calculator Editor', linkLabelRu: 'Редактор калькуляторов', linkUrl: '/editor', adminOnly: true }),
       ];
     case 'calculators':
       return [
         sec('c1', 'hero', {
-          title: 'Опубликованные калькуляторы',
-          subtitle: 'Выберите калькулятор для расчётов.',
+          title: 'Published Calculators',
+          titleEn: 'Published Calculators',
+          titleRu: 'Опубликованные калькуляторы',
+          subtitle: 'Select a calculator to perform calculations.',
+          subtitleEn: 'Select a calculator to perform calculations.',
+          subtitleRu: 'Выберите калькулятор для расчётов.',
         }),
         sec('c2', 'widget', { widgetType: 'calculators' }),
       ];

@@ -17,7 +17,9 @@
       },
       "createdAt": 1775821535504,
       "updatedAt": 1776132800418,
-      "deleted": false
+      "deleted": false,
+      "titleEn": "Don't Be a \"Mailman\"",
+      "contentEn": "<p>In a nutshell, about my day-to-day work with colleagues/clients/contractors/expertise — it's ping-pong <br>inspired by <a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/\">https://vitalybogdanov.ru/blog/all/play-the-right-kind-of-ping-pong/</a><br><br>It seems like part of the game; no one can or should be flawless, but sometimes you just get fed up with it :)<br>Also, a new website feature (for admin) — AI-powered text to .svg diagram generation!)</p><img src=\"/assets/__-____-___________--schema_1776111761.svg\" width=\"430\"><p>We'll talk about table tennis soon as well :)</p><p></p>"
     },
     {
       "id": "post_0a4j2s4_mm9xdgr3",
@@ -34,7 +36,9 @@
       },
       "createdAt": 1772501072654,
       "updatedAt": 1772528624887,
-      "deleted": false
+      "deleted": false,
+      "titleEn": "Hello",
+      "contentEn": "<p>I'm Igor Chevela.<br>I have been working in urban planning for over 10 years.<br>My core specialization is developing general master plans, urban site assessments, and site analysis.</p><p>In this blog, I'll share insights on urban improvement, site features, pet projects, and life in Serbia.</p>"
     },
     {
       "id": "post_nsq6xhw_mmad506z",
@@ -53,7 +57,9 @@
       "todos": [],
       "createdAt": 1772527551802,
       "updatedAt": 1772528417794,
-      "deleted": true
+      "deleted": true,
+      "titleEn": "Test from phone",
+      "contentEn": ""
     }
   ]
 }
