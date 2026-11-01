@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1793575407906,
+  "exportedAt": 1793575474202,
   "projects": [
     {
       "id": "proj_xwckl2r_mvyejbjf",
@@ -84,11 +84,11 @@
         "Python bpy",
         "Parametric"
       ],
-      "year": "2024–2026",
+      "year": "2025–2026",
       "published": true,
       "order": 4,
       "createdAt": 1775900000000,
-      "updatedAt": 1775900000000,
+      "updatedAt": 1793575470103,
       "deleted": false
     },
     {
@@ -107,11 +107,11 @@
         "Dynamo",
         "Automation"
       ],
-      "year": "2024–2026",
+      "year": "2025–2026",
       "published": true,
       "order": 5,
       "createdAt": 1776000000000,
-      "updatedAt": 1776000000000,
+      "updatedAt": 1793575442479,
       "deleted": false
     }
   ]
