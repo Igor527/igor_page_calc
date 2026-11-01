@@ -80,6 +80,7 @@ export function downloadProjectsBundle(projects: ProjectItem[]): void {
 }
 
 function resizeProjectImage(dataUrl: string, maxW = 1280): Promise<string> {
+  if (dataUrl.startsWith('data:image/gif')) return Promise.resolve(dataUrl);
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -307,8 +308,8 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      const resized = await resizeProjectImage(dataUrl, 1280);
-      setImageUrl(resized);
+      const finalUrl = file.type === 'image/gif' ? dataUrl : await resizeProjectImage(dataUrl, 1280);
+      setImageUrl(finalUrl);
     } catch {
       alert(isEn ? 'Failed to process screenshot' : 'Не удалось обработать скриншот');
     }

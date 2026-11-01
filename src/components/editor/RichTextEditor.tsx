@@ -38,6 +38,7 @@ const FontSize = Extension.create({
 const MAX_IMG_W = 800;
 
 function resizeImage(dataUrl: string): Promise<string> {
+  if (dataUrl.startsWith('data:image/gif')) return Promise.resolve(dataUrl);
   return new Promise(resolve => {
     const img = new window.Image();
     img.onload = () => {
@@ -331,8 +332,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
   const insertImageFile = useCallback(async (file: File) => {
     if (!editor) return;
     const dataUrl = await fileToDataUrl(file);
-    const resized = await resizeImage(dataUrl);
-    (editor.chain().focus() as any).setImage({ src: resized }).run();
+    const finalSrc = file.type === 'image/gif' ? dataUrl : await resizeImage(dataUrl);
+    (editor.chain().focus() as any).setImage({ src: finalSrc }).run();
   }, [editor]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
