@@ -214,7 +214,7 @@ export async function getAiPromptsFromFirebase(): Promise<{ systemPrompt?: strin
     if (!snap.exists()) return null;
     return snap.val() as { systemPrompt?: string; userPrompt?: string };
   } catch (e) {
-    console.error('Firebase getAiPrompts error:', e);
+    console.warn('Firebase getAiPrompts warning:', e);
     return null;
   }
 }
@@ -235,7 +235,7 @@ export async function getAiDiagramPromptsFromFirebase(): Promise<{ systemPrompt?
     if (!snap.exists()) return null;
     return snap.val() as { systemPrompt?: string; userPrompt?: string };
   } catch (e) {
-    console.error('Firebase getAiDiagramPrompts error:', e);
+    console.warn('Firebase getAiDiagramPrompts warning:', e);
     return null;
   }
 }

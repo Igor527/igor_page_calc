@@ -11,6 +11,7 @@ import {
   mergePosts,
 } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
+import { idbGet, idbSet } from '@/lib/idbStorage';
 import { ADMIN_LOGIN_PATH, ADMIN_SESSION_EXPIRED_TITLE } from '@/lib/syncAuthMessages';
 import { attachCodeCopyButtons } from '@/lib/useCodeCopyButtons';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
@@ -81,7 +82,7 @@ function getViewCounts(): Record<string, number> {
 function incrementView(postId: string): number {
   const counts = getViewCounts();
   counts[postId] = (counts[postId] || 0) + 1;
-  localStorage.setItem(VIEWS_KEY, JSON.stringify(counts));
+  try { localStorage.setItem(VIEWS_KEY, JSON.stringify(counts)); } catch {}
   return counts[postId];
 }
 
@@ -92,7 +93,7 @@ function getPollVoted(): Record<string, true> {
 function setPollVoted(pollId: string) {
   const o = getPollVoted();
   o[pollId] = true;
-  localStorage.setItem(POLL_VOTED_KEY, JSON.stringify(o));
+  try { localStorage.setItem(POLL_VOTED_KEY, JSON.stringify(o)); } catch {}
 }
 
 function getPollResults(pollId: string): Record<string, number> {
@@ -102,7 +103,7 @@ function getPollResults(pollId: string): Record<string, number> {
 function addPollVotes(pollId: string, optionIds: string[]) {
   const cur = getPollResults(pollId);
   for (const id of optionIds) cur[id] = (cur[id] || 0) + 1;
-  localStorage.setItem(POLL_RESULTS_PREFIX + pollId, JSON.stringify(cur));
+  try { localStorage.setItem(POLL_RESULTS_PREFIX + pollId, JSON.stringify(cur)); } catch {}
 }
 
 function getTodosChecked(): Record<string, Record<string, boolean>> {
@@ -113,7 +114,7 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
   const o = getTodosChecked();
   if (!o[postId]) o[postId] = {};
   o[postId][todoId] = checked;
-  localStorage.setItem(TODOS_CHECKED_KEY, JSON.stringify(o));
+  try { localStorage.setItem(TODOS_CHECKED_KEY, JSON.stringify(o)); } catch {}
 }
 
 /* ═══════════════════ Storage ═══════════════════ */
@@ -169,12 +170,17 @@ export function downloadPostsBundle(): void {
   URL.revokeObjectURL(a.href);
 }
 
+let postsMemoryCache: BlogPost[] | null = null;
+
 function loadPosts(): BlogPost[] {
+  if (postsMemoryCache && postsMemoryCache.length > 0) {
+    return postsMemoryCache;
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as BlogPost[];
-    return arr.map((p) => ({
+    const normalized = arr.map((p) => ({
       ...p,
       tags: p.tags ?? [],
       coverImage: p.coverImage ?? '',
@@ -182,11 +188,30 @@ function loadPosts(): BlogPost[] {
       todos: p.todos ?? [],
       deleted: p.deleted ?? false,
     }));
+    postsMemoryCache = normalized;
+    return normalized;
   } catch { return []; }
 }
 
 function savePosts(posts: BlogPost[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+  postsMemoryCache = posts;
+  // Сохраняем в IndexedDB (без лимита в 5 МБ)
+  void idbSet(STORAGE_KEY, posts);
+
+  // Пытаемся сохранить в localStorage для обратной совместимости
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(posts));
+  } catch (e) {
+    console.warn('localStorage quota exceeded for blog posts, saved to IndexedDB & memory:', e);
+    try {
+      // Сохраняем облегченную копию без огромных base64, чтобы localStorage не был пустым
+      const lightweight = posts.map(p => ({
+        ...p,
+        coverImage: (p.coverImage && p.coverImage.length > 1000) ? '' : p.coverImage
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+    } catch {}
+  }
 }
 
 function generateId(): string {
@@ -643,6 +668,23 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
 
   const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'loading' | 'sending' | 'ok' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Асинхронно восстанавливаем из IndexedDB на случай превышения квоты localStorage
+  useEffect(() => {
+    void idbGet<BlogPost[]>(STORAGE_KEY).then((idbPosts) => {
+      if (Array.isArray(idbPosts) && idbPosts.length > 0) {
+        setPosts((current) => {
+          if (current.length === 0) return idbPosts;
+          const currMax = Math.max(0, ...current.map((p) => p.updatedAt ?? 0));
+          const idbMax = Math.max(0, ...idbPosts.map((p) => p.updatedAt ?? 0));
+          if (idbMax >= currMax) {
+            return idbPosts;
+          }
+          return current;
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => { savePosts(posts); }, [posts]);
 
@@ -1434,7 +1476,7 @@ function loadComments(): BlogComment[] {
 }
 
 function saveComments(comments: BlogComment[]) {
-  localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments));
+  try { localStorage.setItem(COMMENTS_KEY, JSON.stringify(comments)); } catch {}
 }
 
 const URL_PATTERNS = [
@@ -1466,7 +1508,7 @@ function canComment(): boolean {
 }
 
 function markCommented() {
-  localStorage.setItem(RATE_KEY, String(Date.now()));
+  try { localStorage.setItem(RATE_KEY, String(Date.now())); } catch {}
 }
 
 function sanitizeCommentText(text: string): string {
@@ -1538,7 +1580,7 @@ const CommentSection: React.FC<{ postId: string; isAdmin: boolean }> = ({ postId
     };
 
     setComments(prev => [...prev, comment]);
-    localStorage.setItem('igor-blog-comment-name', trimAuthor);
+    try { localStorage.setItem('igor-blog-comment-name', trimAuthor); } catch {}
     markCommented();
     setText('');
     setSuccess('Комментарий отправлен на модерацию.');

@@ -3,7 +3,6 @@ import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
-import { Underline } from '@tiptap/extension-underline';
 import { Highlight } from '@tiptap/extension-highlight';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Placeholder } from '@tiptap/extension-placeholder';
@@ -256,7 +255,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
       StarterKit.configure({ heading: { levels: [2, 3, 4] } }),
       (ImageResizeWithFocus as any).configure({ inline: false, allowBase64: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Underline,
       Highlight.configure({ multicolor: false }),
       TextStyle,
       FontSize,

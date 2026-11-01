@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useLang } from '@/lib/i18n';
 import { getSyncConfig, pushProjects, fetchProjectsFromRepo, schedulePushWithDelay, cancelScheduledPush } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
+import { idbGet, idbSet } from '@/lib/idbStorage';
 
 export interface ProjectItem {
   id: string;
@@ -48,23 +49,43 @@ export function loadProjectsBundle(): Promise<void> {
     });
 }
 
+let projectsMemoryCache: ProjectItem[] | null = null;
+
 function loadLocalProjects(): ProjectItem[] {
+  if (projectsMemoryCache && projectsMemoryCache.length > 0) {
+    return projectsMemoryCache;
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as ProjectItem[];
-    return arr.map((p) => ({
+    const normalized = arr.map((p) => ({
       ...p,
       tags: p.tags ?? [],
       deleted: p.deleted ?? false,
     }));
+    projectsMemoryCache = normalized;
+    return normalized;
   } catch {
     return [];
   }
 }
 
 function saveLocalProjects(projects: ProjectItem[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  projectsMemoryCache = projects;
+  void idbSet(STORAGE_KEY, projects);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  } catch (e) {
+    console.warn('localStorage quota exceeded for projects, saved to IndexedDB & memory:', e);
+    try {
+      const lightweight = projects.map(p => ({
+        ...p,
+        imageUrl: (p.imageUrl && p.imageUrl.length > 1000) ? '' : p.imageUrl
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
+    } catch {}
+  }
 }
 
 export function downloadProjectsBundle(projects: ProjectItem[]): void {
@@ -142,6 +163,23 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
   const [published, setPublished] = useState(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Асинхронно восстанавливаем из IndexedDB
+  useEffect(() => {
+    void idbGet<ProjectItem[]>(STORAGE_KEY).then((idbProjs) => {
+      if (Array.isArray(idbProjs) && idbProjs.length > 0) {
+        setProjects((current) => {
+          if (current.length === 0) return idbProjs;
+          const currMax = Math.max(0, ...current.map((p) => p.updatedAt ?? 0));
+          const idbMax = Math.max(0, ...idbProjs.map((p) => p.updatedAt ?? 0));
+          if (idbMax >= currMax) {
+            return idbProjs;
+          }
+          return current;
+        });
+      }
+    });
+  }, []);
 
   // When initial bundle loads if state was empty
   useEffect(() => {
