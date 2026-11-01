@@ -624,6 +624,8 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
   const [editing, setEditing] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [titleEn, setTitleEn] = useState('');
+  const [contentEn, setContentEn] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [coverImage, setCoverImage] = useState('');
   const [coverSettings, setCoverSettings] = useState<CoverSettings>(defaultCover);
@@ -761,7 +763,9 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
       list = list.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
+          (p.titleEn && p.titleEn.toLowerCase().includes(q)) ||
           p.content.replace(/<[^>]*>/g, ' ').toLowerCase().includes(q) ||
+          (p.contentEn && p.contentEn.replace(/<[^>]*>/g, ' ').toLowerCase().includes(q)) ||
           p.tags?.some((t) => t.toLowerCase().includes(q))
       );
     }
@@ -770,14 +774,17 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
 
   const startNew = () => {
     setEditing('__new__');
-    setTitle(''); setContent(''); setTags([]); setCoverImage(''); setCoverSettings(defaultCover);
+    setTitle(''); setContent(''); setTitleEn(''); setContentEn('');
+    setTags([]); setCoverImage(''); setCoverSettings(defaultCover);
     setIsPublished(true); setPolls([]); setTodos([]);
     setTimeout(() => titleRef.current?.focus(), 50);
   };
 
   const startEdit = (post: BlogPost) => {
     setEditing(post.id);
-    setTitle(post.title); setContent(post.content); setTags(post.tags ?? []);
+    setTitle(post.title || ''); setContent(post.content || '');
+    setTitleEn(post.titleEn || ''); setContentEn(post.contentEn || '');
+    setTags(post.tags ?? []);
     setCoverImage(post.coverImage ?? ''); setCoverSettings(post.coverSettings ?? defaultCover);
     setIsPublished(post.published);
     setPolls(post.polls ?? []); setTodos(post.todos ?? []);
@@ -785,19 +792,29 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
   };
 
   const handleSave = () => {
-    if (!title.trim()) return;
+    if (!title.trim() && !titleEn.trim()) return;
     const now = Date.now();
-    const autoTags = extractTags(content);
+    const activeTitle = title.trim() || titleEn.trim();
+    const autoTags = extractTags(content + ' ' + contentEn);
     const finalTags = mergeTags(tags, autoTags);
-    const finalSlug = slugify(title);
+    const finalSlug = slugify(activeTitle);
 
     if (editing === '__new__') {
       const post: BlogPost = {
-        id: generateId(), title: title.trim(), content, slug: finalSlug,
-        published: isPublished, tags: finalTags, coverImage, coverSettings,
+        id: generateId(),
+        title: title.trim() || activeTitle,
+        content,
+        slug: finalSlug,
+        titleEn: titleEn.trim() || undefined,
+        contentEn: contentEn || undefined,
+        published: isPublished,
+        tags: finalTags,
+        coverImage,
+        coverSettings,
         polls: polls.length > 0 ? polls : undefined,
         todos: todos.length > 0 ? todos : undefined,
-        createdAt: now, updatedAt: now,
+        createdAt: now,
+        updatedAt: now,
       };
       modifiedPostIdsRef.current.add(post.id);
       setPosts(prev => [post, ...prev]);
@@ -805,8 +822,19 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
       modifiedPostIdsRef.current.add(editing);
       setPosts(prev => prev.map(p =>
         p.id === editing ? {
-          ...p, title: title.trim(), content, slug: finalSlug, published: isPublished, tags: finalTags,
-          coverImage, coverSettings, polls: polls.length > 0 ? polls : undefined, todos: todos.length > 0 ? todos : undefined, updatedAt: now,
+          ...p,
+          title: title.trim() || activeTitle,
+          content,
+          slug: p.slug || finalSlug,
+          titleEn: titleEn.trim() || undefined,
+          contentEn: contentEn || undefined,
+          published: isPublished,
+          tags: finalTags,
+          coverImage,
+          coverSettings,
+          polls: polls.length > 0 ? polls : undefined,
+          todos: todos.length > 0 ? todos : undefined,
+          updatedAt: now,
         } : p
       ));
     }
@@ -899,14 +927,40 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
           </div>
         )}
 
-        {/* Editor form */}
+        {/* Editor form: Side-by-side bilingual windows */}
         {isAdmin && editing ? (
           <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 24 }}>
-            <div style={{ flex: '1 1 450px', minWidth: 0 }}>
-              <div style={{ padding: 16, border: '1px solid var(--pico-border-color)', borderRadius: 8 }}>
-                <input ref={titleRef} type="text" placeholder="Заголовок поста"
-                  value={title} onChange={e => setTitle(e.target.value)}
-                  style={{ width: '100%', marginBottom: 12, fontSize: 16, fontWeight: 600 }} />
+            <div style={{ flex: '1 1 100%', minWidth: 0 }}>
+              <div style={{ padding: 20, border: '1px solid var(--pico-border-color)', borderRadius: 12, background: 'var(--pico-card-background-color)' }}>
+                
+                {/* 2-Column Side-by-Side Titles */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--pico-muted-color)', marginBottom: 4, display: 'block' }}>
+                      🇷🇺 Заголовок поста (Русский) *
+                    </label>
+                    <input
+                      ref={titleRef}
+                      type="text"
+                      placeholder="Заголовок поста на русском"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
+                      style={{ width: '100%', fontSize: 16, fontWeight: 600, margin: 0 }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--pico-muted-color)', marginBottom: 4, display: 'block' }}>
+                      🇬🇧 Post Title (English Translation)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Title in English"
+                      value={titleEn}
+                      onChange={e => setTitleEn(e.target.value)}
+                      style={{ width: '100%', fontSize: 16, fontWeight: 600, margin: 0 }}
+                    />
+                  </div>
+                </div>
 
             {/* Cover image editor */}
             {coverImage ? (
@@ -922,12 +976,36 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
               </div>
             )}
 
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 12, color: 'var(--pico-muted-color)', marginBottom: 4, display: 'block' }}>Теги</label>
               <TagInput tags={tags} onChange={setTags} />
             </div>
 
-            <RichTextEditor value={content} onChange={setContent} placeholder="Содержание поста..." minHeight={260} />
+            {/* 2-Column Side-by-Side Content Editors */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pico-muted-color)', marginBottom: 6 }}>
+                  🇷🇺 Текст поста на русском
+                </div>
+                <RichTextEditor
+                  value={content}
+                  onChange={setContent}
+                  placeholder="Содержание поста на русском..."
+                  minHeight={320}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--pico-muted-color)', marginBottom: 6 }}>
+                  🇬🇧 English Translation (Текст на английском)
+                </div>
+                <RichTextEditor
+                  value={contentEn}
+                  onChange={setContentEn}
+                  placeholder="Translate or write English version alongside Russian..."
+                  minHeight={320}
+                />
+              </div>
+            </div>
 
             {/* Голосования */}
             <div style={{ marginTop: 16, marginBottom: 16, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8 }}>
@@ -1070,30 +1148,73 @@ const PostCard: React.FC<{
   post: BlogPost; isAdmin: boolean;
   onEdit: () => void; onDelete: () => void; onCopyLink: () => void;
 }> = ({ post, isAdmin, onEdit, onDelete, onCopyLink }) => {
-  const toc = generateToc(post.content);
+  const { isEn } = useLang();
+  const [cardLang, setCardLang] = useState<'default' | 'ru' | 'en'>('default');
+  const effectiveLang = cardLang === 'default' ? (isEn ? 'en' : 'ru') : cardLang;
+  const displayTitle = effectiveLang === 'en' && post.titleEn ? post.titleEn : post.title;
+  const displayContent = effectiveLang === 'en' && post.contentEn ? post.contentEn : post.content;
+  const hasBothLangs = Boolean(post.titleEn && post.contentEn);
+
+  const toc = generateToc(displayContent);
   const views = getViewCounts()[post.id] || 0;
 
   return (
     <article id={post.slug} style={{ padding: 0, border: '1px solid var(--pico-border-color)', borderRadius: 8, overflow: 'hidden' }}>
       {post.coverImage && (
-        <CoverDisplay src={post.coverImage} settings={post.coverSettings} maxHeight={280} alt={post.title || 'cover'} />
+        <CoverDisplay src={post.coverImage} settings={post.coverSettings} maxHeight={280} alt={displayTitle || 'cover'} />
       )}
       <div className="blog-card-inner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 8, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ margin: '0 0 4px', fontSize: 'clamp(1.1rem, 4vw, 1.375rem)' }}>
-              <a href={`/blog/${post.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{post.title}</a>
+              <a href={`/blog/${post.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{displayTitle}</a>
             </h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+              <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
               {views > 0 && <span>👁 {views}</span>}
+              {hasBothLangs && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--pico-border-color)', borderRadius: 12, padding: '1px 3px', fontSize: 11 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCardLang('en'); }}
+                    style={{
+                      padding: '1px 6px',
+                      fontSize: 11,
+                      lineHeight: 1.2,
+                      border: 'none',
+                      background: effectiveLang === 'en' ? 'var(--pico-primary)' : 'transparent',
+                      color: effectiveLang === 'en' ? 'var(--pico-primary-inverse)' : 'inherit',
+                      borderRadius: 8,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCardLang('ru'); }}
+                    style={{
+                      padding: '1px 6px',
+                      fontSize: 11,
+                      lineHeight: 1.2,
+                      border: 'none',
+                      background: effectiveLang === 'ru' ? 'var(--pico-primary)' : 'transparent',
+                      color: effectiveLang === 'ru' ? 'var(--pico-primary-inverse)' : 'inherit',
+                      borderRadius: 8,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    RU
+                  </button>
+                </div>
+              )}
               {isAdmin && !post.published && (
-                <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
+                <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
               )}
             </div>
           </div>
           <div className="blog-toolbar-wrap" style={{ flexShrink: 0 }}>
-            <button onClick={onCopyLink} className="outline blog-touch-btn" style={{ fontSize: 12 }} title="Скопировать ссылку">🔗</button>
+            <button onClick={onCopyLink} className="outline blog-touch-btn" style={{ fontSize: 12 }} title={isEn ? 'Copy link' : 'Скопировать ссылку'}>🔗</button>
             {isAdmin && (
               <>
                 <button onClick={onEdit} className="outline blog-touch-btn" style={{ fontSize: 13 }}>✎</button>
@@ -1113,7 +1234,9 @@ const PostCard: React.FC<{
         {/* TOC */}
         {toc.length >= 3 && (
           <details style={{ marginBottom: 12, fontSize: 13 }}>
-            <summary style={{ cursor: 'pointer', color: 'var(--pico-muted-color)' }}>Содержание</summary>
+            <summary style={{ cursor: 'pointer', color: 'var(--pico-muted-color)' }}>
+              {effectiveLang === 'en' ? 'Table of contents' : 'Содержание'}
+            </summary>
             <ul style={{ margin: '6px 0 0', paddingLeft: 16, listStyle: 'none' }}>
               {toc.map((item, i) => (
                 <li key={i} style={{ paddingLeft: item.level === 3 ? 14 : 0, lineHeight: 1.8 }}>
@@ -1126,7 +1249,7 @@ const PostCard: React.FC<{
 
         <div className="blog-content" style={{ lineHeight: 1.7, fontSize: 15 }}
           ref={el => { if (el) { attachCodeCopyButtons(el); applyImageFocusStyles(el); } }}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayContent) }} />
 
         {post.polls && post.polls.length > 0 && (
           <div style={{ marginTop: 20 }}>
@@ -1146,16 +1269,21 @@ const PostCard: React.FC<{
 /* ═══════════════════ BlogPostView (single post) ═══════════════════ */
 
 const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAdmin }) => {
+  const { isEn } = useLang();
   const posts = getPostsForDisplay();
-  const normalizedSlug = slug.replace(/\/$/, ''); // Убираем слэш в конце
+  const normalizedSlug = slug.replace(/\/$/, '');
   const post = posts.find(p => p.slug === normalizedSlug || p.slug === slug);
+  const [viewLang, setViewLang] = useState<'default' | 'ru' | 'en'>('default');
+  const effectiveLang = viewLang === 'default' ? (isEn ? 'en' : 'ru') : viewLang;
+  const displayTitle = post && effectiveLang === 'en' && post.titleEn ? post.titleEn : (post?.title || '');
+  const displayContent = post && effectiveLang === 'en' && post.contentEn ? post.contentEn : (post?.content || '');
+  const hasBothLangs = Boolean(post?.titleEn && post?.contentEn);
 
   useEffect(() => {
     let zoom: ReturnType<typeof mediumZoom> | null = null;
     if (post) {
       incrementView(post.id);
       
-      // Инициализация зума с небольшой задержкой для прогрузки DOM
       const timer = setTimeout(() => {
         const isDark = document.documentElement.classList.contains('dark');
         zoom = mediumZoom('.blog-content img.zoomable, .blog-content img[src$=".svg"]', {
@@ -1170,34 +1298,74 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
         if (zoom) zoom.detach();
       };
     }
-  }, [post?.id, post?.content]);
+  }, [post?.id, displayContent]);
 
   if (!post || (!post.published && !isAdmin)) {
     return (
       <main className="blog-post-main max-w-[750px] mx-auto text-center">
-        <h2>Пост не найден</h2>
-        <p style={{ color: 'var(--pico-muted-color)' }}>Публикация по адресу «{slug}» не найдена.</p>
-        <a href="/blog" style={{ color: 'var(--pico-muted-color)', textDecoration: 'underline' }}>Назад к блогу</a>
+        <h2>{isEn ? 'Post not found' : 'Пост не найден'}</h2>
+        <p style={{ color: 'var(--pico-muted-color)' }}>
+          {isEn ? `Publication at "${slug}" was not found.` : `Публикация по адресу «${slug}» не найдена.`}
+        </p>
+        <a href="/blog" style={{ color: 'var(--pico-muted-color)', textDecoration: 'underline' }}>
+          {isEn ? '← Back to Blog' : 'Назад к блогу'}
+        </a>
       </main>
     );
   }
 
-  const toc = generateToc(post.content);
+  const toc = generateToc(displayContent);
 
   return (
     <main className="blog-post-main max-w-[750px] mx-auto">
       <article className="blog-article">
         {post.coverImage && (
           <div style={{ marginBottom: 20 }}>
-            <CoverDisplay src={post.coverImage} settings={post.coverSettings} maxHeight={340} radius={8} alt={post.title || 'cover'} />
+            <CoverDisplay src={post.coverImage} settings={post.coverSettings} maxHeight={340} radius={8} alt={displayTitle || 'cover'} />
           </div>
         )}
         <header style={{ marginBottom: 24 }}>
-          <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{post.title}</h1>
+          <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{displayTitle}</h1>
           <div style={{ fontSize: 13, color: 'var(--pico-muted-color)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+            <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+            {hasBothLangs && (
+              <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--pico-border-color)', borderRadius: 12, padding: '1px 3px', fontSize: 11 }}>
+                <button
+                  type="button"
+                  onClick={() => setViewLang('en')}
+                  style={{
+                    padding: '1px 6px',
+                    fontSize: 11,
+                    lineHeight: 1.2,
+                    border: 'none',
+                    background: effectiveLang === 'en' ? 'var(--pico-primary)' : 'transparent',
+                    color: effectiveLang === 'en' ? 'var(--pico-primary-inverse)' : 'inherit',
+                    borderRadius: 8,
+                    cursor: 'pointer'
+                  }}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewLang('ru')}
+                  style={{
+                    padding: '1px 6px',
+                    fontSize: 11,
+                    lineHeight: 1.2,
+                    border: 'none',
+                    background: effectiveLang === 'ru' ? 'var(--pico-primary)' : 'transparent',
+                    color: effectiveLang === 'ru' ? 'var(--pico-primary-inverse)' : 'inherit',
+                    borderRadius: 8,
+                    cursor: 'pointer'
+                  }}
+                >
+                  RU
+                </button>
+              </div>
+            )}
             {isAdmin && !post.published && (
-              <span style={{ color: '#ca8a04', fontWeight: 600 }}>Черновик</span>
+              <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
             )}
           </div>
           {post.tags && post.tags.length > 0 && (
@@ -1209,7 +1377,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
 
         {toc.length >= 3 && (
           <nav style={{ marginBottom: 20, padding: 12, border: '1px solid var(--pico-border-color)', borderRadius: 8, fontSize: 13 }}>
-            <strong>Содержание</strong>
+            <strong>{effectiveLang === 'en' ? 'Table of contents' : 'Содержание'}</strong>
             <ul style={{ margin: '6px 0 0', paddingLeft: 16, listStyle: 'none' }}>
               {toc.map((item, i) => (
                 <li key={i} style={{ paddingLeft: item.level === 3 ? 14 : 0, lineHeight: 1.8 }}>
@@ -1222,7 +1390,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
 
         <div className="blog-content" style={{ lineHeight: 1.7, fontSize: 15 }}
           ref={el => { if (el) { attachCodeCopyButtons(el); applyImageFocusStyles(el); } }}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }} />
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(displayContent) }} />
 
         {post.polls && post.polls.length > 0 && (
           <div style={{ marginTop: 24 }}>
