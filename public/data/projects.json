@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1793575340234,
+  "exportedAt": 1793575407906,
   "projects": [
     {
       "id": "proj_xwckl2r_mvyejbjf",
@@ -86,7 +86,7 @@
       ],
       "year": "2024–2026",
       "published": true,
-      "order": 5,
+      "order": 4,
       "createdAt": 1775900000000,
       "updatedAt": 1775900000000,
       "deleted": false
@@ -109,7 +109,7 @@
       ],
       "year": "2024–2026",
       "published": true,
-      "order": 4,
+      "order": 5,
       "createdAt": 1776000000000,
       "updatedAt": 1776000000000,
       "deleted": false
