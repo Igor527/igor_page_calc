@@ -666,9 +666,7 @@ const DictionaryPage: React.FC<{ dataVersion?: number }> = ({ dataVersion }) => 
             </>
         </section>
 
-      <p style={{ marginTop: 24, fontSize: 12, color: 'var(--pico-muted-color)' }}>
-        <a href="/" style={{ color: 'var(--pico-primary)' }}>← На главную</a>
-      </p>
+
     </main>
   );
 };

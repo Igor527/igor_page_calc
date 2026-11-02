@@ -392,11 +392,7 @@ const WeatherPage: React.FC = () => {
         </>
       )}
 
-      <p style={{ marginTop: 24 }}>
-        <a href="/" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>
-          ← На главную
-        </a>
-      </p>
+
     </div>
   );
 };

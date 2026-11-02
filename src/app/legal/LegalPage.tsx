@@ -130,15 +130,7 @@ export const LegalPage: React.FC = () => {
           </section>
         </div>
 
-        {/* Back button */}
-        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 text-center">
-          <a
-            href="/"
-            className="inline-flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline hover:no-underline"
-          >
-            {isEn ? '← Back to Home' : '← Вернуться на главную'}
-          </a>
-        </div>
+
       </div>
     </main>
   );

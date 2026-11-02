@@ -1060,12 +1060,6 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
         </div>
       )}
 
-      {/* Back to Home Link */}
-      <p className="mt-12 text-center">
-        <a href="/" className="text-sm text-gray-500 hover:underline">
-          {isEn ? '← Back to Home' : '← На главную'}
-        </a>
-      </p>
     </main>
   );
 };

@@ -1215,11 +1215,6 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
           ))}
         </div>
 
-        <p className="mt-12 text-center">
-          <a href="/" className="text-sm text-gray-500 hover:underline">
-            {isEn ? '← Back to Home' : '← На главную'}
-          </a>
-        </p>
       </article>
     </main>
   );
@@ -1417,10 +1412,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
           <a href="/blog" className="text-gray-500 hover:underline">
             {effectiveLang === 'en' ? '← All publications' : '← Все публикации'}
           </a>
-          <span className="text-gray-300 dark:text-gray-700">•</span>
-          <a href="/" className="text-gray-500 hover:underline">
-            {effectiveLang === 'en' ? 'Back to Home' : 'На главную'}
-          </a>
+
         </p>
       </article>
     </main>

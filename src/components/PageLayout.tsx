@@ -670,17 +670,7 @@ const PageLayout: React.FC<Props> = ({ pageId, isAdmin, isLimitedGuest = false, 
       {/* ─── Optional footer (admin link, etc.) ─── */}
       {footer && <div className="mt-6">{footer}</div>}
 
-      {/* ─── Back link for non-welcome pages ─── */}
-      {pageId !== 'welcome' && !editing && (
-        <p className="mt-12 text-center">
-          <a
-            href="/"
-            className="text-sm text-gray-500 hover:underline"
-          >
-            {lang === 'ru' ? '← На главную' : '← Back to Home'}
-          </a>
-        </p>
-      )}
+
 
       {/* ─── Floating edit button (admin only) ─── */}
       {isAdmin && !editing && (
