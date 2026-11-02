@@ -2267,3 +2267,109 @@ body > .site-nav__backdrop.is-visible {
   outline: 2px solid var(--pico-primary);
   outline-offset: 2px;
 }
+
+
+/* --- Images in a row (half / third) & floating in blog, notes, cv and editor --- */
+.blog-content img[data-float="half"],
+.note-content img[data-float="half"],
+.cv-view img[data-float="half"],
+.rte-body img[data-float="half"],
+.rte-body .image-resizer:has(img[data-float="half"]) {
+  display: inline-block !important;
+  vertical-align: top !important;
+  width: calc(50% - 8px) !important;
+  max-width: calc(50% - 8px) !important;
+  margin: 4px !important;
+  box-sizing: border-box !important;
+  float: none !important;
+}
+
+.blog-content img[data-float="third"],
+.note-content img[data-float="third"],
+.cv-view img[data-float="third"],
+.rte-body img[data-float="third"],
+.rte-body .image-resizer:has(img[data-float="third"]) {
+  display: inline-block !important;
+  vertical-align: top !important;
+  width: calc(33.333% - 8px) !important;
+  max-width: calc(33.333% - 8px) !important;
+  margin: 4px !important;
+  box-sizing: border-box !important;
+  float: none !important;
+}
+
+.blog-content img[data-float="inline"],
+.note-content img[data-float="inline"],
+.cv-view img[data-float="inline"],
+.rte-body img[data-float="inline"],
+.rte-body .image-resizer:has(img[data-float="inline"]) {
+  display: inline-block !important;
+  vertical-align: middle !important;
+  margin: 0 6px !important;
+  float: none !important;
+}
+
+.blog-content img[data-float="left"],
+.note-content img[data-float="left"],
+.cv-view img[data-float="left"],
+.rte-body img[data-float="left"],
+.rte-body .image-resizer:has(img[data-float="left"]) {
+  float: left !important;
+  margin: 0 1em 0.5em 0 !important;
+  max-width: 50% !important;
+}
+
+.blog-content img[data-float="right"],
+.note-content img[data-float="right"],
+.cv-view img[data-float="right"],
+.rte-body img[data-float="right"],
+.rte-body .image-resizer:has(img[data-float="right"]) {
+  float: right !important;
+  margin: 0 0 0.5em 1em !important;
+  max-width: 50% !important;
+}
+
+.rte-body .image-resizer:has(img[data-float="half"]) img,
+.rte-body .image-resizer:has(img[data-float="third"]) img {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.blog-content p:has(> img[data-float="half"]:only-child),
+.note-content p:has(> img[data-float="half"]:only-child) {
+  display: inline-block;
+  vertical-align: top;
+  width: calc(50% - 8px);
+  margin: 4px 0;
+}
+
+.blog-content p:has(> img[data-float="third"]:only-child),
+.note-content p:has(> img[data-float="third"]:only-child) {
+  display: inline-block;
+  vertical-align: top;
+  width: calc(33.333% - 8px);
+  margin: 4px 0;
+}
+
+@media (max-width: 540px) {
+  .blog-content img[data-float="half"],
+  .blog-content img[data-float="third"],
+  .note-content img[data-float="half"],
+  .note-content img[data-float="third"],
+  .cv-view img[data-float="half"],
+  .cv-view img[data-float="third"],
+  .rte-body img[data-float="half"],
+  .rte-body img[data-float="third"],
+  .rte-body .image-resizer:has(img[data-float="half"]),
+  .rte-body .image-resizer:has(img[data-float="third"]),
+  .blog-content p:has(> img[data-float="half"]:only-child),
+  .blog-content p:has(> img[data-float="third"]:only-child),
+  .note-content p:has(> img[data-float="half"]:only-child),
+  .note-content p:has(> img[data-float="third"]:only-child) {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 6px 0 !important;
+    display: block !important;
+  }
+}

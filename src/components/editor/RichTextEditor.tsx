@@ -198,52 +198,55 @@ const ImageFocusBubbleMenu: React.FC<{
           Сброс
         </button>
       </div>
-      {cvMode && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 600, marginTop: 8, marginBottom: 6 }}>Обтекание и стиль</div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
-            <span style={{ fontSize: 12 }}>Обтекание:</span>
-            {(['', 'left', 'right'] as const).map((v) => (
-              <button
-                key={v || 'none'}
-                type="button"
-                onClick={() => update({ 'data-float': v || null })}
-                style={float === v ? btnActive : btnStyle}
-              >
-                {v === '' ? 'Нет' : v === 'left' ? 'Слева' : 'Справа'}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-              Поворот °
-              <input
-                type="range"
-                min={-180}
-                max={180}
-                value={rotate}
-                onChange={(e) => update({ 'data-rotate': Number(e.target.value) })}
-                style={{ width: 80 }}
-              />
-              <span style={{ minWidth: 32 }}>{rotate}°</span>
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={grayscale}
-                onChange={(e) => update({ 'data-grayscale': e.target.checked ? '1' : null })}
-              />
-              Ч/б
-            </label>
-          </div>
-        </>
-      )}
+      <div style={{ fontSize: 12, fontWeight: 600, marginTop: 8, marginBottom: 6 }}>Расположение и ширина</div>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+        {[
+          { id: '', label: '100% (Блок)' },
+          { id: 'half', label: '2 в ряд (50%)' },
+          { id: 'third', label: '3 в ряд (33%)' },
+          { id: 'left', label: 'Слева' },
+          { id: 'right', label: 'Справа' },
+          { id: 'inline', label: 'Инлайн' },
+        ].map(({ id, label }) => (
+          <button
+            key={id || 'none'}
+            type="button"
+            onClick={() => update({ 'data-float': id || null })}
+            style={float === id ? btnActive : btnStyle}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+          Поворот °
+          <input
+            type="range"
+            min={-180}
+            max={180}
+            value={rotate}
+            onChange={(e) => update({ 'data-rotate': Number(e.target.value) })}
+            style={{ width: 80 }}
+          />
+          <span style={{ minWidth: 32 }}>{rotate}°</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={grayscale}
+            onChange={(e) => update({ 'data-grayscale': e.target.checked ? '1' : null })}
+          />
+          Ч/б
+        </label>
+      </div>
     </div>
   );
 };
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeholder, minHeight = 200, cvMode = false, stickyToolbar = false }) => {
   const fileRef = useRef<HTMLInputElement>(null);
+  const rowFilesRef = useRef<HTMLInputElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const suppressUpdate = useRef(false);
   const [showEmoji, setShowEmoji] = useState(false);
@@ -332,6 +335,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
     const dataUrl = await fileToDataUrl(file);
     const finalSrc = file.type === 'image/gif' ? dataUrl : await resizeImage(dataUrl);
     (editor.chain().focus() as any).setImage({ src: finalSrc }).run();
+  }, [editor]);
+
+  const handleRowFilesUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []).filter(f => f.type.startsWith('image/'));
+    if (!files.length || !editor) return;
+    const floatType = files.length >= 3 ? 'third' : 'half';
+    for (const file of files) {
+      const dataUrl = await fileToDataUrl(file);
+      const finalSrc = file.type === 'image/gif' ? dataUrl : await resizeImage(dataUrl);
+      (editor.chain().focus() as any).setImage({ src: finalSrc, 'data-float': floatType }).run();
+    }
+    e.target.value = '';
   }, [editor]);
 
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -493,6 +508,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
         <TB cmd={() => editor.chain().focus().setTextAlign('right').run()} icon="⫸" active={editor.isActive({ textAlign: 'right' })} title="По правому" />
         <span style={{ width: 1, background: 'var(--pico-border-color)', margin: '0 2px', alignSelf: 'stretch' }} />
         <TB cmd={() => fileRef.current?.click()} icon="🖼" title="Картинка из файла" />
+        <TB cmd={() => rowFilesRef.current?.click()} icon="🖼️🖼️" title="Вставить картинки в ряд (2 в ряд / 3 в ряд)" />
         <TB cmd={insertImageFromUrl} icon="🔗" title="Картинка по URL" />
         <TB cmd={() => editor.chain().focus().setHorizontalRule().run()} icon="—" title="Разделитель" />
         <TB cmd={() => setShowEmoji(!showEmoji)} icon="😊" title="Эмодзи" />
@@ -513,6 +529,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange, placeh
       )}
 
       <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFileUpload} style={{ display: 'none' }} />
+      <input ref={rowFilesRef} type="file" accept="image/*" multiple onChange={handleRowFilesUpload} style={{ display: 'none' }} />
 
       <BubbleMenu
         editor={editor}
