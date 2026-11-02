@@ -1250,7 +1250,7 @@ const PostCard: React.FC<{
               <a href={`/blog/${post.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{displayTitle}</a>
             </h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+              <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleDateString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium' })}</time>
               
               {isAdmin && !post.published && (
                 <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
@@ -1369,7 +1369,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
         <header style={{ marginBottom: 24 }}>
           <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{displayTitle}</h1>
           <div style={{ fontSize: 13, color: 'var(--pico-muted-color)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
+            <time dateTime={new Date(post.createdAt || post.updatedAt).toISOString()}>{new Date(post.createdAt || post.updatedAt).toLocaleDateString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium' })}</time>
             
             {isAdmin && !post.published && (
               <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
