@@ -32,7 +32,7 @@ export const SiteHeader: React.FC<{
   isAdmin: boolean;
   isLimitedGuest: boolean;
 }> = ({ path, isAdmin, isLimitedGuest }) => {
-  const { lang, setLang } = useLang();
+  const { lang, isEn, setLang } = useLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const burgerRef = useRef<HTMLButtonElement>(null);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties | undefined>(undefined);
@@ -199,14 +199,16 @@ export const SiteHeader: React.FC<{
       </nav>
       <div className="site-header__actions">
         {showSyncBadge && <SyncBadge />}
-        <button
-          type="button"
-          className="site-header__btn"
-          aria-label={lang === 'ru' ? 'Назад в истории браузера' : 'Back in browser history'}
-          onClick={() => window.history.back()}
-        >
-          {lang === 'ru' ? 'Назад' : 'Back'}
-        </button>
+        {path !== '/' && (
+          <button
+            type="button"
+            className="site-header__btn"
+            aria-label={lang === 'ru' ? 'Назад в истории браузера' : 'Back in browser history'}
+            onClick={() => window.history.back()}
+          >
+            {lang === 'ru' ? 'Назад' : 'Back'}
+          </button>
+        )}
         {/* Rounded EN / RU pill switcher */}
         <div
           className="inline-flex items-center p-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-xs font-medium shadow-xs"
@@ -217,11 +219,12 @@ export const SiteHeader: React.FC<{
             type="button"
             onClick={() => setLang('en')}
             className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 leading-none ${
-              lang === 'en'
+              isEn
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
-            aria-pressed={lang === 'en'}
+            style={isEn ? { backgroundColor: '#2563eb', color: '#ffffff' } : undefined}
+            aria-pressed={isEn}
             title="English"
           >
             EN
@@ -230,11 +233,12 @@ export const SiteHeader: React.FC<{
             type="button"
             onClick={() => setLang('ru')}
             className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 leading-none ${
-              lang === 'ru'
+              !isEn
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
             }`}
-            aria-pressed={lang === 'ru'}
+            style={!isEn ? { backgroundColor: '#2563eb', color: '#ffffff' } : undefined}
+            aria-pressed={!isEn}
             title="Русский"
           >
             RU

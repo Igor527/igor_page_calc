@@ -4,6 +4,9 @@ export type SiteLang = 'en' | 'ru';
 
 const LANG_KEY = 'site_lang';
 
+type LangListener = (lang: SiteLang) => void;
+const listeners = new Set<LangListener>();
+
 export function getLang(): SiteLang {
   if (typeof window === 'undefined') return 'en';
   try {
@@ -25,6 +28,9 @@ export function setLang(lang: SiteLang): void {
     document.documentElement.lang = lang;
     document.documentElement.setAttribute('data-lang', lang);
   }
+  listeners.forEach((fn) => {
+    try { fn(lang); } catch {}
+  });
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('sitelangchange', { detail: lang }));
   }
@@ -40,6 +46,13 @@ export function useLang(): {
   const [lang, setLangState] = useState<SiteLang>(getLang);
 
   useEffect(() => {
+    setLangState(getLang());
+
+    const listener: LangListener = (newLang) => {
+      setLangState(newLang);
+    };
+    listeners.add(listener);
+
     const handleLangChange = (e: Event) => {
       const customEvent = e as CustomEvent<SiteLang>;
       if (customEvent.detail && (customEvent.detail === 'en' || customEvent.detail === 'ru')) {
@@ -58,6 +71,7 @@ export function useLang(): {
     window.addEventListener('sitelangchange', handleLangChange);
     window.addEventListener('storage', handleStorage);
     return () => {
+      listeners.delete(listener);
       window.removeEventListener('sitelangchange', handleLangChange);
       window.removeEventListener('storage', handleStorage);
     };
