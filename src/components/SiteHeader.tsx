@@ -61,6 +61,19 @@ export const SiteHeader: React.FC<{
   );
   const active = getActiveSection(path);
 
+  useEffect(() => {
+    const handleThemeChange = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail) {
+        setIsDark(customEvent.detail === 'dark');
+      } else {
+        setIsDark(document.documentElement.classList.contains('dark'));
+      }
+    };
+    window.addEventListener('themechange', handleThemeChange);
+    return () => window.removeEventListener('themechange', handleThemeChange);
+  }, []);
+
   const publicNav: NavItem[] = useMemo(
     () => [
       { href: '/', label: lang === 'ru' ? 'Главная' : 'Home' },
@@ -271,8 +284,16 @@ export const SiteHeader: React.FC<{
           aria-label={isDark ? (lang === 'ru' ? 'Переключить на светлую тему' : 'Switch to light theme') : (lang === 'ru' ? 'Переключить на тёмную тему' : 'Switch to dark theme')}
           aria-pressed={isDark ? 'true' : 'false'}
           onClick={() => {
-            if (typeof window.toggleTheme === 'function') window.toggleTheme();
-            setIsDark(document.documentElement.classList.contains('dark'));
+            if (typeof window.toggleTheme === 'function') {
+              window.toggleTheme();
+              setIsDark(document.documentElement.classList.contains('dark'));
+            } else {
+              const nextDark = !isDark;
+              setIsDark(nextDark);
+              document.documentElement.classList.toggle('dark', nextDark);
+              document.documentElement.setAttribute('data-theme', nextDark ? 'dark' : 'light');
+              localStorage.setItem('themeMode', nextDark ? '1' : '0');
+            }
           }}
         >
           {isDark ? <MoonIcon /> : <SunIcon />}
@@ -288,9 +309,6 @@ export function SiteHeaderPortal(props: { path: string; isAdmin: boolean; isLimi
 
   useEffect(() => {
     setContainer(document.getElementById('header-inner'));
-    const mode = parseInt(localStorage.getItem('themeMode') ?? '1', 10);
-    const theme = Number.isNaN(mode) || mode === 1 ? 'dark' : 'light';
-    if (typeof window.updateThemeBtn === 'function') window.updateThemeBtn(theme);
   }, []);
 
   if (!container) return null;

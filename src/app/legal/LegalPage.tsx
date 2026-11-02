@@ -116,8 +116,8 @@ export const LegalPage: React.FC = () => {
               </div>
               <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
                 <span className="block text-xs text-gray-500 mb-1">{isEn ? 'Alternative Email' : 'Вторая почта'}</span>
-                <a href="mailto:igr.sprk.one@gmail.com" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
-                  igr.sprk.one@gmail.com
+                <a href="mailto:igr.sprtk.one@gmail.com" className="text-blue-600 dark:text-blue-400 font-medium hover:underline break-all">
+                  igr.sprtk.one@gmail.com
                 </a>
               </div>
               <div className="p-3 rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30">
