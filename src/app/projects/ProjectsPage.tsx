@@ -454,26 +454,6 @@ export const ProjectsPage: React.FC<{ isAdmin?: boolean }> = ({ isAdmin = false 
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 m-0">
             {isEn ? 'Projects & Showcase' : 'Проекты и примеры работ'}
           </h1>
-          <div className="inline-flex items-center border border-gray-300 dark:border-gray-700 rounded-full p-0.5 text-xs bg-gray-50 dark:bg-gray-800">
-            <button
-              type="button"
-              onClick={() => setLang('en')}
-              className={`px-2.5 py-1 rounded-full font-medium transition-colors ${
-                isEn ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang('ru')}
-              className={`px-2.5 py-1 rounded-full font-medium transition-colors ${
-                !isEn ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              RU
-            </button>
-          </div>
         </div>
         <p className="text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
           {isEn

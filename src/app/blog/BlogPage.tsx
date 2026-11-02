@@ -1232,11 +1232,9 @@ const PostCard: React.FC<{
   onEdit: () => void; onDelete: () => void; onCopyLink: () => void;
 }> = ({ post, isAdmin, onEdit, onDelete, onCopyLink }) => {
   const { isEn } = useLang();
-  const [cardLang, setCardLang] = useState<'default' | 'ru' | 'en'>('default');
-  const effectiveLang = cardLang === 'default' ? (isEn ? 'en' : 'ru') : cardLang;
+  const effectiveLang = isEn ? 'en' : 'ru';
   const displayTitle = effectiveLang === 'en' && post.titleEn ? post.titleEn : post.title;
   const displayContent = effectiveLang === 'en' && post.contentEn ? post.contentEn : post.content;
-  const hasBothLangs = Boolean(post.titleEn && post.contentEn);
 
   const toc = generateToc(displayContent);
 
@@ -1253,42 +1251,7 @@ const PostCard: React.FC<{
             </h2>
             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--pico-muted-color)', alignItems: 'center', flexWrap: 'wrap' }}>
               <time dateTime={new Date(post.createdAt).toISOString()}>{new Date(post.createdAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-              {hasBothLangs && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--pico-border-color)', borderRadius: 12, padding: '1px 3px', fontSize: 11 }}>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCardLang('en'); }}
-                    style={{
-                      padding: '1px 6px',
-                      fontSize: 11,
-                      lineHeight: 1.2,
-                      border: 'none',
-                      background: effectiveLang === 'en' ? 'var(--pico-primary)' : 'transparent',
-                      color: effectiveLang === 'en' ? 'var(--pico-primary-inverse)' : 'inherit',
-                      borderRadius: 8,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    EN
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCardLang('ru'); }}
-                    style={{
-                      padding: '1px 6px',
-                      fontSize: 11,
-                      lineHeight: 1.2,
-                      border: 'none',
-                      background: effectiveLang === 'ru' ? 'var(--pico-primary)' : 'transparent',
-                      color: effectiveLang === 'ru' ? 'var(--pico-primary-inverse)' : 'inherit',
-                      borderRadius: 8,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    RU
-                  </button>
-                </div>
-              )}
+              
               {isAdmin && !post.published && (
                 <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
               )}
@@ -1354,11 +1317,9 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
   const posts = getPostsForDisplay();
   const normalizedSlug = slug.replace(/\/$/, '');
   const post = posts.find(p => p.slug === normalizedSlug || p.slug === slug);
-  const [viewLang, setViewLang] = useState<'default' | 'ru' | 'en'>('default');
-  const effectiveLang = viewLang === 'default' ? (isEn ? 'en' : 'ru') : viewLang;
+  const effectiveLang = isEn ? 'en' : 'ru';
   const displayTitle = post && effectiveLang === 'en' && post.titleEn ? post.titleEn : (post?.title || '');
   const displayContent = post && effectiveLang === 'en' && post.contentEn ? post.contentEn : (post?.content || '');
-  const hasBothLangs = Boolean(post?.titleEn && post?.contentEn);
 
   useEffect(() => {
     let zoom: ReturnType<typeof mediumZoom> | null = null;
@@ -1409,42 +1370,7 @@ const BlogPostView: React.FC<{ slug: string; isAdmin: boolean }> = ({ slug, isAd
           <h1 style={{ marginBottom: 8, fontSize: 'clamp(1.25rem, 5vw, 1.75rem)', wordBreak: 'break-word' }}>{displayTitle}</h1>
           <div style={{ fontSize: 13, color: 'var(--pico-muted-color)', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <time dateTime={new Date(post.updatedAt).toISOString()}>{new Date(post.updatedAt).toLocaleString(effectiveLang === 'en' ? 'en-US' : 'ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}</time>
-            {hasBothLangs && (
-              <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--pico-border-color)', borderRadius: 12, padding: '1px 3px', fontSize: 11 }}>
-                <button
-                  type="button"
-                  onClick={() => setViewLang('en')}
-                  style={{
-                    padding: '1px 6px',
-                    fontSize: 11,
-                    lineHeight: 1.2,
-                    border: 'none',
-                    background: effectiveLang === 'en' ? 'var(--pico-primary)' : 'transparent',
-                    color: effectiveLang === 'en' ? 'var(--pico-primary-inverse)' : 'inherit',
-                    borderRadius: 8,
-                    cursor: 'pointer'
-                  }}
-                >
-                  EN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewLang('ru')}
-                  style={{
-                    padding: '1px 6px',
-                    fontSize: 11,
-                    lineHeight: 1.2,
-                    border: 'none',
-                    background: effectiveLang === 'ru' ? 'var(--pico-primary)' : 'transparent',
-                    color: effectiveLang === 'ru' ? 'var(--pico-primary-inverse)' : 'inherit',
-                    borderRadius: 8,
-                    cursor: 'pointer'
-                  }}
-                >
-                  RU
-                </button>
-              </div>
-            )}
+            
             {isAdmin && !post.published && (
               <span style={{ color: '#ca8a04', fontWeight: 600 }}>{isEn ? 'Draft' : 'Черновик'}</span>
             )}

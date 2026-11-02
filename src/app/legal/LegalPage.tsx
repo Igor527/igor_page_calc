@@ -2,41 +2,19 @@ import React from 'react';
 import { useLang } from '@/lib/i18n';
 
 export const LegalPage: React.FC = () => {
-  const { isEn, setLang } = useLang();
+  const { isEn } = useLang();
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-10">
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 sm:p-8 shadow-sm">
-        {/* Header & Lang Toggle */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-6 border-b border-gray-200 dark:border-gray-800">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 m-0">
-              {isEn ? 'Legal & Business Notice' : 'Справка о форме деятельности'}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
-              {isEn ? 'Official business registration, tax residency, and service delivery terms.' : 'Официальная регистрация, налоговый статус и порядок оказания услуг.'}
-            </p>
-          </div>
-          <div className="inline-flex items-center border border-gray-300 dark:border-gray-700 rounded-full p-0.5 text-xs bg-gray-50 dark:bg-gray-800 self-start sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setLang('en')}
-              className={`px-3 py-1 rounded-full font-medium transition-colors ${
-                isEn ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang('ru')}
-              className={`px-3 py-1 rounded-full font-medium transition-colors ${
-                !isEn ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-              }`}
-            >
-              RU
-            </button>
-          </div>
+        {/* Header */}
+        <div className="mb-6 pb-6 border-b border-gray-200 dark:border-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 m-0">
+            {isEn ? 'Legal & Business Notice' : 'Справка о форме деятельности'}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-0">
+            {isEn ? 'Official business registration, tax residency, and service delivery terms.' : 'Официальная регистрация, налоговый статус и порядок оказания услуг.'}
+          </p>
         </div>
 
         {/* Content sections */}
