@@ -281,6 +281,8 @@ function App() {
         return { ok: false, error: `Блог: ${postsR.error}` };
       }
       try { localStorage.setItem('igor-blog', JSON.stringify(postsR.posts)); } catch {}
+      const { idbSet } = await import('./lib/idbStorage');
+      void idbSet('igor-blog', postsR.posts);
 
       const dict = await getDictionaryFromRepo();
       if (dict) {
@@ -297,6 +299,8 @@ function App() {
       const projR = await fetchProjectsFromRepo();
       if (projR.ok) {
         try { localStorage.setItem('igor-projects', JSON.stringify(projR.projects)); } catch {}
+        const { idbSet } = await import('./lib/idbStorage');
+        void idbSet('igor-projects', projR.projects);
       }
       const calcJson = await getCalculatorsJsonFromRepo();
       if (calcJson) loadPublishedBundleFromContent(calcJson);

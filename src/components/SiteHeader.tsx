@@ -143,7 +143,7 @@ export const SiteHeader: React.FC<{
   const showSyncBadge = isAdmin && !!getSyncConfig();
   const allNav = useMemo(() => [...publicNav, ...extraNav], [publicNav, extraNav]);
 
-  const renderLink = (item: NavItem, icon?: string) => {
+  const renderLink = (item: NavItem) => {
     const section = getActiveSection(item.href === '/' ? '/' : item.href);
     const isCurrent = item.match ? item.match(path) : active === section || isActivePath(path, item.href);
     return (
@@ -154,8 +154,7 @@ export const SiteHeader: React.FC<{
         aria-current={isCurrent ? 'page' : undefined}
         onClick={closeMenu}
       >
-        {icon && <span style={{ opacity: 0.8, fontSize: 15 }}>{icon}</span>}
-        <span>{item.label}</span>
+        {item.label}
       </a>
     );
   };
@@ -171,48 +170,7 @@ export const SiteHeader: React.FC<{
           role="navigation"
           aria-label={lang === 'ru' ? 'Разделы сайта' : 'Site navigation'}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {publicNav.map((item) => {
-              let icon = '📄';
-              if (item.href === '/') icon = '🏠';
-              else if (item.href === '/projects') icon = '🚀';
-              else if (item.href === '/blog') icon = '✍️';
-              else if (item.href === '/cv') icon = '💼';
-              return renderLink(item, icon);
-            })}
-          </div>
-          {extraNav.length > 0 && (
-            <>
-              <div
-                style={{
-                  padding: '8px 12px 2px',
-                  fontSize: 10,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  opacity: 0.5,
-                  borderTop: '1px solid var(--pico-border-color)',
-                  marginTop: 4,
-                }}
-              >
-                {lang === 'ru' ? 'Инструменты' : 'Tools'}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {extraNav.map((item) => {
-                  let icon = '⚡';
-                  if (item.href === '/calculators') icon = '🧮';
-                  else if (item.href === '/admin/notes') icon = '📝';
-                  else if (item.href === '/editor') icon = '📐';
-                  else if (item.href === '/planner') icon = '📅';
-                  else if (item.href === '/weather') icon = '🌤️';
-                  else if (item.href === '/rss') icon = '📡';
-                  else if (item.href === '/dictionary') icon = '📖';
-                  else if (item.href === '/admin/drawing') icon = '🎨';
-                  return renderLink(item, icon);
-                })}
-              </div>
-            </>
-          )}
+          {allNav.map(renderLink)}
         </div>
         <button
           type="button"
@@ -236,11 +194,7 @@ export const SiteHeader: React.FC<{
           aria-label={menuOpen ? (lang === 'ru' ? 'Закрыть меню' : 'Close menu') : (lang === 'ru' ? 'Открыть меню' : 'Open menu')}
           onClick={() => setMenuOpen((o) => !o)}
         >
-          <span className="site-nav__burger-box" aria-hidden="true">
-            <span className={`site-nav__burger-line site-nav__burger-line--1 ${menuOpen ? 'is-open' : ''}`} />
-            <span className={`site-nav__burger-line site-nav__burger-line--2 ${menuOpen ? 'is-open' : ''}`} />
-            <span className={`site-nav__burger-line site-nav__burger-line--3 ${menuOpen ? 'is-open' : ''}`} />
-          </span>
+          {menuOpen ? '✕' : '☰'}
         </button>
       </nav>
       <div className="site-header__actions">

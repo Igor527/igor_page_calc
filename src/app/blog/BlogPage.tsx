@@ -122,36 +122,44 @@ function setTodoChecked(postId: string, todoId: string, checked: boolean) {
 let blogBundle: BlogPost[] | null = null;
 
 export function loadBlogBundle(): Promise<void> {
-  if (getFirebaseApp()) {
-    return import('@/lib/githubSync').then(m => m.getPostsFromRepo()).then((list) => {
-      if (list) {
+  const fetchStaticPosts = () =>
+    fetch('/data/posts.json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
+        const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
         blogBundle = list
-          .filter((p) => !(p as any).deleted)
+          .filter((p) => !(p as BlogPost & { deleted?: boolean }).deleted)
           .map((p) => ({
             ...p,
-            tags: (p as any).tags ?? [],
-            coverImage: (p as any).coverImage ?? '',
-            polls: (p as any).polls ?? [],
-            todos: (p as any).todos ?? [],
-          })) as any as BlogPost[];
-      }
-    }).catch(() => { blogBundle = null; });
+            tags: p.tags ?? [],
+            coverImage: p.coverImage ?? '',
+            polls: p.polls ?? [],
+            todos: p.todos ?? [],
+          }));
+      })
+      .catch(() => { blogBundle = null; });
+
+  if (getFirebaseApp()) {
+    return import('@/lib/githubSync')
+      .then((m) => m.getPostsFromRepo())
+      .then((list) => {
+        if (list && list.length > 0) {
+          blogBundle = list
+            .filter((p) => !(p as any).deleted)
+            .map((p) => ({
+              ...p,
+              tags: (p as any).tags ?? [],
+              coverImage: (p as any).coverImage ?? '',
+              polls: (p as any).polls ?? [],
+              todos: (p as any).todos ?? [],
+            })) as any as BlogPost[];
+          return;
+        }
+        return fetchStaticPosts();
+      })
+      .catch(() => fetchStaticPosts());
   }
-  return fetch('/data/posts.json', { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : Promise.reject()))
-    .then((data: { posts?: BlogPost[] } | BlogPost[]) => {
-      const list = Array.isArray(data) ? data : (Array.isArray((data as { posts?: BlogPost[] }).posts) ? (data as { posts: BlogPost[] }).posts : []);
-      blogBundle = list
-        .filter((p) => !(p as BlogPost & { deleted?: boolean }).deleted)
-        .map((p) => ({
-          ...p,
-          tags: p.tags ?? [],
-          coverImage: p.coverImage ?? '',
-          polls: p.polls ?? [],
-          todos: p.todos ?? [],
-        }));
-    })
-    .catch(() => { blogBundle = null; });
+  return fetchStaticPosts();
 }
 
 /** Для отображения: из файла репо, если загружен, иначе localStorage (без удалённых) */
@@ -207,10 +215,29 @@ function savePosts(posts: BlogPost[]) {
       // Сохраняем облегченную копию без огромных base64, чтобы localStorage не был пустым
       const lightweight = posts.map(p => ({
         ...p,
-        coverImage: (p.coverImage && p.coverImage.length > 1000) ? '' : p.coverImage
+        coverImage: (p.coverImage && p.coverImage.length > 1000) ? '' : p.coverImage,
+        content: (p.content && p.content.length > 20000) ? p.content.slice(0, 5000) + '...' : p.content,
+        contentEn: (p.contentEn && p.contentEn.length > 20000) ? p.contentEn.slice(0, 5000) + '...' : p.contentEn,
       }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify(lightweight));
-    } catch {}
+    } catch {
+      try {
+        const minimal = posts.map(p => ({
+          id: p.id,
+          slug: p.slug,
+          title: p.title,
+          titleEn: p.titleEn,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          published: p.published,
+          deleted: p.deleted,
+          tags: p.tags,
+          content: '',
+          coverImage: '',
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
+      } catch {}
+    }
   }
 }
 
@@ -683,6 +710,17 @@ const BlogList: React.FC<{ isAdmin: boolean; adminSessionExpired?: boolean }> = 
           }
           return current;
         });
+      } else {
+        fetch('/data/posts.json', { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            const list = Array.isArray(data) ? data : (data?.posts ?? []);
+            if (list.length > 0) {
+              setPosts((current) => (current.length === 0 ? list : current));
+              void idbSet(STORAGE_KEY, list);
+            }
+          })
+          .catch(() => {});
       }
     });
   }, []);
