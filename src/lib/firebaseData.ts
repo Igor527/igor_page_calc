@@ -166,20 +166,22 @@ export async function pushCalculatorsToFirebase(bundleJson: string): Promise<Syn
   }
 }
 
-export async function getCvFromFirebase(): Promise<string | null> {
+export type CvData = string | { html?: string; htmlEn?: string };
+
+export async function getCvFromFirebase(): Promise<CvData | null> {
   try {
     const snap = await get(ref(getDb(), 'data/cv'));
     if (!snap.exists()) return null;
-    return snap.val() as string;
+    return snap.val() as CvData;
   } catch (e) {
     console.error('Firebase getCv error:', e);
     return null;
   }
 }
 
-export async function pushCvToFirebase(html: string): Promise<SyncResult> {
+export async function pushCvToFirebase(content: CvData): Promise<SyncResult> {
   try {
-    const data = cleanUndefined(html);
+    const data = cleanUndefined(content);
     await set(ref(getDb(), 'data/cv'), data);
     return { ok: true };
   } catch (e: unknown) {

@@ -1,6 +1,6 @@
 /**
- * Страница CV: для админа — редактор с картинками (обтекание, зум, поворот, ч/б) и окно Mistral AI (запрос–ответ).
- * Для остальных — готовая страница без редактора и без AI.
+ * Страница CV: для админа — двуязычный редактор (RU/EN) с картинками (обтекание, зум, поворот, ч/б) и окно Mistral AI (запрос–ответ).
+ * Для остальных — готовая страница без редактора и без AI с поддержкой переключения языков.
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -10,24 +10,33 @@ import RichTextEditor from '@/components/editor/RichTextEditor';
 import { mistralChat } from '@/lib/dictionaryApi';
 import { getSyncConfig, getCvFromRepo, pushCv, schedulePush } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
+import * as fb from '@/lib/firebaseData';
 import { useLang } from '@/lib/i18n';
 
-const STORAGE_KEY = 'igor-cv-html';
+const STORAGE_KEY_RU = 'igor-cv-html';
+const STORAGE_KEY_EN = 'igor-cv-html-en';
 const CV_VERSION_KEY = 'igor-cv-version';
-const CURRENT_CV_VERSION = '4';
+const CURRENT_CV_VERSION = '5';
 
-function loadCvContent(): string {
+interface CvDataState {
+  ru: string;
+  en: string;
+}
+
+function loadCvContent(): CvDataState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ?? '';
+    const ru = localStorage.getItem(STORAGE_KEY_RU) ?? '';
+    const en = localStorage.getItem(STORAGE_KEY_EN) ?? '';
+    return { ru, en };
   } catch {
-    return '';
+    return { ru: '', en: '' };
   }
 }
 
-function saveCvContent(html: string): void {
+function saveCvContent(ru: string, en: string): void {
   try {
-    localStorage.setItem(STORAGE_KEY, html);
+    localStorage.setItem(STORAGE_KEY_RU, ru);
+    localStorage.setItem(STORAGE_KEY_EN, en);
     localStorage.setItem(CV_VERSION_KEY, CURRENT_CV_VERSION);
   } catch {
     /* ignore */
@@ -128,35 +137,62 @@ const MistralPanel: React.FC = () => {
   );
 };
 
-/** Публичный вид: готовая страница CV без редактора. Загружает cv.json из статики, если есть. */
-const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content, initialized }) => {
+interface CvViewProps {
+  contentRu: string;
+  contentEn: string;
+  initialized?: boolean;
+}
+
+/** Публичный вид: готовая страница CV без редактора. Загружает данные из Firebase или cv.json. */
+const CvView: React.FC<CvViewProps> = ({ contentRu, contentEn, initialized }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [fetchedData, setFetchedData] = useState<{ html?: string; htmlEn?: string } | null>(null);
   const { lang } = useLang();
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/data/cv.json')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { html?: string; htmlEn?: string } | null) => {
-        if (!cancelled && data) setFetchedData(data);
-      })
-      .catch(() => {});
+    const load = async () => {
+      if (getFirebaseApp()) {
+        try {
+          const fbCv = await fb.getCvFromFirebase();
+          if (!cancelled && fbCv) {
+            if (typeof fbCv === 'string') {
+              setFetchedData({ html: fbCv, htmlEn: '' });
+            } else {
+              setFetchedData({ html: fbCv.html || '', htmlEn: fbCv.htmlEn || '' });
+            }
+            return;
+          }
+        } catch {
+          // ignore, fallback to fetch
+        }
+      }
+      fetch('/data/cv.json')
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { html?: string; htmlEn?: string } | null) => {
+          if (!cancelled && data) setFetchedData(data);
+        })
+        .catch(() => {});
+    };
+    void load();
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    applyImageFocusStyles(containerRef.current);
-  }, [content, fetchedData]);
+  const isEn = lang === 'en';
+  const effectiveRu = (fetchedData?.html != null ? fetchedData.html : contentRu) || '';
+  const effectiveEn = (fetchedData?.htmlEn != null ? fetchedData.htmlEn : contentEn) || '';
 
-  const displayHtml =
-    (lang === 'en' && fetchedData?.htmlEn)
-      ? fetchedData.htmlEn
-      : (fetchedData?.html != null ? fetchedData.html : content) || '';
+  const displayHtml = isEn
+    ? (effectiveEn || effectiveRu)
+    : (effectiveRu || effectiveEn);
   const safeHtml = sanitizeHtml(displayHtml);
 
+  useEffect(() => {
+    applyImageFocusStyles(containerRef.current);
+  }, [displayHtml]);
+
   if (!initialized) {
-    return <div style={{ padding: 24, textAlign: 'center' }}>{lang === 'ru' ? 'Загрузка…' : 'Loading…'}</div>;
+    return <div style={{ padding: 24, textAlign: 'center' }}>{isEn ? 'Loading…' : 'Загрузка…'}</div>;
   }
 
   return (
@@ -170,7 +206,7 @@ const CvView: React.FC<{ content: string; initialized?: boolean }> = ({ content,
         />
       ) : (
         <p style={{ color: 'var(--pico-muted-color)' }}>
-          {lang === 'ru' ? 'Резюме пока не заполнено.' : 'CV is not filled in yet.'}
+          {isEn ? 'CV is not filled in yet.' : 'Резюме пока не заполнено.'}
         </p>
       )}
     </div>
@@ -184,7 +220,10 @@ interface CvPageProps {
 const CV_NARROW_MQ = '(max-width: 768px)';
 
 const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
-  const [content, setContent] = useState('');
+  const { lang } = useLang();
+  const [contentRu, setContentRu] = useState('');
+  const [contentEn, setContentEn] = useState('');
+  const [editLang, setEditLang] = useState<'ru' | 'en'>(() => (lang === 'en' ? 'en' : 'ru'));
   const [initialized, setInitialized] = useState(false);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -208,12 +247,17 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
     let cancelled = false;
     const init = async () => {
       const local = loadCvContent();
-      if (getSyncConfig()) {
+      const savedVer = localStorage.getItem(CV_VERSION_KEY);
+
+      if (getSyncConfig() || getFirebaseApp()) {
         try {
           const fromRepo = await getCvFromRepo();
-          if (!cancelled && typeof fromRepo === 'string' && fromRepo) {
-            setContent(fromRepo);
-            saveCvContent(fromRepo);
+          if (!cancelled && fromRepo) {
+            const ru = typeof fromRepo === 'string' ? fromRepo : (fromRepo.html || '');
+            const en = typeof fromRepo === 'string' ? '' : (fromRepo.htmlEn || '');
+            setContentRu(ru);
+            setContentEn(en);
+            saveCvContent(ru, en);
             setInitialized(true);
             return;
           }
@@ -221,59 +265,71 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
           /* use local */
         }
       }
+
       if (!cancelled) {
-        let text = local;
-        const savedVer = localStorage.getItem(CV_VERSION_KEY);
-        if (!text || savedVer !== CURRENT_CV_VERSION) {
+        let ru = local.ru;
+        let en = local.en;
+
+        if ((!ru && !en) || savedVer !== CURRENT_CV_VERSION) {
           try {
             const r = await fetch('/data/cv.json');
             if (r.ok) {
               const d = await r.json();
-              if (d?.html) {
-                text = d.html;
-                saveCvContent(text);
+              if (d?.html || d?.htmlEn) {
+                ru = d.html || '';
+                en = d.htmlEn || '';
+                saveCvContent(ru, en);
               }
             }
           } catch {
             /* ignore */
           }
         }
-        setContent(text);
+        setContentRu(ru);
+        setContentEn(en);
+        setInitialized(true);
       }
-      setInitialized(true);
     };
     void init();
     return () => { cancelled = true; };
   }, []);
 
   const handleChange = useCallback((html: string) => {
-    setContent(html);
-    saveCvContent(html);
-    if (getSyncConfig() || getFirebaseApp()) {
-      schedulePush('cv', () => pushCv(html));
+    if (editLang === 'ru') {
+      setContentRu(html);
+      saveCvContent(html, contentEn);
+      if (getSyncConfig() || getFirebaseApp()) {
+        schedulePush('cv', () => pushCv({ html, htmlEn: contentEn }));
+      }
+    } else {
+      setContentEn(html);
+      saveCvContent(contentRu, html);
+      if (getSyncConfig() || getFirebaseApp()) {
+        schedulePush('cv', () => pushCv({ html: contentRu, htmlEn: html }));
+      }
     }
-  }, []);
+  }, [editLang, contentRu, contentEn]);
 
   const handleSave = useCallback(async () => {
-    saveCvContent(content);
+    saveCvContent(contentRu, contentEn);
     if (getSyncConfig() || getFirebaseApp()) {
-      const r = await pushCv(content);
-      setSaveMessage(r.ok ? 'Сохранено и выгружено' : (r.error || 'Ошибка выгрузки'));
+      const r = await pushCv({ html: contentRu, htmlEn: contentEn });
+      setSaveMessage(r.ok ? (editLang === 'en' ? 'Saved & Synced' : 'Сохранено и выгружено') : (r.error || (editLang === 'en' ? 'Sync error' : 'Ошибка выгрузки')));
     } else {
-      setSaveMessage('Сохранено');
+      setSaveMessage(editLang === 'en' ? 'Saved' : 'Сохранено');
     }
     setTimeout(() => setSaveMessage(null), 3000);
-  }, [content]);
+  }, [contentRu, contentEn, editLang]);
 
   const handlePushToRepo = useCallback(async () => {
     if (!getSyncConfig()) {
-      setPushStatus('Настройте синхронизацию с GitHub');
+      setPushStatus(editLang === 'en' ? 'Configure GitHub sync' : 'Настройте синхронизацию с GitHub');
       return;
     }
-    setPushStatus('Отправка…');
-    const r = await pushCv(content);
-    setPushStatus(r.ok ? 'Выгружено в репо' : (r.error || 'Ошибка'));
-  }, [content]);
+    setPushStatus(editLang === 'en' ? 'Sending…' : 'Отправка…');
+    const r = await pushCv({ html: contentRu, htmlEn: contentEn });
+    setPushStatus(r.ok ? (editLang === 'en' ? 'Pushed to repo' : 'Выгружено в репо') : (r.error || (editLang === 'en' ? 'Error' : 'Ошибка')));
+  }, [contentRu, contentEn, editLang]);
 
   // Ctrl+S — явное сохранение
   useEffect(() => {
@@ -289,7 +345,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   }, [isAdmin, handleSave]);
 
   if (!isAdmin) {
-    return <CvView content={content} initialized={initialized} />;
+    return <CvView contentRu={contentRu} contentEn={contentEn} initialized={initialized} />;
   }
 
   const showMistral = !isNarrow || mistralOpen;
@@ -307,16 +363,59 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
       }}
     >
       <header className="cv-admin-header">
-        <a href="/" className="cv-admin-home">← Главная</a>
-        <span className="cv-admin-title">CV — режим редактирования</span>
+        <a href="/" className="cv-admin-home">← {editLang === 'en' ? 'Home' : 'Главная'}</a>
+        <span className="cv-admin-title">CV — {editLang === 'en' ? 'Edit Mode' : 'режим редактирования'}</span>
+
+        <div
+          className="cv-admin-lang-tabs"
+          style={{
+            display: 'inline-flex',
+            borderRadius: 6,
+            border: '1px solid var(--pico-border-color)',
+            overflow: 'hidden',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setEditLang('ru')}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: editLang === 'ru' ? 600 : 400,
+              background: editLang === 'ru' ? 'var(--pico-primary-background)' : 'transparent',
+              color: editLang === 'ru' ? 'var(--pico-primary-inverse)' : 'inherit',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            🇷🇺 Русский
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditLang('en')}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: editLang === 'en' ? 600 : 400,
+              background: editLang === 'en' ? 'var(--pico-primary-background)' : 'transparent',
+              color: editLang === 'en' ? 'var(--pico-primary-inverse)' : 'inherit',
+              border: 'none',
+              borderLeft: '1px solid var(--pico-border-color)',
+              cursor: 'pointer',
+            }}
+          >
+            🇬🇧 English
+          </button>
+        </div>
+
         <button type="button" onClick={handleSave} className="cv-admin-save">
-          <span className="cv-save-long">Сохранить (Ctrl+S)</span>
-          <span className="cv-save-short">Сохранить</span>
+          <span className="cv-save-long">{editLang === 'en' ? 'Save (Ctrl+S)' : 'Сохранить (Ctrl+S)'}</span>
+          <span className="cv-save-short">{editLang === 'en' ? 'Save' : 'Сохранить'}</span>
         </button>
         {saveMessage != null && <span className="cv-admin-status">{saveMessage}</span>}
         {getSyncConfig() && (
           <button type="button" onClick={handlePushToRepo} className="secondary cv-admin-push">
-            Выгрузить в репо
+            {editLang === 'en' ? 'Push to Repo' : 'Выгрузить в репо'}
           </button>
         )}
         {pushStatus != null && <span className="cv-admin-status cv-admin-status--muted">{pushStatus}</span>}
@@ -324,9 +423,14 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
       <div className="cv-admin-layout" style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         <div className="cv-admin-editor">
           <RichTextEditor
-            value={initialized ? content : ''}
+            key={editLang}
+            value={initialized ? (editLang === 'ru' ? contentRu : contentEn) : ''}
             onChange={handleChange}
-            placeholder="Введите резюме. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б."
+            placeholder={
+              editLang === 'ru'
+                ? 'Введите резюме на русском. Можно вставлять картинки, настраивать обтекание, зум, поворот, ч/б.'
+                : 'Enter CV in English. You can insert images, adjust wrapping, zoom, rotation, grayscale.'
+            }
             minHeight={360}
             cvMode
             stickyToolbar

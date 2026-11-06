@@ -633,31 +633,54 @@ export async function getCalculatorsJsonFromRepo(ignoreFirebase = false): Promis
   return file ? file.content : null;
 }
 
-/** CV (резюме) из репо: public/data/cv.json с полем html. */
-export async function getCvFromRepo(ignoreFirebase = false): Promise<string | null> {
+/** CV (резюме) из репо: public/data/cv.json с полями html и htmlEn. */
+export type CvPayload = string | { html?: string; htmlEn?: string };
+export async function getCvFromRepo(ignoreFirebase = false): Promise<CvPayload | null> {
   if (getFirebaseApp() && !ignoreFirebase) {
     return fb.getCvFromFirebase();
   }
   const { data, error } = await getJsonFromRepo(dataPath('cv.json'));
   if (error || !data) return null;
-  const parsed = data as { html?: string };
-  if (typeof parsed.html !== 'string') return null;
-  return parsed.html;
+  const parsed = data as { html?: string; htmlEn?: string };
+  if (typeof parsed.html !== 'string' && typeof parsed.htmlEn !== 'string') return null;
+  return { html: parsed.html || '', htmlEn: parsed.htmlEn || '' };
 }
 
-/** Авто-пуш CV в репо (public/data/cv.json). */
-export async function pushCv(html: string): Promise<SyncResult> {
+/** Авто-пуш CV в репо (public/data/cv.json) и/или Firebase. */
+export async function pushCv(content: CvPayload): Promise<SyncResult> {
+  const html = typeof content === 'string' ? content : (content.html || '');
+  const htmlEn = typeof content === 'string' ? '' : (content.htmlEn || '');
+
+  let fbOk = true;
+  let fbError: string | undefined;
+
   if (getFirebaseApp()) {
     beginSyncOperation();
-    const res = await fb.pushCvToFirebase(html);
-    setSyncBadgeResult(res.ok, res.error);
+    const res = await fb.pushCvToFirebase(typeof content === 'string' ? { html } : content);
+    fbOk = res.ok;
+    fbError = res.error;
     endSyncOperation();
-    return res;
   }
-  if (!getSyncConfig()) return { ok: false, error: 'Синхронизация не настроена' };
-  const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), html }, null, 2);
-  return putFile(dataPath('cv.json'), payload, 'Автосинхронизация: CV');
+
+  const syncConfig = getSyncConfig();
+  if (syncConfig) {
+    const payload = JSON.stringify({ version: 3, exportedAt: Date.now(), html, htmlEn }, null, 2);
+    const gitRes = await putFile(dataPath('cv.json'), payload, 'Автосинхронизация: CV');
+    if (!gitRes.ok) {
+      setSyncBadgeResult(false, gitRes.error);
+      return gitRes;
+    }
+  }
+
+  if (!getFirebaseApp() && !syncConfig) {
+    return { ok: false, error: 'Синхронизация не настроена' };
+  }
+
+  setSyncBadgeResult(fbOk, fbError);
+  return { ok: fbOk, error: fbError };
 }
+
+
 
 /** Объединить посты с репо и локальные: по каждому id берётся версия с большим updatedAt (удаление не теряется). */
 export function mergePosts(
