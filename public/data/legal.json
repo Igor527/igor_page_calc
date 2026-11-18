@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1795027764650,
+  "exportedAt": 1795027777148,
   "ru": {
     "title": "Справка о деятельности",
     "subtitle": "Официальная регистрация, налоговый статус и порядок оказания услуг.",
@@ -45,11 +45,7 @@
       },
       {
         "label": "Legal Form:",
-        "value": "Sole Proprietorship (Preduzetnik)"
-      },
-      {
-        "label": "Jurisdiction & Seat:",
-        "value": "Belgrade (Beograd), Republic of Serbia"
+        "value": "Sole Proprietorship"
       },
       {
         "label": "Operation Mode:",
