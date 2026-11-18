@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1795027789428,
+  "exportedAt": 1795027793883,
   "ru": {
     "title": "Справка о деятельности",
     "subtitle": "Официальная регистрация, налоговый статус и порядок оказания услуг.",
@@ -63,8 +63,7 @@
     "financeTitle": "Invoicing, Banking & Tax Compliance",
     "financeParagraphs": [
       "All services and deliverables are provided exclusively in electronic/digital format. Invoices are issued digitally per contract agreements or milestone tasks.",
-      "Revenues are received directly into the official business bank account via international bank wire transfers (SWIFT/SEPA) or reputable global freelance platforms.",
-      "All local business taxes, municipal fees, and mandatory social/health contributions are paid in full compliance with the tax laws of the Republic of Serbia."
+      "Revenues are received directly into the official business bank account via international bank wire transfers (SWIFT/SEPA) or reputable global freelance platforms."
     ],
     "contactsTitle": "Contact & Inquiries",
     "contactEmail1": "hello@urbanplanner.page",
