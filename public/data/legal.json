@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1795027982054,
+  "exportedAt": 1795027989922,
   "ru": {
     "title": "Справка о деятельности",
     "subtitle": "Порядок оказания услуг.",
@@ -36,7 +36,7 @@
   },
   "en": {
     "title": "Legal & Business Notice",
-    "subtitle": "Official business registration, tax residency, and service delivery terms.",
+    "subtitle": "Service delivery terms",
     "entityTitle": "Registered Business Entity",
     "entityItems": [
       {
