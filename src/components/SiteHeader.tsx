@@ -96,7 +96,8 @@ export const SiteHeader: React.FC<{
         { href: '/weather', label: lang === 'ru' ? 'Метео' : 'Weather' },
         { href: '/rss', label: 'RSS' },
         { href: '/dictionary', label: lang === 'ru' ? 'Словарь' : 'Dictionary' },
-        { href: '/admin/drawing', label: lang === 'ru' ? 'Рисование' : 'Drawing' }
+        { href: '/admin/drawing', label: lang === 'ru' ? 'Рисование' : 'Drawing' },
+        { href: '/legal', label: lang === 'ru' ? 'Справка о деятельности' : 'Legal Notice' }
       );
     }
     return items;

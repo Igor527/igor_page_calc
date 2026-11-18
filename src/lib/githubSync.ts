@@ -12,6 +12,7 @@ import {
 } from './syncAuthMessages';
 import { getFirebaseApp } from './firebaseAuth';
 import * as fb from './firebaseData';
+import type { LegalDataBundle } from './legalDefaults';
 import type { CalculatorStatus } from './calculatorStorage';
 
 const CONFIG_KEY = 'igor-github-sync-config';
@@ -169,7 +170,7 @@ export async function fetchFile(path: string): Promise<GitHubFileResult> {
   if (!cfg) return { ok: false, error: GITHUB_SYNC_NOT_CONFIGURED };
   const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${encodeRepoPath(path)}?ref=${encodeURIComponent(cfg.branch)}`;
   try {
-    const res = await fetch(url, { headers: githubAuthHeaders(cfg) });
+    const res = await fetch(url, { headers: githubAuthHeaders(cfg), cache: 'no-store' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       return {
@@ -238,6 +239,23 @@ export async function putFile(path: string, content: string, message: string): P
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    if (res.status === 409) {
+      const fresh = await getFile(path);
+      if (fresh && fresh.sha && fresh.sha !== sha) {
+        body.sha = fresh.sha;
+        const retryRes = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            ...githubAuthHeaders(cfg),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+        if (retryRes.ok) return { ok: true };
+        const retryErr = await retryRes.json().catch(() => ({}));
+        return { ok: false, error: formatGitHubApiError(retryRes.status, (retryErr as { message?: string }).message) };
+      }
+    }
     const err = await res.json().catch(() => ({}));
     return { ok: false, error: formatGitHubApiError(res.status, (err as { message?: string }).message) };
   }
@@ -631,6 +649,48 @@ export async function getCalculatorsJsonFromRepo(ignoreFirebase = false): Promis
   }
   const file = await getFile(dataPath('calculators.json'));
   return file ? file.content : null;
+}
+
+/** Legal Notice (Справка о деятельности) из репо: public/data/legal.json */
+export async function getLegalFromRepo(ignoreFirebase = false): Promise<LegalDataBundle | null> {
+  if (getFirebaseApp() && !ignoreFirebase) {
+    const fbLegal = await fb.getLegalFromFirebase();
+    if (fbLegal) return fbLegal;
+  }
+  const { data, error } = await getJsonFromRepo(dataPath('legal.json'));
+  if (error || !data) return null;
+  return data as LegalDataBundle;
+}
+
+/** Авто-пуш Legal Notice в репо (public/data/legal.json) и/или Firebase. */
+export async function pushLegal(content: LegalDataBundle): Promise<SyncResult> {
+  let fbOk = true;
+  let fbError: string | undefined;
+
+  if (getFirebaseApp()) {
+    beginSyncOperation();
+    const res = await fb.pushLegalToFirebase(content);
+    fbOk = res.ok;
+    fbError = res.error;
+    endSyncOperation();
+  }
+
+  const syncConfig = getSyncConfig();
+  if (syncConfig) {
+    const payload = JSON.stringify({ version: 1, exportedAt: Date.now(), ...content }, null, 2);
+    const gitRes = await putFile(dataPath('legal.json'), payload, 'Автосинхронизация: Legal Notice');
+    if (!gitRes.ok) {
+      setSyncBadgeResult(false, gitRes.error);
+      return gitRes;
+    }
+  }
+
+  if (!getFirebaseApp() && !syncConfig) {
+    return { ok: false, error: 'Синхронизация не настроена' };
+  }
+
+  setSyncBadgeResult(fbOk, fbError);
+  return { ok: fbOk, error: fbError };
 }
 
 /** CV (резюме) из репо: public/data/cv.json с полями html и htmlEn. */

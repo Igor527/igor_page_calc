@@ -8,7 +8,7 @@ import { sanitizeHtml } from '@/lib/security';
 import { applyImageFocusStyles } from '@/lib/imageFocusStyles';
 import RichTextEditor from '@/components/editor/RichTextEditor';
 import { mistralChat } from '@/lib/dictionaryApi';
-import { getSyncConfig, getCvFromRepo, pushCv, schedulePush } from '@/lib/githubSync';
+import { getSyncConfig, getCvFromRepo, pushCv, schedulePush, cancelScheduledPush } from '@/lib/githubSync';
 import { getFirebaseApp } from '@/lib/firebaseAuth';
 import * as fb from '@/lib/firebaseData';
 import { useLang } from '@/lib/i18n';
@@ -311,6 +311,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
   }, [editLang, contentRu, contentEn]);
 
   const handleSave = useCallback(async () => {
+    cancelScheduledPush('cv');
     saveCvContent(contentRu, contentEn);
     if (getSyncConfig() || getFirebaseApp()) {
       const r = await pushCv({ html: contentRu, htmlEn: contentEn });
@@ -326,6 +327,7 @@ const CvPage: React.FC<CvPageProps> = ({ isAdmin }) => {
       setPushStatus(editLang === 'en' ? 'Configure GitHub sync' : 'Настройте синхронизацию с GitHub');
       return;
     }
+    cancelScheduledPush('cv');
     setPushStatus(editLang === 'en' ? 'Sending…' : 'Отправка…');
     const r = await pushCv({ html: contentRu, htmlEn: contentEn });
     setPushStatus(r.ok ? (editLang === 'en' ? 'Pushed to repo' : 'Выгружено в репо') : (r.error || (editLang === 'en' ? 'Error' : 'Ошибка')));

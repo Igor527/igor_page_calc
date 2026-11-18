@@ -1,6 +1,7 @@
 import { getDatabase, ref, get, set } from 'firebase/database';
 import { getFirebaseApp } from './firebaseAuth';
 import type { PlannerRepoData } from './githubSync';
+import type { LegalDataBundle } from './legalDefaults';
 
 export interface SyncResult {
   ok: boolean;
@@ -183,6 +184,29 @@ export async function pushCvToFirebase(content: CvData): Promise<SyncResult> {
   try {
     const data = cleanUndefined(content);
     await set(ref(getDb(), 'data/cv'), data);
+    return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export type LegalData = LegalDataBundle;
+
+export async function getLegalFromFirebase(): Promise<LegalData | null> {
+  try {
+    const snap = await get(ref(getDb(), 'data/legal'));
+    if (!snap.exists()) return null;
+    return snap.val() as LegalData;
+  } catch (e) {
+    console.error('Firebase getLegal error:', e);
+    return null;
+  }
+}
+
+export async function pushLegalToFirebase(content: LegalData): Promise<SyncResult> {
+  try {
+    const data = cleanUndefined(content);
+    await set(ref(getDb(), 'data/legal'), data);
     return { ok: true };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };

@@ -53,6 +53,7 @@ const WelcomePage: React.FC<{
                 <a href="/editor" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">{lang === 'ru' ? 'Редактор' : 'Editor'}</a>
                 <a href="/blog" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">{lang === 'ru' ? 'Блог' : 'Blog'}</a>
                 <a href="/admin/drawing" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-blue-900 bg-blue-50 dark:bg-blue-950 no-underline text-inherit">{lang === 'ru' ? '🎨 Рисование' : '🎨 Drawing'}</a>
+                <a href="/legal" className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 no-underline text-inherit">{lang === 'ru' ? 'Справка о деятельности' : 'Legal Notice'}</a>
               </div>
               <p className="text-xs opacity-90">{lang === 'ru' ? 'Настройте синхронизацию ниже — изменения будут пушиться в репо.' : 'Configure synchronization below — changes will be pushed to the repository.'}</p>
               {getSyncConfig() && onPullAllFromRepo && (
@@ -97,7 +98,7 @@ const WelcomePage: React.FC<{
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                 <a href="/legal" className="hover:underline">
-                  {lang === 'ru' ? 'IGOR CHEVELA PR BEOGRAD · Справка о деятельности' : 'IGOR CHEVELA PR BEOGRAD · Legal Notice'}
+                  {lang === 'ru' ? 'Справка о деятельности' : 'Legal Notice'}
                 </a>
               </p>
             </>

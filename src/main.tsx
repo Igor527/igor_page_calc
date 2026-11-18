@@ -40,6 +40,7 @@ import {
   getCalculatorsJsonFromRepo,
   getRssListsFromRepo,
   getCvFromRepo,
+  getLegalFromRepo,
   getSyncConfig,
   cancelScheduledPush,
   testConnection,
@@ -309,7 +310,11 @@ function App() {
         const { setRssListsFromBundle } = await import('./app/rss/RssPage');
         setRssListsFromBundle(rssData as any);
       }
-      ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss', 'projects'].forEach(cancelScheduledPush);
+      const legalData = await getLegalFromRepo();
+      if (legalData) {
+        try { localStorage.setItem('igor-legal-data', JSON.stringify(legalData)); } catch {}
+      }
+      ['notes', 'dictionary', 'planner', 'cv', 'blog', 'rss', 'projects', 'legal'].forEach(cancelScheduledPush);
       startTransition(() => setBundleTick((n) => n + 1));
       setSyncBadgeResult(true);
       return { ok: true };
@@ -429,7 +434,7 @@ function App() {
   if (path === '/legal' || path === '/business') {
     return withChrome(
       <PageSuspense>
-        <LegalPage />
+        <LegalPage isAdmin={isAdmin} />
       </PageSuspense>
     );
   }
