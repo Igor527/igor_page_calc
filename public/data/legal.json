@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exportedAt": 1795027793883,
+  "exportedAt": 1795027808564,
   "ru": {
     "title": "Справка о деятельности",
     "subtitle": "Официальная регистрация, налоговый статус и порядок оказания услуг.",
@@ -39,10 +39,6 @@
     "subtitle": "Official business registration, tax residency, and service delivery terms.",
     "entityTitle": "Registered Business Entity",
     "entityItems": [
-      {
-        "label": "Business Name:",
-        "value": "IGOR CHEVELA PR BEOGRAD"
-      },
       {
         "label": "Legal Form:",
         "value": "Sole Proprietorship"
